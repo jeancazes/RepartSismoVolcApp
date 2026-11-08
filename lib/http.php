@@ -2,6 +2,24 @@
 declare(strict_types=1);
 require_once __DIR__ . '/db.php';
 
+// Toute erreur PHP sort en JSON (jamais de HTML brut dans l'espace enseignant).
+ini_set('display_errors', '0');
+set_error_handler(static function (int $no, string $msg, string $file, int $line): bool {
+    if (!(error_reporting() & $no)) {
+        return false;
+    }
+    throw new ErrorException($msg, 0, $no, $file, $line);
+});
+set_exception_handler(static function (Throwable $e): void {
+    error_log('[carte] ' . $e->getMessage());
+    if (!headers_sent()) {
+        http_response_code(500);
+        header('Content-Type: application/json; charset=utf-8');
+    }
+    echo json_encode(['error' => 'Erreur serveur : ' . $e->getMessage()], JSON_UNESCAPED_UNICODE);
+    exit;
+});
+
 session_name(config()['session_name'] ?? 'carte_admin');
 session_set_cookie_params([
     'lifetime' => 0,

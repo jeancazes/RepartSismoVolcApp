@@ -86,7 +86,12 @@ require __DIR__ . '/lib/http.php';
     opts.headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {});
     if (opts.method && opts.method !== 'GET') opts.headers['X-CSRF-Token'] = csrf;
     return fetch(path, opts).then(function (r) {
-      return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || r.status); return j; });
+      return r.text().then(function (txt) {
+        var j;
+        try { j = JSON.parse(txt); } catch (e) { throw new Error('Réponse serveur inattendue (HTTP ' + r.status + ')'); }
+        if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
+        return j;
+      });
     });
   }
 

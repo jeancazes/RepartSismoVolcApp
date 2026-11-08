@@ -44,6 +44,17 @@ require __DIR__ . '/lib/http.php';
     </div>
 
     <div class="card">
+      <h2 style="font-size:1.1rem;margin-top:0">Comptes enseignants</h2>
+      <div id="teachers"></div>
+      <h3 style="font-size:1rem">Ajouter un enseignant</h3>
+      <label>Identifiant<input id="t-login"></label>
+      <label>Nom affiché<input id="t-name"></label>
+      <label>Mot de passe (12 caractères minimum)<input id="t-pass" type="password" autocomplete="new-password"></label>
+      <button id="btn-teacher">Créer le compte</button>
+      <div class="msg" id="t-msg"></div>
+    </div>
+
+    <div class="card">
       <h2 style="font-size:1.1rem;margin-top:0">Scénarios</h2>
       <div id="list"></div>
       <button id="btn-new">Nouveau scénario</button>
@@ -95,7 +106,7 @@ require __DIR__ . '/lib/http.php';
 
   $('btn-login').onclick = function () {
     api('api/login.php', { method: 'POST', body: JSON.stringify({ login: $('l-login').value, password: $('l-pass').value }) })
-      .then(function (j) { csrf = j.csrf; $('who').textContent = j.teacher.name; $('login').hidden = true; $('panel').hidden = false; load(); })
+      .then(function (j) { csrf = j.csrf; $('who').textContent = j.teacher.name; $('login').hidden = true; $('panel').hidden = false; load(); loadTeachers(); })
       .catch(function (e) { $('l-msg').textContent = e.message; });
   };
   $('btn-logout').onclick = function () { api('api/logout.php', { method: 'POST', body: '{}' }).then(function () { location.reload(); }); };
@@ -126,7 +137,33 @@ require __DIR__ . '/lib/http.php';
       .catch(function (e) { $('e-msg').textContent = e.message; });
   };
 
-  if (!$('panel').hidden) load();
+  var teachers = [], myId = null;
+  function loadTeachers() {
+    api('api/teachers.php').then(function (j) {
+      csrf = j.csrf; myId = j.me; teachers = j.teachers;
+      $('teachers').innerHTML = teachers.map(function (t) {
+        return '<div class="row"><span><b>' + esc(t.name) + '</b> (' + esc(t.login) + ')</span>' +
+          (t.id !== myId ? '<button class="danger" data-tid="' + t.id + '">Supprimer</button>' : '<i>vous</i>') + '</div>';
+      }).join('');
+    }).catch(function () {});
+  }
+  $('teachers').onclick = function (e) {
+    var b = e.target.closest('button[data-tid]'); if (!b) return;
+    var t = teachers.filter(function (x) { return String(x.id) === b.dataset.tid; })[0];
+    if (t && confirm('Supprimer le compte de ' + t.name + ' ? Ses scénarios seront aussi supprimés.')) {
+      api('api/teachers.php?id=' + t.id, { method: 'DELETE' }).then(loadTeachers).catch(function (err) { alert(err.message); });
+    }
+  };
+  $('btn-teacher').onclick = function () {
+    api('api/teachers.php', { method: 'POST', body: JSON.stringify({ login: $('t-login').value, name: $('t-name').value, password: $('t-pass').value }) })
+      .then(function () {
+        $('t-msg').className = 'msg'; $('t-msg').textContent = 'Compte créé.';
+        $('t-login').value = ''; $('t-name').value = ''; $('t-pass').value = ''; loadTeachers();
+      })
+      .catch(function (e) { $('t-msg').className = 'msg'; $('t-msg').style.color = 'var(--bad)'; $('t-msg').textContent = e.message; });
+  };
+
+  if (!$('panel').hidden) { load(); loadTeachers(); }
 })();
 </script>
 </body>

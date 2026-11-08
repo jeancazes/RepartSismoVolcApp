@@ -22,8 +22,8 @@ if (preg_match('/^[a-f0-9]{64}$/', $t)) {
   <h1>Compte confirmé</h1>
   <p>Tu peux maintenant <a href="admin.php">te connecter à l'espace enseignant</a>.</p>
 <?php else: ?>
-  <h1>Lien invalide ou expiré</h1>
-  <p>Refais une demande d'inscription depuis <a href="admin.php">l'espace enseignant</a>.</p>
+  <h1>Lien invalide, expiré ou déjà utilisé</h1>
+  <p>Si tu as déjà cliqué sur un lien de confirmation, <a href="admin.php">connecte-toi directement</a>. Sinon, refais une demande d'inscription : seul le dernier mail reçu est valable, pendant 1 heure.</p>
 <?php endif; ?>
 </body>
 </html>

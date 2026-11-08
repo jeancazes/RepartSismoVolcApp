@@ -557,7 +557,7 @@ body{background-image:var(--paper)}
     </section>
 
     <aside id="guide" aria-label="Parcours de questions">
-      <div id="g-head"><h2>Parcours guidé</h2><span class="chip mono" id="g-step">1 / 8</span><button class="chip" id="g-scen" type="button" title="Changer de scénario">Changer</button></div>
+      <div id="g-head"><h2>Parcours guidé</h2><span class="chip mono" id="g-step">1 / 8</span><button class="chip" id="g-scen" type="button" title="Changer de scénario">Changer</button><button class="chip" id="g-reset" type="button" title="Effacer mes réponses et revenir à la première question">Recommencer</button></div>
       <div id="g-prog"></div>
       <div id="g-body"></div>
       <footer class="src">Sources : USGS (séismes, alertes volcans), Smithsonian GVP (volcans), PB2002 Bird 2003 via fraxen/Nordpil (ODC-By), Natural Earth. Archives : fichiers enregistrés dans l'app. Live : instantané figé dans ce prototype (le direct viendra avec la version sur serveur). Contexte estimé par la profondeur et la distance aux frontières.</footer>
@@ -1078,8 +1078,10 @@ function renderStep(){
   if(st.type==='text')act+='<button class="btn" id="chk">Envoyer ma réponse</button>';
   if((st.hints||[]).some(Boolean))act+='<button class="btn ghost" id="hint">Indice</button>';
   var last=i>=sc.steps.length-1;
+  if(i>0)act='<button class="btn ghost" id="prevq" type="button">← Question précédente</button>'+act;
   $('#act').innerHTML=act+'<button class="btn" id="next" hidden>'+(last?'Terminer':'Étape suivante')+'</button>';
   if($('#hint'))$('#hint').onclick=giveHint;
+  if($('#prevq'))$('#prevq').onclick=function(){setIdx(i-1);renderStep();applyStep(curScen().steps[i-1])};
   $('#next').onclick=function(){if(!last){setIdx(i+1);renderStep();applyStep(curScen().steps[i+1])}else finish()};
   if(st.type==='qcm')$$('.opt').forEach(function(btn){btn.onclick=function(){answerQcm(sc,st,btn)}});
   if(st.type==='cloze')$('#chk').onclick=function(){checkCloze(sc,st)};
@@ -1290,6 +1292,13 @@ document.addEventListener('keydown',function(e){
   else if(e.key==='Enter'){pinKey('OK')}
   else if(e.key==='Escape'){$('#ov-pin').hidden=true}
 });
+$('#g-reset').onclick=function(){
+  if(A.PVget())return;
+  var sc=A.curScen();
+  if(!confirm('Effacer tes réponses à ce scénario et revenir à la première question ?'))return;
+  sc.steps.forEach(function(st){delete A.store.answers[sc.id+'/'+st.id]});
+  A.store.pos[sc.id]=0;A.save();A.scenChanged();
+};
 $('#btn-adm').onclick=function(){location.href='admin.php'};
 
 /* ---------- coque ---------- */

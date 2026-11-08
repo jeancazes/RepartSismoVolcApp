@@ -68,6 +68,8 @@ require __DIR__ . '/lib/http.php';
       </details>
     </div>
 
+    <div class="card" id="vis" hidden></div>
+
     <div class="card" id="editor" hidden>
       <label>Titre<input id="e-title"></label>
       <label>Code de séance (vide = pas de code)<input id="e-code"></label>
@@ -80,6 +82,7 @@ require __DIR__ . '/lib/http.php';
   </section>
 </main>
 
+<script src="admin-editor.js"></script>
 <script>
 (function () {
   'use strict';
@@ -112,7 +115,8 @@ require __DIR__ . '/lib/http.php';
     $('list').innerHTML = scens.length ? scens.map(function (s) {
       return '<div class="row"><span><b>' + esc(s.title) + '</b>' + (s.is_active ? ' · <i>visible</i>' : '') +
         (s.session_code ? ' · code requis' : '') + '</span><span>' +
-        '<button class="ghost" data-act="edit" data-id="' + esc(s.id) + '">Modifier</button>' +
+        '<button class="ghost" data-act="vis" data-id="' + esc(s.id) + '">Modifier</button>' +
+        '<button class="ghost" data-act="edit" data-id="' + esc(s.id) + '">JSON</button>' +
         '<button class="danger" data-act="del" data-id="' + esc(s.id) + '">Supprimer</button></span></div>';
     }).join('') : '<p>Aucun scénario.</p>';
   }
@@ -129,12 +133,24 @@ require __DIR__ . '/lib/http.php';
     $('e-title').value = cur.title; $('e-code').value = cur.session_code || ''; $('e-active').checked = !!cur.is_active;
     $('e-json').value = JSON.stringify(cur.content, null, 2); $('e-msg').textContent = ''; $('editor').hidden = false;
   }
-  $('btn-new').onclick = function () { openEditor(null); };
+  $('btn-new').onclick = function () { openVisual(null); };
+  function openVisual(s) {
+    var rec = s ? { id: s.id, title: s.title, session_code: s.session_code, is_active: s.is_active, content: s.content }
+      : { id: '', title: 'Nouveau scénario', session_code: '', is_active: false, content: { title: 'Nouveau scénario', intro: '', steps: [] } };
+    $('editor').hidden = true;
+    ScEditor.open($('vis'), rec, function (out) {
+      api('api/scenarios.php', { method: 'POST', body: JSON.stringify(out) })
+        .then(function () { ScEditor.close(); load(); })
+        .catch(function (e) { ScEditor.say('Erreur : ' + e.message); });
+    }, function () { ScEditor.close(); });
+    $('vis').scrollIntoView({ behavior: 'smooth' });
+  }
   $('btn-cancel').onclick = function () { $('editor').hidden = true; };
 
   $('list').onclick = function (e) {
     var b = e.target.closest('button'); if (!b) return;
     var s = scens.filter(function (x) { return x.id === b.dataset.id; })[0];
+    if (b.dataset.act === 'vis') openVisual(s);
     if (b.dataset.act === 'edit') openEditor(s);
     if (b.dataset.act === 'del' && confirm('Supprimer « ' + s.title + ' » ?')) {
       api('api/scenarios.php?id=' + encodeURIComponent(s.id), { method: 'DELETE' }).then(load).catch(function (err) { alert(err.message); });

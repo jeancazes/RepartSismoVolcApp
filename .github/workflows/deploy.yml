@@ -1,0 +1,25 @@
+name: Déploiement EX2
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Envoi des fichiers vers EX2 (SSH/SFTP)
+        uses: easingthemes/ssh-deploy@v5.1.0
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.EX2_SSH_KEY }}
+          REMOTE_HOST: ${{ secrets.EX2_HOST }}
+          REMOTE_PORT: ${{ secrets.EX2_PORT }}
+          REMOTE_USER: ${{ secrets.EX2_USER }}
+          TARGET: ${{ secrets.EX2_PATH }}
+          SOURCE: "./"
+          # Pas de --delete : les fichiers présents uniquement sur le serveur (config.php, uploads) sont conservés.
+          ARGS: "-rltgoDzvO"
+          EXCLUDE: ".git/, .github/, config.php, README.md"

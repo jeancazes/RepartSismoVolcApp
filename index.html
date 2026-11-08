@@ -1,0 +1,2104 @@
+<title>Carte Tectonique 4e</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@600;700&family=IM+Fell+English:ital@0;1&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<style>
+/* Concept : poste de contrôle plat. Rail de couches à gauche, carte au centre (plate ou globe) avec frise temporelle, bandeau de questions à droite. */
+:root{
+  --bg:#EDF0F3; --panel:#F8F9FB; --line:#D2D9E0; --fg:#14202B; --mute:#5A6B7A; --accent:#0B7285; --accent-fg:#FFFFFF;
+  --sea:#DDE7EF; --land:#C6CFD8; --grat:#C9D3DC; --plate:#7C8B99;
+  --conv:#C2410C; --div:#0369A1; --trans:#15803D; --intra:#7C8B99;
+  --d1:#D9A404; --d2:#E4572E; --d3:#7B3FBF;
+  --v-sub:#B7791F; --v-ridge:#6D4CC2; --v-rift:#C0457F; --v-hot:#4D7C0F;
+  --ok:#15803D; --warn:#B45309; --bad:#B91C1C; --ring:#0B7285; --live:#E11D48; --livev:#EA580C;
+  --lw:268px; --rw:340px; --fs:1; --font:'Barlow',system-ui,-apple-system,'Segoe UI',sans-serif; --mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0A1016; --panel:#111A22; --line:#22313F; --fg:#E4EBF1; --mute:#8497A8; --accent:#3CC4D9; --accent-fg:#06141A;
+  --sea:#0B141B; --land:#1A2631; --grat:#16222C; --plate:#6E8294;
+  --conv:#FB923C; --div:#38BDF8; --trans:#4ADE80; --intra:#8497A8;
+  --d1:#F2C94C; --d2:#FF7A59; --d3:#B58CF5;
+  --v-sub:#F0B429; --v-ridge:#A78BFA; --v-rift:#F472B6; --v-hot:#A3E635;
+  --ok:#4ADE80; --warn:#FBBF24; --bad:#F87171; --ring:#3CC4D9; --live:#FF5C7A; --livev:#FFA24A; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0A1016; --panel:#111A22; --line:#22313F; --fg:#E4EBF1; --mute:#8497A8; --accent:#3CC4D9; --accent-fg:#06141A;
+  --sea:#0B141B; --land:#1A2631; --grat:#16222C; --plate:#6E8294;
+  --conv:#FB923C; --div:#38BDF8; --trans:#4ADE80; --intra:#8497A8;
+  --d1:#F2C94C; --d2:#FF7A59; --d3:#B58CF5;
+  --v-sub:#F0B429; --v-ridge:#A78BFA; --v-rift:#F472B6; --v-hot:#A3E635;
+  --ok:#4ADE80; --warn:#FBBF24; --bad:#F87171; --ring:#3CC4D9; --live:#FF5C7A; --livev:#FFA24A; color-scheme:dark}
+
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font);font-size:calc(14px*var(--fs));line-height:1.4;overflow:hidden;
+  padding-left:max(0px,env(safe-area-inset-left,0px));padding-right:max(0px,env(safe-area-inset-right,0px))}
+button,select,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+#app{height:100%;display:grid;grid-template-rows:auto 1fr;min-width:0}
+header{display:flex;align-items:center;gap:12px;padding:8px max(16px,env(safe-area-inset-left,0px));border-bottom:1px solid var(--line);background:var(--panel);min-width:0}
+header h1{font-size:1.05em;font-weight:600;letter-spacing:.02em;margin:0;white-space:nowrap}
+header h1 small{font-family:var(--mono);font-weight:400;color:var(--mute);font-size:.72em;margin-left:8px;letter-spacing:.06em;text-transform:uppercase}
+.sp{flex:1;min-width:0}
+.chip{font-family:var(--mono);font-size:.78em;border:1px solid var(--line);padding:3px 8px;color:var(--mute);background:transparent;white-space:nowrap}
+.chip b{color:var(--fg);font-weight:500}
+.ibtn{border:1px solid var(--line);background:transparent;padding:5px 10px;font-size:.88em}
+.ibtn:hover{border-color:var(--accent);color:var(--accent)}
+.ibtn.on{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+main{position:relative;display:grid;grid-template-columns:var(--lc,0px) minmax(0,1fr) var(--rc,0px);min-height:0}
+#app[data-l="open"] main{--lc:var(--lw)}
+#app[data-r="open"] main{--rc:var(--rw)}
+#app[data-l="closed"] #layers,#app[data-r="closed"] #guide{visibility:hidden;overflow:hidden;border-width:0}
+aside{background:var(--panel);overflow:auto;min-height:0;min-width:0}
+#layers{border-right:1px solid var(--line)}
+#guide{border-left:1px solid var(--line);display:flex;flex-direction:column}
+.sec{padding:12px 14px;border-bottom:1px solid var(--line)}
+.sec h2{margin:0 0 8px;font-family:var(--mono);font-size:.7em;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--mute)}
+.row{display:flex;align-items:center;gap:8px;padding:3px 0;min-width:0}
+.row label{flex:1;min-width:0;cursor:pointer}
+.row input[type=checkbox]{accent-color:var(--accent);width:16px;height:16px;margin:0}
+.sw{width:12px;height:12px;flex:none;display:inline-block}
+.sw.tri{clip-path:polygon(50% 0,100% 100%,0 100%)}
+.sw.dot{border-radius:50%}
+.sw.ln{height:3px}
+.sub{margin:4px 0 6px 24px;display:grid;gap:6px;font-size:.92em}
+.sub.off,#timeline.off{opacity:.4}
+.sub.off *{cursor:default}
+.yr{display:grid;grid-template-columns:auto 1fr auto 1fr;gap:6px;align-items:center}
+.sub select,.sub input[type=number]{background:var(--bg);border:1px solid var(--line);padding:4px 6px;min-width:0;width:100%}
+.sub input[type=range]{width:100%;accent-color:var(--accent)}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;border:1px solid var(--line)}
+.seg button{border:0;background:transparent;padding:5px 6px;font-size:.88em}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button.on{background:var(--accent);color:var(--accent-fg)}
+.note{color:var(--mute);font-size:.85em}
+#mapcol{display:grid;grid-template-rows:minmax(0,1fr) auto;min-width:0;min-height:0;position:relative;background:var(--sea)}
+#mapwrap{position:relative;min-height:0;min-width:0;overflow:hidden;touch-action:none}
+canvas{display:block;width:100%;height:100%;cursor:grab}
+canvas:active{cursor:grabbing}
+#cv2{position:absolute;left:0;top:0;pointer-events:none;cursor:auto}
+.livebtn{width:100%;display:flex;align-items:center;justify-content:center;gap:10px;padding:9px;border:1px solid var(--live);background:transparent;color:var(--live);font-family:var(--mono);letter-spacing:.18em;font-weight:500;margin-bottom:8px}
+.livebtn i{width:8px;height:8px;border-radius:50%;background:currentColor}
+.livebtn.on{background:var(--live);color:#fff}
+.livebtn.on i{animation:blink 1.4s infinite}
+@keyframes blink{50%{opacity:.25}}
+.mapbar{position:absolute;top:10px;right:10px;display:grid;gap:6px}
+.mapbar .seg{background:var(--panel)}
+.zoom{display:grid;background:var(--panel);border:1px solid var(--line)}
+.zoom button{border:0;background:transparent;width:32px;height:32px;font-size:1.1em}
+.zoom button+button{border-top:1px solid var(--line)}
+#info{position:absolute;left:10px;bottom:10px;max-width:min(320px,calc(100% - 20px));background:var(--panel);border:1px solid var(--line);padding:10px 12px;font-size:.9em}
+#info h3{margin:0 0 4px;font-size:1em;font-weight:600}
+#info dl{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;margin:0}
+#info dt{color:var(--mute)} #info dd{margin:0;min-width:0;overflow-wrap:anywhere}
+#info .x{position:absolute;top:4px;right:6px;border:0;background:transparent;color:var(--mute)}
+#status{position:absolute;left:10px;top:10px;font-family:var(--mono);font-size:.76em;background:var(--panel);border:1px solid var(--line);padding:3px 8px;color:var(--mute);max-width:calc(100% - 140px)}
+#timeline{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:6px 12px;align-items:center;padding:10px max(14px,env(safe-area-inset-right,0px)) 10px 14px;border-top:1px solid var(--line);background:var(--panel)}
+#timeline input[type=range]{width:100%;accent-color:var(--accent);min-width:0}
+#tl-date{font-family:var(--mono);font-size:.86em;min-width:11ch;text-align:right}
+#tl-opts{grid-column:1/-1;display:flex;gap:12px;align-items:center;flex-wrap:wrap;font-size:.86em;color:var(--mute)}
+#tl-opts select{background:var(--bg);border:1px solid var(--line);padding:2px 6px}
+#hist{width:100%;height:26px;display:block;grid-column:2}
+.legend{display:grid;gap:3px;font-size:.88em}
+.legend .row{padding:1px 0}
+/* guide */
+#g-head{padding:12px 14px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
+#g-head h2{margin:0;font-size:1em;font-weight:600;flex:1}
+#g-prog{display:flex;gap:3px;padding:8px 14px;border-bottom:1px solid var(--line)}
+#g-prog i{flex:1;height:4px;background:var(--line)} #g-prog i.done{background:var(--accent)} #g-prog i.cur{background:var(--fg)}
+#g-body{padding:14px;overflow:auto;flex:1;min-height:0}
+.tag{display:inline-block;font-family:var(--mono);font-size:.7em;letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--line);padding:1px 6px;color:var(--mute);margin-right:6px}
+.tag.beyond{border-color:var(--warn);color:var(--warn)}
+#g-q{margin:10px 0 12px;font-size:1.04em;font-weight:500}
+.opt{display:block;width:100%;text-align:left;padding:9px 12px;margin-bottom:6px;border:1px solid var(--line);background:transparent}
+.opt:hover{border-color:var(--accent)}
+.opt.sel{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,transparent)}
+.opt.good{border-color:var(--ok);background:color-mix(in srgb,var(--ok) 14%,transparent)}
+.opt.bad{border-color:var(--bad);background:color-mix(in srgb,var(--bad) 12%,transparent)}
+.cloze{line-height:2.2}
+.cloze select{background:var(--bg);border:1px solid var(--line);padding:3px 4px;margin:0 3px;max-width:100%}
+.cloze select.good{border-color:var(--ok)} .cloze select.bad{border-color:var(--bad)}
+textarea#ans{width:100%;min-height:130px;resize:vertical;background:var(--bg);border:1px solid var(--line);padding:9px 10px}
+.fb{margin-top:10px;padding:9px 12px;border-left:3px solid var(--line);background:var(--bg);font-size:.93em}
+.fb.good{border-color:var(--ok)} .fb.bad{border-color:var(--bad)} .fb.hint{border-color:var(--warn)}
+.fb table{width:100%;border-collapse:collapse;margin-top:6px;font-size:.92em}
+.fb td{padding:2px 0} .fb td:last-child{text-align:right;font-family:var(--mono)}
+.actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.btn{border:1px solid var(--accent);background:var(--accent);color:var(--accent-fg);padding:7px 14px;font-weight:500}
+.btn.ghost{background:transparent;color:var(--fg);border-color:var(--line)}
+.btn[disabled]{opacity:.45;cursor:default}
+footer.src{padding:8px 14px;border-top:1px solid var(--line);font-size:.74em;color:var(--mute);line-height:1.35}
+/* modal */
+[hidden]{display:none!important}
+.mi-h{display:none!important}
+.mi-g{opacity:.4;pointer-events:none}
+.stt{font-weight:600;font-size:1.12em;margin:2px 0 4px}
+.sti{margin:0 0 10px;color:var(--mute)}
+.prop{margin:8px 0 10px;padding:8px 12px;border-left:3px solid var(--accent);background:var(--bg);font-size:.93em}
+#pmsg{margin-top:8px}
+.cloze .cin{background:var(--bg);border:1px solid var(--line);padding:3px 6px;margin:0 3px;width:11ch}
+.cloze .cin.good{border-color:var(--ok)} .cloze .cin.bad{border-color:var(--bad)}
+/* ---- admin ---- */
+#adm{position:fixed;inset:0;z-index:60;background:var(--bg);display:grid;grid-template-rows:auto minmax(0,1fr);color:var(--fg)}
+.adm-top{display:flex;align-items:center;gap:12px;padding:8px max(16px,env(safe-area-inset-left,0px));border-bottom:1px solid var(--line);background:var(--panel);flex-wrap:wrap}
+.adm-top h2{margin:0;font-size:1.05em;font-weight:600;white-space:nowrap}
+.adm-nav{display:flex;gap:0;border:1px solid var(--line)}
+.adm-nav button{border:0;background:transparent;padding:6px 14px;font-size:.92em}
+.adm-nav button+button{border-left:1px solid var(--line)}
+.adm-nav button.on{background:var(--accent);color:var(--accent-fg)}
+#adm-body{overflow:auto;min-height:0;padding:16px max(16px,env(safe-area-inset-left,0px)) 40px}
+.adm-wrap{max-width:1180px;margin:0 auto;display:grid;gap:14px}
+.adm-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.adm-h h3{margin:0;font-size:1.1em;font-weight:600;flex:1;min-width:10ch}
+.card{background:var(--panel);border:1px solid var(--line);padding:12px 14px}
+.card h4{margin:0 0 8px;font-family:var(--mono);font-size:.72em;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--mute)}
+.scl{display:grid;gap:10px}
+.sc{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 14px;align-items:center}
+.sc b{font-weight:600}
+.sc .acts{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.badge{font-family:var(--mono);font-size:.7em;letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--ok);color:var(--ok);padding:1px 6px;margin-left:8px}
+.sb{border:1px solid var(--line);background:transparent;padding:4px 10px;font-size:.88em}
+.sb:hover:not([disabled]){border-color:var(--accent);color:var(--accent)}
+.sb.pri{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.sb.dng{border-color:var(--bad);color:var(--bad)}
+.sb[disabled]{opacity:.45;cursor:default}
+.ed-cols{display:grid;grid-template-columns:minmax(200px,260px) minmax(0,1fr);gap:14px;align-items:start}
+@media (max-width:820px){.ed-cols{grid-template-columns:minmax(0,1fr)}}
+.ed-steps{display:grid;gap:4px}
+.ed-steps .it{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px;align-items:center;border:1px solid var(--line);background:var(--panel);padding:6px 8px;cursor:pointer}
+.ed-steps .it.on{border-color:var(--accent);box-shadow:inset 3px 0 0 var(--accent)}
+.ed-steps .it .tt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.92em}
+.ed-steps .it .tt small{display:block;color:var(--mute);font-family:var(--mono);font-size:.74em}
+.ed-steps .it .mv{display:flex;gap:2px}
+.ed-steps .it .mv button{border:1px solid var(--line);background:transparent;padding:0 5px;font-size:.8em;line-height:1.5}
+.subtabs{display:flex;gap:0;border:1px solid var(--line);flex-wrap:wrap;background:var(--panel)}
+.subtabs button{border:0;background:transparent;padding:6px 12px;font-size:.88em}
+.subtabs button+button{border-left:1px solid var(--line)}
+.subtabs button.on{background:var(--fg);color:var(--bg)}
+.fl{display:grid;gap:4px;margin:10px 0}
+.fl>span,.fl>label.t{font-family:var(--mono);font-size:.7em;letter-spacing:.1em;text-transform:uppercase;color:var(--mute)}
+.fl input[type=text],.fl input[type=number],.fl input[type=password],.fl input[type=date],.fl input[type=datetime-local],.fl select,.fl textarea,.adm-in{background:var(--bg);border:1px solid var(--line);padding:7px 9px;width:100%;min-width:0}
+.fl textarea{min-height:64px;resize:vertical}
+.row2{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.ck{display:flex;align-items:center;gap:8px;padding:2px 0}
+.ck input{accent-color:var(--accent);width:16px;height:16px;margin:0}
+.opts3{display:grid;gap:8px}
+.opt3{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px;align-items:start}
+.opt3 .fbk{grid-column:2}
+.crit{border:1px solid var(--line);padding:10px;margin:8px 0;background:var(--bg)}
+.crit .row2{margin-top:6px}
+.mtab{width:100%;border-collapse:collapse;font-size:.92em}
+.mtab th{font-family:var(--mono);font-size:.7em;letter-spacing:.1em;text-transform:uppercase;color:var(--mute);text-align:left;font-weight:500;padding:4px 6px}
+.mtab td{padding:4px 6px;border-top:1px solid var(--line)}
+.mtab td.g{font-family:var(--mono);font-size:.72em;letter-spacing:.1em;text-transform:uppercase;color:var(--mute);background:var(--bg)}
+.mtab input[type=radio]{accent-color:var(--accent)}
+.mtab td.r{text-align:center;width:72px}
+.dtable{width:100%;border-collapse:collapse;font-size:.88em}
+.dtable th{font-family:var(--mono);font-size:.7em;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);text-align:left;padding:4px 6px;position:sticky;top:0;background:var(--panel)}
+.dtable td{padding:4px 6px;border-top:1px solid var(--line);white-space:nowrap}
+.dtable td.pl{white-space:normal;min-width:12ch}
+.dtable tr.sel td{background:color-mix(in srgb,var(--accent) 14%,transparent)}
+.dtable tr.hid td{opacity:.5;text-decoration:line-through}
+.dtable tr.hid td:last-child{text-decoration:none;opacity:1}
+.st-mod{color:var(--warn)} .st-add{color:var(--ok)} .st-hid{color:var(--bad)}
+.dwrap{max-height:56vh;overflow:auto;border:1px solid var(--line);background:var(--panel)}
+.dsplit{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,440px);gap:14px;align-items:start}
+@media (max-width:980px){.dsplit{grid-template-columns:minmax(0,1fr)}}
+.mm{width:100%;aspect-ratio:2/1;display:block;border:1px solid var(--line);background:var(--sea);cursor:crosshair}
+.pager{display:flex;gap:8px;align-items:center;font-size:.88em;color:var(--mute)}
+.adm-mo{position:fixed;inset:0;z-index:70;background:rgba(5,10,15,.55);display:flex;align-items:center;justify-content:center;padding:14px}
+.adm-mo .box{background:var(--panel);border:1px solid var(--line);width:min(620px,100%);max-height:100%;overflow:auto;padding:16px}
+.adm-mo .box h3{margin:0 0 8px;font-size:1.05em}
+.adm-mo textarea.big{width:100%;min-height:220px;font-family:var(--mono);font-size:.8em;background:var(--bg);border:1px solid var(--line);padding:8px}
+.adm-mo .acts{display:flex;gap:8px;justify-content:flex-end;margin-top:12px;flex-wrap:wrap}
+.msg{font-size:.88em;color:var(--mute)}
+.msg.ok{color:var(--ok)} .msg.bad{color:var(--bad)}
+.sum{padding:8px 12px;border-left:3px solid var(--accent);background:var(--bg);font-size:.92em}
+.pin{width:min(320px,100%);text-align:center}
+.pin-dots{display:flex;gap:10px;justify-content:center;margin:6px 0;min-height:18px}
+.pin-dots i{width:12px;height:12px;border-radius:50%;background:var(--accent)}
+.pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}
+.pin-pad button{padding:14px 0;font-family:var(--mono);font-size:1.3em;border:1px solid var(--line);background:var(--bg)}
+.pin-pad button:hover{border-color:var(--accent)}
+.pin-pad button.ok{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.pin.shake{animation:shake .35s}
+@keyframes shake{20%{transform:translateX(-8px)}60%{transform:translateX(8px)}}
+#edbar{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:55;display:flex;gap:10px;align-items:center;background:var(--fg);color:var(--bg);padding:8px 12px;max-width:calc(100vw - 20px);flex-wrap:wrap;box-shadow:0 6px 24px rgba(0,0,0,.35)}
+#edbar span{font-size:.9em}
+#edbar .btn.ghost{color:var(--bg);border-color:var(--bg)}
+
+.mini{font:inherit;font-size:.86em;padding:2px 10px;background:var(--bg);border:1px solid var(--line);color:var(--fg,inherit);cursor:pointer}
+.mini:hover:not([disabled]){border-color:var(--accent)}
+.mini[disabled]{cursor:default}
+.ov{position:fixed;inset:0;background:rgba(5,10,15,.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50}
+.modal{background:var(--panel);border:1px solid var(--line);width:min(440px,100%);max-height:100%;overflow:auto;padding:18px}
+.modal h2{margin:0 0 12px;font-size:1.1em}
+.modal .fld{display:grid;gap:4px;margin:12px 0}
+.modal input[type=number]{background:var(--bg);border:1px solid var(--line);padding:7px 9px;width:100%}
+.big{font-family:var(--mono);font-size:2.4em;font-weight:500;letter-spacing:.04em}
+.handle{position:absolute;top:50%;transform:translateY(-50%);z-index:30;width:30px;padding:14px 0;border:1px solid var(--line);background:var(--panel);color:var(--mute);display:flex;flex-direction:column;align-items:center;gap:10px;font-family:var(--mono);font-size:.72em;letter-spacing:.12em;text-transform:uppercase}
+.handle:hover{color:var(--accent);border-color:var(--accent)}
+.handle .t{writing-mode:vertical-rl}
+.handle .ar{font-size:1.3em;line-height:1}
+#hl{left:0;border-left:0}
+#hr{right:0;border-right:0}
+#app[data-l="open"] #hl{left:var(--lw)}
+#app[data-r="open"] #hr{right:var(--rw)}
+.proj{--fs:1.3;--rw:min(92vw,420px)}
+@media (max-width:900px){
+  :root{--lw:min(84vw,300px);--rw:min(90vw,340px)}
+  main{grid-template-columns:minmax(0,1fr)}
+  #layers,#guide{position:absolute;top:0;bottom:0;z-index:20}
+  #layers{left:0;width:var(--lw);border-right:1px solid var(--line);box-shadow:8px 0 24px rgba(0,0,0,.28)}
+  #guide{right:0;width:var(--rw);border-left:1px solid var(--line);box-shadow:-8px 0 24px rgba(0,0,0,.28)}
+  #app[data-l="closed"] #layers,#app[data-r="closed"] #guide{display:none}
+  header h1 small,.chip.hide-s{display:none}
+}
+/* ===== Sciences modernes : tokens affinés, formes douces, mouvement sobre ===== */
+:root{
+  /* Clair : carte d'explorateur 1900 (parchemin, encre, rouge sceau) */
+  --r:5px;--r-s:3px;--ease:cubic-bezier(.22,.8,.3,1);--lava:#B8451F;
+  --sh:0 1px 0 rgba(70,45,10,.14),0 5px 14px rgba(70,45,10,.14);--glow:0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent);
+  --bg:#E8DDC3;--panel:#F4ECD8;--line:#CDB98F;--fg:#2A2017;--mute:#76624A;--accent:#8C2F1F;--accent-fg:#FBF3E0;
+  --sea:#C8D6D7;--land:#EFE2C2;--grat:#B3C4C4;--plate:#6B5A44;--coast:#5C4631;
+  --conv:#A8401B;--div:#1F5F7A;--trans:#4A6B2A;--intra:#76624A;
+  --d1:#C79A1B;--d2:#B8431F;--d3:#5B3A8C;--v-sub:#A8721A;--v-ridge:#5B4B9A;--v-rift:#A83A66;--v-hot:#587A1B;
+  --ok:#3D6B2A;--warn:#A8661A;--bad:#A32A1F;--ring:#8C2F1F;--live:#B3202F;--livev:#C4561A;
+  --disp:'IM Fell English','Iowan Old Style',Georgia,serif;--dw:400;--ds:1.12;--dls:.01em;
+  --paper:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .35 0 0 0 0 .25 0 0 0 0 .1 0 0 0 .09 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");--frame:3px double color-mix(in srgb,var(--fg) 50%,transparent);--rose-op:.6;--rose2:.38;--rings-op:0;
+  --cart:3px double color-mix(in srgb,var(--fg) 60%,transparent);--cartpad:1px 14px;--cartbg:color-mix(in srgb,var(--accent) 5%,var(--panel));--sbr:999px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--r:10px;--r-s:7px;--lava:#FF7A59;--sh:0 1px 2px rgba(0,0,0,.4),0 8px 22px rgba(0,0,0,.35);
+  --bg:#060C12;--panel:#0D1720;--line:#1C2D3B;--fg:#E6EEF4;--mute:#8399AB;--accent:#36CAE2;--accent-fg:#06141A;--sea:#09121A;--land:#162430;--grat:#12202B;--plate:#6E8294;--coast:none;
+  --conv:#FB923C;--div:#38BDF8;--trans:#4ADE80;--intra:#8399AB;--d1:#F2C94C;--d2:#FF7A59;--d3:#B58CF5;--v-sub:#F0B429;--v-ridge:#A78BFA;--v-rift:#F472B6;--v-hot:#A3E635;
+  --ok:#4ADE80;--warn:#FBBF24;--bad:#F87171;--ring:#3CC4D9;--live:#FF5C7A;--livev:#FFA24A;color-scheme:dark;
+  --disp:'Barlow Semi Condensed','Barlow',system-ui,sans-serif;--dw:700;--ds:1;--dls:.01em;
+  --paper:none;--frame:0 solid transparent;--rose-op:0;--rose2:0;--rings-op:1;--cart:0 solid transparent;--cartpad:0;--cartbg:transparent;--sbr:10px;}}
+:root[data-theme="dark"]{--r:10px;--r-s:7px;--lava:#FF7A59;--sh:0 1px 2px rgba(0,0,0,.4),0 8px 22px rgba(0,0,0,.35);
+  --bg:#060C12;--panel:#0D1720;--line:#1C2D3B;--fg:#E6EEF4;--mute:#8399AB;--accent:#36CAE2;--accent-fg:#06141A;--sea:#09121A;--land:#162430;--grat:#12202B;--plate:#6E8294;--coast:none;
+  --conv:#FB923C;--div:#38BDF8;--trans:#4ADE80;--intra:#8399AB;--d1:#F2C94C;--d2:#FF7A59;--d3:#B58CF5;--v-sub:#F0B429;--v-ridge:#A78BFA;--v-rift:#F472B6;--v-hot:#A3E635;
+  --ok:#4ADE80;--warn:#FBBF24;--bad:#F87171;--ring:#3CC4D9;--live:#FF5C7A;--livev:#FFA24A;color-scheme:dark;
+  --disp:'Barlow Semi Condensed','Barlow',system-ui,sans-serif;--dw:700;--ds:1;--dls:.01em;
+  --paper:none;--frame:0 solid transparent;--rose-op:0;--rose2:0;--rings-op:1;--cart:0 solid transparent;--cartpad:0;--cartbg:transparent;--sbr:10px;}
+
+body{transition:background .3s,color .3s}
+header{position:relative;gap:10px;padding-block:9px;background:linear-gradient(180deg,var(--panel),color-mix(in srgb,var(--panel) 92%,var(--bg)))}
+header::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:1px;background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:.55}
+header h1{font-family:var(--disp);font-weight:var(--dw);font-size:calc(1.18em*var(--ds));letter-spacing:var(--dls);border:var(--cart);padding:var(--cartpad);background:var(--cartbg);border-radius:2px}
+header h1 small{font-family:var(--mono)}
+.logo{width:30px;height:30px;flex:none;color:var(--accent)}
+.logo .r{transform-origin:center;animation:ring 3.4s var(--ease) infinite;opacity:0}
+.logo .r2{animation-delay:1.1s}.logo .r3{animation-delay:2.2s}
+@keyframes ring{0%{transform:scale(.25);opacity:.9}100%{transform:scale(1);opacity:0}}
+.chip{border-radius:99px;padding:3px 10px;background:color-mix(in srgb,var(--accent) 6%,transparent)}
+.ibtn{border-radius:var(--r-s);transition:transform .15s var(--ease),border-color .15s,color .15s,background .15s;display:inline-flex;align-items:center;gap:6px}
+.ibtn:hover{transform:translateY(-1px)}
+.ibtn:active{transform:scale(.96)}
+.ibtn svg{width:16px;height:16px;flex:none}
+.ibtn.sq{padding:5px 8px}
+.ibtn[aria-pressed="false"] .on-only{display:none}
+button{transition:transform .15s var(--ease),background .15s,border-color .15s,color .15s,opacity .2s}
+
+aside{scrollbar-width:thin;scrollbar-color:var(--line) transparent}
+.sec{transition:background .2s}
+.sec h2{display:flex;align-items:center;gap:8px;font-family:var(--mono)}
+.sec h2::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 20%,transparent)}
+.row{border-radius:var(--r-s);transition:background .15s;padding:4px 6px;margin:0 -6px}
+.row:hover{background:color-mix(in srgb,var(--accent) 7%,transparent)}
+.row input[type=checkbox]{appearance:none;-webkit-appearance:none;width:30px;height:18px;border-radius:99px;background:var(--line);position:relative;flex:none;cursor:pointer;transition:background .2s}
+.row input[type=checkbox]::after{content:"";position:absolute;left:2px;top:2px;width:14px;height:14px;border-radius:50%;background:var(--panel);box-shadow:0 1px 2px rgba(0,0,0,.35);transition:transform .22s var(--ease)}
+.row input[type=checkbox]:checked{background:var(--accent)}
+.row input[type=checkbox]:checked::after{transform:translateX(12px)}
+.row input[type=checkbox]:disabled{opacity:.5}
+.sw{transition:transform .2s var(--ease)}
+.row:hover .sw{transform:scale(1.25)}
+.sub{animation:rise .25s var(--ease) both}
+.sub select,.sub input[type=number],#tl-opts select,.cloze select,.cloze .cin,textarea#ans,.modal input[type=number]{border-radius:var(--r-s);transition:border-color .15s,box-shadow .15s}
+.sub select:focus,.sub input:focus,textarea#ans:focus,.cloze .cin:focus,.modal input:focus{outline:none;border-color:var(--accent);box-shadow:var(--glow)}
+.seg{border-radius:var(--r-s);overflow:hidden}
+.seg button.on{box-shadow:inset 0 -2px 0 color-mix(in srgb,var(--accent-fg) 35%,transparent)}
+.livebtn{border-radius:var(--r);transition:background .2s,color .2s,box-shadow .2s}
+.livebtn:hover{box-shadow:0 0 0 3px color-mix(in srgb,var(--live) 22%,transparent)}
+.livebtn.on{box-shadow:0 0 18px color-mix(in srgb,var(--live) 55%,transparent)}
+input[type=range]{accent-color:var(--accent)}
+
+#mapcol{background:radial-gradient(120% 120% at 50% 40%,var(--sea),color-mix(in srgb,var(--sea) 80%,var(--bg)))}
+.zoom,.mapbar .seg,#status{border-radius:var(--r);box-shadow:var(--sh);overflow:hidden}
+.zoom button:hover{background:color-mix(in srgb,var(--accent) 12%,transparent);color:var(--accent)}
+.zoom button:active{transform:scale(.9)}
+#status{backdrop-filter:blur(6px)}
+#info{border-radius:14px;box-shadow:var(--sh);animation:pop .28s var(--ease) both}
+#timeline{box-shadow:0 -6px 18px rgba(10,30,50,.05)}
+.handle{border-radius:0 var(--r) var(--r) 0;box-shadow:var(--sh)}
+
+/* panneau de questions */
+#g-head h2{font-family:var(--disp);font-size:calc(1.12em*var(--ds));font-weight:var(--dw)}
+#g-prog{gap:4px;padding:10px 14px}
+#g-prog i{height:6px;border-radius:4px;transition:background .35s var(--ease),transform .35s var(--ease);transform-origin:left}
+#g-prog i.done{background:var(--accent)}
+#g-prog i.cur{background:var(--fg);animation:beat 2.2s ease-in-out infinite}
+@keyframes beat{50%{transform:scaleY(1.7)}}
+#g-body>*{animation:rise .38s var(--ease) both}
+#g-body>*:nth-child(2){animation-delay:.05s}#g-body>*:nth-child(3){animation-delay:.1s}#g-body>*:nth-child(4){animation-delay:.15s}#g-body>*:nth-child(5){animation-delay:.2s}
+.stt{font-family:var(--disp);font-size:calc(1.3em*var(--ds));font-weight:var(--dw);letter-spacing:.005em}
+.tag{border-radius:99px;padding:1px 9px}
+.prop{border-radius:0 var(--r) var(--r) 0}
+.opt{border-radius:var(--r);padding:10px 14px;transition:transform .18s var(--ease),border-color .15s,background .15s,box-shadow .15s}
+.opt:hover:not([disabled]){transform:translateX(3px);box-shadow:var(--sh)}
+.opt:active{transform:scale(.985)}
+.opt.sel{box-shadow:var(--glow)}
+.opt.good{animation:pop .45s var(--ease)}
+.opt.bad{animation:shake .4s}
+.cloze select.good,.cloze .cin.good{animation:pop .4s var(--ease)}
+.cloze select.bad,.cloze .cin.bad{animation:shake .4s}
+.fb{border-radius:0 var(--r) var(--r) 0;animation:rise .3s var(--ease) both}
+.fb.good{background:color-mix(in srgb,var(--ok) 9%,var(--bg))}
+.fb.bad{background:color-mix(in srgb,var(--bad) 8%,var(--bg))}
+.btn{border-radius:var(--r);transition:transform .15s var(--ease),box-shadow .2s,opacity .2s}
+.btn:hover:not([disabled]){transform:translateY(-1px);box-shadow:0 6px 16px color-mix(in srgb,var(--accent) 35%,transparent)}
+.btn:active:not([disabled]){transform:scale(.97)}
+#next:not([hidden]){animation:pop .4s var(--ease) both,glowpulse 2.4s .6s ease-in-out infinite}
+@keyframes glowpulse{50%{box-shadow:0 0 0 5px color-mix(in srgb,var(--accent) 22%,transparent)}}
+
+/* fenêtres */
+.ov{animation:fade .22s both;backdrop-filter:blur(3px)}
+.modal{border-radius:18px;box-shadow:var(--sh);animation:pop .3s var(--ease) both}
+.mini{border-radius:var(--r-s)}
+
+@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes pop{0%{opacity:0;transform:scale(.94)}60%{opacity:1;transform:scale(1.025)}100%{transform:scale(1)}}
+@keyframes shake{0%,100%{transform:none}20%{transform:translateX(-6px)}40%{transform:translateX(5px)}60%{transform:translateX(-3px)}80%{transform:translateX(2px)}}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+
+/* admin */
+#adm{animation:fade .25s both}
+#adm .adm-top{box-shadow:0 1px 0 var(--line)}
+#adm .adm-top h2{font-family:var(--disp);font-weight:var(--dw);font-size:calc(1.2em*var(--ds));letter-spacing:var(--dls)}
+.adm-nav{border-radius:var(--r-s);overflow:hidden}
+.card{border-radius:12px;animation:rise .35s var(--ease) both}
+.card.sc{transition:transform .2s var(--ease),box-shadow .2s,border-color .2s}
+.card.sc:hover{transform:translateY(-2px);box-shadow:var(--sh);border-color:var(--accent)}
+.sb{border-radius:var(--r-s)}
+.sb:active:not([disabled]){transform:scale(.96)}
+.ed-steps .it{border-radius:var(--r-s);transition:transform .15s var(--ease),border-color .15s,background .15s}
+.ed-steps .it:hover{transform:translateX(2px)}
+.subtabs button{transition:background .15s,color .15s}
+.adm-mo .box{border-radius:16px;animation:pop .28s var(--ease) both}
+.badge{border-radius:99px}
+#adm input[type=text],#adm input[type=number],#adm input[type=search],#adm input[type=password],#adm select,#adm textarea{border-radius:var(--r-s);transition:border-color .15s,box-shadow .15s}
+#adm input:focus,#adm select:focus,#adm textarea:focus{outline:none;border-color:var(--accent);box-shadow:var(--glow)}
+.dtable tr{transition:background .12s}
+.dtable tr:hover td{background:color-mix(in srgb,var(--accent) 7%,transparent)}
+.mm{border-radius:var(--r)}
+.pin{border-radius:20px;animation:pop .3s var(--ease) both}
+.pin button{border-radius:14px;transition:transform .12s var(--ease),background .15s}
+.pin button:active{transform:scale(.92)}
+
+/* écran d'accueil */
+#splash{position:fixed;inset:0;z-index:90;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;text-align:center;padding:24px max(16px,env(safe-area-inset-left,0px));background:var(--bg);transition:opacity .55s var(--ease),transform .55s var(--ease);overflow:hidden}
+#splash.out{opacity:0;transform:scale(1.04);pointer-events:none}
+#splash .rings{opacity:var(--rings-op);position:absolute;left:50%;top:44%;width:min(120vmin,900px);aspect-ratio:1;transform:translate(-50%,-50%);pointer-events:none}
+#splash .rings i{position:absolute;inset:0;border-radius:50%;border:1.5px solid var(--accent);opacity:0;animation:ring 5s var(--ease) infinite}
+#splash .rings i:nth-child(2){animation-delay:1.25s}#splash .rings i:nth-child(3){animation-delay:2.5s}#splash .rings i:nth-child(4){animation-delay:3.75s;border-color:var(--lava)}
+#splash h1{position:relative;margin:0;font-family:var(--disp);font-weight:var(--dw);font-size:calc(clamp(2.2rem,9vw,4.4rem)*var(--ds));letter-spacing:var(--dls);line-height:1}
+#splash h1 span{display:inline-block;animation:rise .6s var(--ease) both}
+#splash p{position:relative;margin:0;max-width:34ch;color:var(--mute);font-size:1.05em;animation:rise .6s .5s var(--ease) both}
+#splash .eyebrow{font-family:var(--mono);font-size:.75em;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);animation:rise .6s var(--ease) both}
+#splash .btn{position:relative;margin-top:8px;padding:11px 28px;font-size:calc(1.05em*var(--ds));font-family:var(--disp);letter-spacing:.04em;border-radius:var(--sbr);animation:pop .6s .8s var(--ease) both}
+#splash .btn:hover:not([disabled]){transform:translateY(-2px) scale(1.03)}
+.cf{position:fixed;z-index:95;width:7px;height:7px;pointer-events:none;border-radius:2px}
+@media (prefers-reduced-motion:reduce){.logo .r{opacity:.3;transform:scale(.7)}#splash .rings i{opacity:.15}}
+
+/* ===== décors du thème clair (pilotés par les tokens) ===== */
+header,aside,#timeline,.modal,#info,#adm .adm-top,.card,.pin{background-image:var(--paper)}
+body{background-image:var(--paper)}
+#mapwrap::after{content:"";position:absolute;inset:7px;border:var(--frame);pointer-events:none;z-index:2}
+#rose{position:absolute;right:calc(16px + env(safe-area-inset-right,0px));bottom:16px;width:88px;height:88px;opacity:var(--rose-op);pointer-events:none;color:var(--fg);z-index:3}
+#rose .needle{transform-origin:50px 50px;animation:sway 9s ease-in-out infinite}
+@keyframes sway{0%,100%{transform:rotate(-7deg)}50%{transform:rotate(9deg)}}
+#splash .rose{position:absolute;left:50%;top:44%;width:min(80vmin,620px);aspect-ratio:1;transform:translate(-50%,-50%);opacity:var(--rose2);pointer-events:none;color:var(--fg)}
+#splash .rose .spin{transform-origin:50px 50px;animation:spin 90s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#splash .rose svg,#rose svg{width:100%;height:100%}
+.sec h2::before{border-radius:1px;transform:rotate(45deg)}
+
+/* fenêtre de choix du scénario */
+#ov-scen{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;background:rgba(6,12,18,.45);padding:16px max(16px,env(safe-area-inset-left,0px));backdrop-filter:blur(3px);animation:fade .22s both}
+#ov-scen .modal{width:min(440px,100%);background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--sh);padding:20px;animation:pop .3s var(--ease) both}
+#ov-scen h3{margin:0 0 6px;font-family:var(--disp);font-weight:var(--dw);font-size:calc(1.25em*var(--ds))}
+#ov-scen .note{color:var(--mute);margin:0 0 12px}
+#ov-scen .fl{display:flex;flex-direction:column;gap:6px;margin:0 0 6px}
+#ov-scen .fl span{font-family:var(--mono);font-size:.78em;letter-spacing:.06em;text-transform:uppercase;color:var(--mute)}
+#ov-scen input{font:inherit;font-size:1.1em;letter-spacing:.12em;text-transform:uppercase;padding:9px 12px;border:1px solid var(--line);background:var(--bg);color:var(--fg);border-radius:var(--r-s)}
+#ov-scen input:focus{outline:none;border-color:var(--accent);box-shadow:var(--glow)}
+#ov-scen #scen-msg{min-height:1.4em;color:var(--bad);margin:6px 0 0}
+#ov-scen .acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+#ov-scen .btn.ghost{background:transparent;color:var(--fg);border:1px solid var(--line);box-shadow:none}
+#g-scen{margin-left:auto;cursor:pointer;border:1px solid var(--line);background:transparent;color:var(--accent);font:inherit}
+#g-scen:hover{border-color:var(--accent)}
+
+#ov-scen .scen-list{display:flex;flex-direction:column;gap:8px;max-height:52vh;overflow:auto;margin:4px 0 0}
+#ov-scen .scen-item{display:flex;flex-direction:column;align-items:flex-start;gap:3px;text-align:left;width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:var(--r-s);background:var(--bg);color:var(--fg);font:inherit;cursor:pointer}
+#ov-scen .scen-item:hover{border-color:var(--accent);box-shadow:var(--glow)}
+#ov-scen .scen-item small{color:var(--mute);font-family:var(--mono);font-size:.78em}
+#ov-scen .scen-item .si{color:var(--mute);font-size:.92em}
+#ov-scen .scen-foot{margin-top:10px;justify-content:flex-end}
+
+/* bilan de fin de scénario */
+.bilan{margin:10px 0;padding:12px 14px;border:var(--frame,1px solid var(--line));background:var(--panel);border-radius:var(--r)}
+.bilan .bn{font-family:var(--disp);font-size:calc(1.15em*var(--ds));margin-bottom:8px}
+.bilan .bn b{color:var(--accent);font-size:1.25em}
+.bilan .bl{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px}
+.bilan .bl li{display:flex;align-items:center;gap:10px;font-size:.95em}
+.bm{flex:none;min-width:84px;text-align:center;padding:2px 8px;border-radius:99px;font-family:var(--mono);font-size:.75em;border:1px solid var(--line);color:var(--mute)}
+.bm.ok{color:var(--ok);border-color:var(--ok)}
+.bm.ko{color:var(--bad);border-color:var(--bad)}
+#bilan-txt{width:100%;margin-top:6px;font:inherit;font-size:.9em;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:var(--r-s);padding:8px}
+#bilan-msg{margin-top:6px;min-height:1.2em}
+
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<div id="splash" role="dialog" aria-modal="true" aria-label="Accueil"><div class="rings" aria-hidden="true"><i></i><i></i><i></i><i></i></div><div class="rose" aria-hidden="true"><svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width=".6" aria-hidden="true"><circle cx="50" cy="50" r="46"/><circle cx="50" cy="50" r="40" stroke-dasharray="1 2.2"/><g class="spin"><path d="M50 4l5 41 41 5-41 5-5 41-5-41-41-5 41-5z" fill="currentColor" fill-opacity=".08"/><path d="M50 18l3 29 29 3-29 3-3 29-3-29-29-3 29-3z" stroke-width=".4"/><path d="M17 17l33 33M83 17L50 50M17 83l33-33M83 83L50 50" stroke-width=".3" opacity=".6"/></g><text x="50" y="12" text-anchor="middle" font-size="7" fill="currentColor" stroke="none" font-family="IM Fell English,serif">N</text></svg></div><div class="eyebrow">SVT · 4e · Tectonique des plaques</div><h1 data-t="Carte Tectonique">Carte Tectonique</h1><p>Explore où tremble la Terre et où naissent les volcans.</p><button class="btn" id="splash-go" type="button">Explorer</button></div>
+<div class="ov" id="ov-scen" hidden role="dialog" aria-modal="true" aria-labelledby="scen-t"><div class="modal"><div id="scen-s1"><h3 id="scen-t">Séance</h3><p class="note">Comment veux-tu travailler aujourd'hui ?</p><div class="acts"><button class="btn" id="scen-libre" type="button">Parcours libre</button><button class="btn ghost" id="scen-scens" type="button">Scénarios</button></div></div><div id="scen-s2" hidden><h3>Choisis un scénario</h3><div id="scen-list" class="scen-list"></div></div><div id="scen-s3" hidden><h3 id="scen-t3">Scénario</h3><p class="note" id="scen-txt"></p><div class="fl"><span>Code donné par ton enseignant</span><input id="scen-code" type="text" autocomplete="off" autocapitalize="characters" maxlength="20"></div><p class="note" id="scen-msg" role="status"></p><div class="acts"><button class="btn" id="scen-ok" type="button">Valider le code</button><button class="btn ghost" id="scen-back" type="button">Retour</button></div></div><div class="acts scen-foot"><button class="btn ghost" id="scen-later" type="button">Plus tard</button></div></div></div>
+<div id="app" data-l="open" data-r="open">
+  <header>
+    <svg class="logo" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle class="r" cx="16" cy="16" r="14"/><circle class="r r2" cx="16" cy="16" r="14"/><circle class="r r3" cx="16" cy="16" r="14"/><circle cx="16" cy="16" r="3.2" fill="var(--lava)" stroke="none"/><path d="M3 21l5-4 4 3 5-7 4 5 6-3" stroke-width="1.4" opacity=".7"/></svg>
+    <h1>Carte Tectonique<small>4e · SVT</small></h1>
+    <span class="chip" id="chip-bin">Binôme n° <b id="bin-n">—</b></span>
+    <span class="sp"></span>
+    <span class="chip hide-s" id="chip-proto">Prototype</span>
+    <button class="ibtn sq" id="btn-snd" aria-pressed="true"></button>
+    <button class="ibtn sq" id="btn-th"></button>
+    <button class="ibtn" id="btn-set" aria-haspopup="dialog">Affichage</button>
+    <button class="ibtn" id="btn-adm" aria-haspopup="dialog">Admin</button>
+  </header>
+  <main>
+    <aside id="layers" aria-label="Couches de la carte">
+      <div class="sec">
+        <h2>Fond</h2>
+        <div class="row" data-mi="coast"><input type="checkbox" id="L-coast" data-layer="coast"><label for="L-coast">Continents</label></div>
+        <div class="row" data-mi="grat"><input type="checkbox" id="L-grat" data-layer="grat"><label for="L-grat">Quadrillage</label></div>
+        <div class="row" data-mi="plates"><input type="checkbox" id="L-plates" data-layer="plates"><label for="L-plates">Plaques (contours)</label></div>
+      </div>
+      <div class="sec">
+        <h2>Frontières de plaques</h2>
+        <div class="row" data-mi="bound"><input type="checkbox" id="L-bound" data-layer="bound"><label for="L-bound">Afficher les frontières</label></div>
+        <div class="sub" id="bound-types" data-ctx="bound" data-mi="btypes">
+          <div class="row"><input type="checkbox" id="B-conv" data-btype="conv" checked><span class="sw ln" style="background:var(--conv)"></span><label for="B-conv">Convergentes</label></div>
+          <div class="row"><input type="checkbox" id="B-div" data-btype="div" checked><span class="sw ln" style="background:var(--div)"></span><label for="B-div">Divergentes</label></div>
+          <div class="row"><input type="checkbox" id="B-trans" data-btype="trans" checked><span class="sw ln" style="background:var(--trans)"></span><label for="B-trans">Cisaillantes <span class="tag beyond">+</span></label></div>
+        </div>
+      </div>
+      <div class="sec">
+        <h2>Archives · enregistrées</h2>
+        <div class="row" data-mi="quakes"><input type="checkbox" id="L-quakes" data-layer="quakes"><label for="L-quakes">Séismes archivés</label></div>
+        <div class="sub" data-ctx="quakes">
+          <div data-mi="qy" style="display:grid;gap:6px"><div class="yr"><label for="y1">De</label><input type="number" id="y1" min="1960" max="2026" value="2011"><label for="y2">à</label><input type="number" id="y2" min="1960" max="2026" value="2011"></div>
+            <button class="mini" id="y-all" style="justify-self:start">Tout (1960–2026)</button></div>
+          <div data-mi="amag"><select id="amag" aria-label="Magnitude minimale de l'archive"><option value="5" id="amag5">M ≥ 5</option><option value="6" selected>M ≥ 6</option><option value="7">M ≥ 7</option></select></div>
+          <div data-mi="minmag" style="display:grid;gap:6px"><label class="note" for="minmag">Magnitude minimale affichée : <span class="mono" id="minmag-v">0</span></label>
+          <input type="range" id="minmag" min="0" max="8" step="0.5" value="0"></div>
+          <div data-mi="colormode" style="display:grid;gap:6px"><div class="note">Couleur des points</div>
+          <div class="seg" id="col-seg"><button data-col="depth" class="on">Profondeur</button><button data-col="ctx">Contexte</button></div></div>
+        </div>
+      </div>
+      <div class="sec">
+        <h2>Volcans · archives</h2>
+        <div class="row" data-mi="volc"><input type="checkbox" id="L-volc" data-layer="volc"><label for="L-volc">Volcans (Holocène)</label></div>
+        <div class="sub" data-ctx="volc">
+          <div data-mi="vy" style="display:grid;gap:6px"><div class="yr"><label for="vy1">De</label><input type="number" id="vy1" min="-10000" max="2026" value="1900"><label for="vy2">à</label><input type="number" id="vy2" min="-10000" max="2026" value="2026"></div>
+          <button class="mini" id="v-all" style="justify-self:start">Tout (an 0 – 2026)</button></div>
+          <div id="vcats" data-mi="vcats"></div>
+        </div>
+        
+      </div>
+      <div class="sec" id="live-sec" data-mi="live">
+        <h2>Live</h2>
+        <button class="livebtn" id="live-btn" aria-pressed="false"><i></i>LIVE</button>
+        <div class="sub" style="margin-left:0" data-ctx="live">
+          <div class="seg" id="live-span"><button data-d="3" class="on">Jours</button><button data-d="14">Semaines</button><button data-d="30">Mois</button></div>
+          <div class="row"><input type="checkbox" id="LV-q" checked><label for="LV-q">Séismes récents (M ≥ 4,5)</label></div>
+          <div class="row"><input type="checkbox" id="LV-v" checked><label for="LV-v">Volcans actifs</label></div>
+          <div class="note" id="live-note">Superpose les événements récents à l'archive affichée.</div>
+        </div>
+      </div>
+      <div class="sec" id="mk-sec" hidden><h2>Marqueurs</h2><div class="row" data-mi="markers"><input type="checkbox" id="L-markers" data-layer="markers"><label for="L-markers">Marqueurs de l'enseignant</label></div></div>
+      <div class="sec" data-mi="legend"><h2>Légende</h2><div class="legend" id="legend"></div></div>
+    </aside>
+
+    <section id="mapcol" aria-label="Carte">
+      <div id="mapwrap"><div id="rose" aria-hidden="true"><svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true"><circle cx="50" cy="50" r="44"/><circle cx="50" cy="50" r="36" stroke-dasharray="1.5 3" stroke-width=".8"/><path d="M50 8l6 36 36 6-36 6-6 36-6-36-36-6 36-6z" fill="currentColor" fill-opacity=".1"/><g class="needle"><path d="M50 14l5 36h-10z" fill="var(--accent)" stroke="none"/><path d="M50 86l5-36h-10z" fill="currentColor" fill-opacity=".35" stroke="none"/></g><circle cx="50" cy="50" r="3" fill="var(--panel)" stroke="currentColor"/><text x="50" y="9" text-anchor="middle" font-size="9" fill="currentColor" stroke="none" font-family="IM Fell English,serif">N</text></svg></div>
+        <canvas id="cv" role="img" aria-label="Carte interactive des séismes, volcans et plaques"></canvas>
+        <canvas id="cv2" aria-hidden="true"></canvas>
+        <div id="status">Chargement…</div>
+        <div class="mapbar">
+          <div class="seg" id="proj-seg" data-mi="proj"><button data-p="flat" class="on">Plane</button><button data-p="globe">Globe</button></div>
+          <div class="zoom" data-mi="zoom"><button id="zin" aria-label="Zoom avant">+</button><button id="zout" aria-label="Zoom arrière">−</button></div>
+        </div>
+        <div id="info" hidden></div>
+      </div>
+      <div id="timeline" data-ctx="quakes" data-mi="timeline">
+        <button class="ibtn" id="play" aria-label="Lecture de la frise">▶</button>
+        <input type="range" id="tl" aria-label="Date sur la frise" min="0" max="1" value="1">
+        <span id="tl-date">—</span>
+        <div id="tl-opts">
+          <label>Fenêtre
+            <select id="win"><option value="9999" selected>Cumul</option><option value="365">1 an</option><option value="30">30 jours</option><option value="7">7 jours</option><option value="1">1 jour</option></select>
+          </label>
+          <span id="tl-count" class="mono"></span>
+          <span class="sp"></span>
+        </div>
+      </div>
+    </section>
+
+    <aside id="guide" aria-label="Parcours de questions">
+      <div id="g-head"><h2>Parcours guidé</h2><span class="chip mono" id="g-step">1 / 8</span><button class="chip" id="g-scen" type="button" title="Changer de scénario">Changer</button></div>
+      <div id="g-prog"></div>
+      <div id="g-body"></div>
+      <footer class="src">Sources : USGS (séismes, alertes volcans), Smithsonian GVP (volcans), PB2002 Bird 2003 via fraxen/Nordpil (ODC-By), Natural Earth. Archives : fichiers enregistrés dans l'app. Live : instantané figé dans ce prototype (le direct viendra avec la version sur serveur). Contexte estimé par la profondeur et la distance aux frontières.</footer>
+    </aside>
+    <button class="handle" id="hl" aria-controls="layers" aria-expanded="true"><span class="ar">‹</span><span class="t">Couches</span></button>
+    <button class="handle" id="hr" aria-controls="guide" aria-expanded="true"><span class="ar">›</span><span class="t">Questions</span></button>
+  </main>
+</div>
+
+<div class="ov" id="ov-bin" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="bin-t">
+    <h2 id="bin-t">Ton binôme</h2>
+    <p class="note" style="margin:0 0 6px">Aucun nom n'est demandé. Note ce numéro : il retrouve ton travail.</p>
+    <div class="big" id="bin-big">00</div>
+    <div class="fld"><label for="bin-in">Rejoindre un binôme existant</label><input type="number" id="bin-in" min="1" max="99" placeholder="N° de binôme"></div>
+    <div class="actions"><button class="btn" id="bin-ok">Commencer</button><button class="btn ghost" id="bin-new">Autre numéro</button></div>
+  </div>
+</div>
+
+<div class="ov" id="ov-set" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="set-t">
+    <h2 id="set-t">Affichage</h2>
+    <div class="fld"><span>Thème</span><div class="seg" id="theme-seg"><button data-th="auto" class="on">Auto</button><button data-th="light">Clair</button><button data-th="dark">Sombre</button></div></div>
+    <div class="fld"><label for="fs">Taille du texte : <span class="mono" id="fs-v">100 %</span></label><input type="range" id="fs" min="90" max="150" step="5" value="100" style="width:100%;accent-color:var(--accent)"></div>
+    <div class="fld"><label for="ps">Taille des points : <span class="mono" id="ps-v">100 %</span></label><input type="range" id="ps" min="60" max="200" step="10" value="100" style="width:100%;accent-color:var(--accent)"></div>
+    <div class="fld"><span>Mode vidéoprojecteur</span><div class="seg" id="proj-mode"><button data-pm="0" class="on">Non</button><button data-pm="1">Oui</button></div><span class="note">Texte agrandi, couches masquées : le prof pilote, la classe répond.</span></div>
+    <div class="actions"><button class="btn" id="set-ok">Fermer</button></div>
+  </div>
+</div>
+
+<div class="ov" id="ov-pin" hidden>
+  <div class="modal pin" role="dialog" aria-modal="true" aria-labelledby="pin-t">
+    <h2 id="pin-t">Accès administrateur</h2>
+    <div class="pin-dots" id="pin-dots" aria-live="polite"></div>
+    <div class="pin-msg note" id="pin-msg">Saisis le code.</div>
+    <div class="pin-pad" id="pin-pad"></div>
+    <div class="actions" style="justify-content:center"><button class="btn ghost" id="pin-x">Annuler</button></div>
+  </div>
+</div>
+<div id="edbar" hidden><span>Aperçu de l'étape · règle la carte comme tu veux</span><button class="btn" id="edbar-cap" hidden>Capturer l'affichage</button><button class="btn ghost" id="edbar-back">Retour à l'admin</button></div>
+<div id="adm" hidden></div>
+<script>
+(function(){
+'use strict';
+var $=function(s){return document.querySelector(s)}, $$=function(s){return Array.prototype.slice.call(document.querySelectorAll(s))};
+var KEY='tecto.proto.v1';
+var store={bin:null,pos:{},answers:{},set:{th:'auto',fs:100,ps:100,pm:0}};
+try{var raw=localStorage.getItem(KEY); if(raw){var o=JSON.parse(raw); if(o&&typeof o==='object'){store.bin=o.bin||null;store.pos=o.pos||{};store.answers=o.answers||{};store.set=Object.assign(store.set,o.set||{});store.scen=o.scen||null}}}catch(e){}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(store))}catch(e){}}
+
+/* ---------- état ---------- */
+var S={mode:'flat',rot:[-170,-15],pan:0,k:1,layers:{coast:true,grat:true,plates:false,bound:false,quakes:true,volc:false,hans:false,markers:true},cons:{qy:null,vy:null,amag:null,minmag:null},markers:[],volcBase:[],ready:false,archSig:'',
+  btypes:{conv:true,div:true,trans:true},colorMode:'depth',vcat:{subduction:true,ridge:true,rift:true,hotspot:true,unknown:true},vmin:1900,vmax:2026,
+  live:{on:false,span:3,q:true,v:true,now:Date.now(),qs:[],vs:[]},lq:[],lvv:[],minmag:0,win:9999,cut:0,tmin:0,tmax:1,quakes:[],volc:[],hans:{},land:null,plates:null,bound:null,sel:null,playing:false,dirty:true};
+var COL={};
+var cv=$('#cv'),ctx=cv.getContext('2d'),cv2=$('#cv2'),ctx2=cv2.getContext('2d'),W=0,H=0,DPR=1;
+var proj=null,path=null;
+
+function readColors(){var cs=getComputedStyle(document.documentElement);['coast','live','livev','sea','land','grat','plate','conv','div','trans','intra','d1','d2','d3','v-sub','v-ridge','v-rift','v-hot','fg','mute','accent','ok','warn','bad','panel','line','ring'].forEach(function(n){COL[n]=cs.getPropertyValue('--'+n).trim()})}
+function dirty(){S.dirty=true;S.ovDirty=true}
+function loop(now){if(S.dirty){S.dirty=false;drawBase()}if(S.live.on||S.ovDirty||S.amb){S.ovDirty=false;drawOverlay(now||0)}requestAnimationFrame(loop)}
+
+function resize(){var r=cv.parentNode.getBoundingClientRect();DPR=Math.min(window.devicePixelRatio||1,2);W=Math.max(10,r.width);H=Math.max(10,r.height);cv.width=Math.round(W*DPR);cv.height=Math.round(H*DPR);cv2.width=cv.width;cv2.height=cv.height;cv2.style.width=W+'px';cv2.style.height=H+'px';dirty()}
+function setupProj(){
+  if(S.mode==='flat'){
+    var base=Math.min(W/(2*Math.PI),H/Math.PI*1.0);var sc=base*S.k;
+    var lim=Math.max(0,(sc*Math.PI-H)/2);S.pan=Math.max(-lim,Math.min(lim,S.pan));
+    proj=d3.geoEquirectangular().scale(sc).translate([W/2,H/2+S.pan]).rotate([S.rot[0],0,0]);
+  }else{
+    var sc2=Math.min(W,H)/2*0.94*S.k;
+    proj=d3.geoOrthographic().clipAngle(90).scale(sc2).translate([W/2,H/2]).rotate([S.rot[0],S.rot[1],0]).precision(0.4);
+  }
+  path=d3.geoPath(proj,ctx);
+}
+function visible(lon,lat){if(S.mode==='flat')return true;return d3.geoDistance([lon,lat],[-S.rot[0],-S.rot[1]])<Math.PI/2}
+
+/* ---------- classification des séismes (estimée) ---------- */
+var grid={};
+function buildGrid(){grid={};if(!S.bound)return;S.bound.features.forEach(function(f){var t=f.properties.type;f.geometry.coordinates.forEach(function(line){line.forEach(function(p){var k=Math.floor(p[0])+','+Math.floor(p[1]);(grid[k]=grid[k]||[]).push([p[0],p[1],t])})})})}
+function hav(lon1,lat1,lon2,lat2){var R=6371,r=Math.PI/180,dl=(lat2-lat1)*r,dn=(lon2-lon1)*r,a=Math.sin(dl/2)*Math.sin(dl/2)+Math.cos(lat1*r)*Math.cos(lat2*r)*Math.sin(dn/2)*Math.sin(dn/2);return 2*R*Math.asin(Math.min(1,Math.sqrt(a)))}
+function nearest(lon,lat){
+  var cx=Math.floor(lon),cy=Math.floor(lat),dx=Math.min(6,Math.ceil(1.1/Math.max(0.17,Math.cos(lat*Math.PI/180)))),best=1e9,bt=null;
+  for(var x=cx-dx;x<=cx+dx;x++){for(var y=cy-1;y<=cy+1;y++){var xx=((x+180)%360+360)%360-180;var a=grid[xx+','+y];if(!a)continue;for(var i=0;i<a.length;i++){var d=hav(lon,lat,a[i][0],a[i][1]);if(d<best){best=d;bt=a[i][2]}}}}
+  return {d:best,t:bt};
+}
+function classify(q){
+  if(q.depth>70){q.cls='conv';q.how='profondeur supérieure à 70 km';return}
+  var n=nearest(q.lon,q.lat);
+  if(n.t&&n.d<=100){q.cls=n.t;q.how='frontière à '+Math.round(n.d)+' km'}else{q.cls='intra';q.how='aucune frontière à moins de 100 km'}
+}
+var CLS={conv:'Convergent',div:'Divergent',trans:'Cisaillant',intra:'Intraplaque / indéterminé'};
+
+/* ---------- dessin ---------- */
+function drawBase(){
+  setupProj();readColors();
+  ctx.setTransform(DPR,0,0,DPR,0,0);ctx.clearRect(0,0,W,H);
+  ctx.fillStyle=COL.sea;ctx.fillRect(0,0,W,H);
+  if(S.mode==='globe'){ctx.beginPath();path({type:'Sphere'});ctx.fillStyle=COL.sea;ctx.fill();ctx.strokeStyle=COL.line;ctx.lineWidth=1;ctx.stroke()}
+  else{ctx.beginPath();path({type:'Sphere'});ctx.fillStyle=COL.sea;ctx.fill()}
+  var bg=S.mode==='globe';
+  if(bg){ctx.fillStyle=getComputedStyle(document.body).backgroundColor;}
+  if(S.layers.coast&&S.land){ctx.beginPath();path(S.land);ctx.fillStyle=COL.land;ctx.fill();if(COL.coast&&COL.coast!=='none'){ctx.strokeStyle=COL.coast;ctx.lineWidth=.8;ctx.stroke()}}
+  if(S.layers.grat){ctx.beginPath();path(d3.geoGraticule10());ctx.strokeStyle=COL.grat;ctx.lineWidth=.6;ctx.stroke()}
+  if(S.layers.plates&&S.plates){ctx.beginPath();path(S.plates);ctx.strokeStyle=COL.plate;ctx.lineWidth=.8;ctx.setLineDash([4,3]);ctx.stroke();ctx.setLineDash([])}
+  if(S.layers.bound&&S.bound){
+    var wk=Math.max(1.4,1.2*Math.sqrt(S.k)),ps=store.set.ps/100;
+    S.bound.features.forEach(function(f){if(!S.btypes[f.properties.type])return;ctx.beginPath();path(f);ctx.strokeStyle=COL[f.properties.type];ctx.lineWidth=wk*(f.properties.type==='trans'?1:1.15);ctx.globalAlpha=.95;ctx.stroke();ctx.globalAlpha=1});
+  }
+  var ps2=store.set.ps/100,z=Math.min(1.6,.75+.25*Math.sqrt(S.k));
+  if(S.layers.quakes){
+    var qs=visibleQuakes();S.vq=qs;
+    var cut=S.cut,win=S.win*864e5;
+    qs.sort(function(a,b){return a.mag-b.mag});
+    for(var i=0;i<qs.length;i++){var q=qs[i];if(!visible(q.lon,q.lat))continue;var p=proj([q.lon,q.lat]);if(!p)continue;
+      var r=Math.max(1.5,(0.9+(q.mag-3.2)*1.25))*z*ps2;var c=qColor(q);
+      var age=(cut-q.t)/864e5;var fresh=S.win<9999&&age<0.5;
+      ctx.beginPath();ctx.arc(p[0],p[1],r,0,6.2832);ctx.globalAlpha=.78;ctx.fillStyle=c;ctx.fill();ctx.globalAlpha=.9;ctx.lineWidth=.7;ctx.strokeStyle=COL.fg;ctx.stroke();
+      if(fresh){ctx.beginPath();ctx.arc(p[0],p[1],r+3,0,6.2832);ctx.strokeStyle=c;ctx.lineWidth=1.2;ctx.stroke()}
+      ctx.globalAlpha=1;
+    }
+  }
+  if(S.layers.volc){
+    var vs=visibleVolc();S.vv=vs;
+    for(var j=0;j<vs.length;j++){var v=vs[j];if(!visible(v.lon,v.lat))continue;var pp=proj([v.lon,v.lat]);if(!pp)continue;var s=4.6*z*ps2;
+      ctx.beginPath();ctx.moveTo(pp[0],pp[1]-s);ctx.lineTo(pp[0]+s*.95,pp[1]+s*.75);ctx.lineTo(pp[0]-s*.95,pp[1]+s*.75);ctx.closePath();
+      ctx.fillStyle=vColor(v.cat);ctx.globalAlpha=.92;ctx.fill();ctx.lineWidth=.8;ctx.strokeStyle=COL.fg;ctx.globalAlpha=.8;ctx.stroke();ctx.globalAlpha=1}
+  }
+  if(S.layers.markers&&S.markers&&S.markers.length){
+    S.markers.forEach(function(m){if(!visible(m.lon,m.lat))return;var p=proj([m.lon,m.lat]);if(!p)return;var s2=6*z*ps2;
+      ctx.beginPath();ctx.moveTo(p[0],p[1]-s2);ctx.lineTo(p[0]+s2,p[1]);ctx.lineTo(p[0],p[1]+s2);ctx.lineTo(p[0]-s2,p[1]);ctx.closePath();ctx.fillStyle=COL.accent;ctx.fill();ctx.lineWidth=1.4;ctx.strokeStyle=COL.panel;ctx.stroke();
+      if(m.label){ctx.font='500 '+(11*ps2)+'px Barlow,sans-serif';ctx.lineWidth=3;ctx.strokeStyle=COL.panel;ctx.fillStyle=COL.fg;ctx.strokeText(m.label,p[0]+s2+4,p[1]+4);ctx.fillText(m.label,p[0]+s2+4,p[1]+4)}});
+  }
+}
+
+var reduce=!!(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+function echo(x,y,r0,r1,ph,color,w){ctx2.beginPath();ctx2.arc(x,y,r0+(r1-r0)*ph,0,6.2832);ctx2.globalAlpha=Math.max(0,(1-ph)*.9);ctx2.strokeStyle=color;ctx2.lineWidth=w;ctx2.stroke();ctx2.globalAlpha=1}
+function drawOverlay(now){
+  if(!proj)return;
+  ctx2.setTransform(DPR,0,0,DPR,0,0);ctx2.clearRect(0,0,W,H);
+  var lq=[],lv=[],ps2=store.set.ps/100,z=Math.min(1.6,.75+.25*Math.sqrt(S.k));
+  if(S.live.on){
+    if(S.live.q){
+      var cutoff=S.live.now-S.live.span*864e5;
+      S.live.qs.forEach(function(q,i){
+        if(q.t<cutoff||!visible(q.lon,q.lat))return;var p=proj([q.lon,q.lat]);if(!p)return;lq.push(q);
+        var age=(S.live.now-q.t)/864e5,per=age<1?1700:age<3?2400:3200,ph=reduce?.45:((now+i*377)%per)/per;
+        var r=Math.max(2.2,(1.2+(q.mag-3.5)*1.2))*z*ps2;
+        echo(p[0],p[1],r,r+(12+q.mag*3.4)*ps2,ph,COL.live,1.8);echo(p[0],p[1],r,r+(12+q.mag*3.4)*ps2,(ph+.5)%1,COL.live,1.1);
+        ctx2.beginPath();ctx2.arc(p[0],p[1],r,0,6.2832);ctx2.fillStyle=COL.live;ctx2.globalAlpha=.95;ctx2.fill();ctx2.globalAlpha=1;ctx2.lineWidth=1;ctx2.strokeStyle='#fff';ctx2.stroke();
+      });
+    }
+    if(S.live.v){
+      S.live.vs.forEach(function(v,i){
+        if(!visible(v.lon,v.lat))return;var p=proj([v.lon,v.lat]);if(!p)return;lv.push(v);
+        var per=2600,ph=reduce?.45:((now+i*523)%per)/per,s=6*z*ps2;
+        echo(p[0],p[1]+1,s,s+18*ps2,ph,COL.livev,2);echo(p[0],p[1]+1,s,s+18*ps2,(ph+.5)%1,COL.livev,1.2);
+        ctx2.beginPath();ctx2.moveTo(p[0],p[1]-s);ctx2.lineTo(p[0]+s*.95,p[1]+s*.75);ctx2.lineTo(p[0]-s*.95,p[1]+s*.75);ctx2.closePath();ctx2.fillStyle=COL.livev;ctx2.fill();ctx2.lineWidth=1;ctx2.strokeStyle='#fff';ctx2.stroke();
+      });
+    }
+  }
+  if(S.amb&&!reduce){
+    if(S.layers.quakes&&S.vq&&S.vq.length){
+      if(S._aq!==S.vq){S._aq=S.vq;S._at=S.vq.length>14?S.vq.slice().sort(function(a,b){return b.mag-a.mag}).slice(0,14):S.vq}
+      S._at.forEach(function(q,i){if(!visible(q.lon,q.lat))return;var p=proj([q.lon,q.lat]);if(!p)return;
+        var ph=((now+i*431)%2800)/2800,r=Math.max(2,1.2+(q.mag-4)*1.1)*z*ps2;
+        echo(p[0],p[1],r,r+(10+q.mag*2.6)*ps2,ph,qColor(q),1.4)});
+    }
+    if(S.layers.volc&&S.vv&&S.vv.length){
+      if(S._av!==S.vv){S._av=S.vv;S._avs=S.vv.filter(function(v){return v.last!=null&&v.last>=1990}).slice(0,40)}
+      S._avs.forEach(function(v,i){if(!visible(v.lon,v.lat))return;var p=proj([v.lon,v.lat]);if(!p)return;
+        var s=6*z*ps2,pulse=.5+.5*Math.sin((now+i*300)/450),g=ctx2.createRadialGradient(p[0],p[1],0,p[0],p[1],s*3.2);
+        g.addColorStop(0,'rgba(255,120,40,'+(.28+.25*pulse)+')');g.addColorStop(1,'rgba(255,120,40,0)');
+        ctx2.fillStyle=g;ctx2.beginPath();ctx2.arc(p[0],p[1],s*3.2,0,6.2832);ctx2.fill();
+        for(var k=0;k<3;k++){var ph=((now+i*311+k*900)%2700)/2700;ctx2.beginPath();ctx2.arc(p[0]+Math.sin(ph*6+i)*2*ps2,p[1]-s-ph*18*ps2,(1.5+ph*5)*ps2,0,6.2832);ctx2.globalAlpha=(1-ph)*.32;ctx2.fillStyle=COL.mute;ctx2.fill();ctx2.globalAlpha=1}
+      });
+    }
+  }
+  S.lq=lq;S.lvv=lv;
+  if(S.sel){var sp=proj([S.sel.lon,S.sel.lat]);if(sp&&visible(S.sel.lon,S.sel.lat)){ctx2.beginPath();ctx2.arc(sp[0],sp[1],14,0,6.2832);ctx2.lineWidth=1.6;ctx2.strokeStyle=COL.accent;ctx2.setLineDash([3,3]);ctx2.stroke();ctx2.setLineDash([])}}
+}
+function hansColor(c){c=(c||'').toUpperCase();return c==='RED'?'#DC2626':c==='ORANGE'?'#EA580C':c==='YELLOW'?'#CA8A04':'#16A34A'}
+function qColor(q){
+  if(S.colorMode==='ctx')return q.cls==='intra'?COL.intra:COL[q.cls];
+  return q.depth<=70?COL.d1:q.depth<=300?COL.d2:COL.d3;
+}
+function vColor(c){return c==='subduction'?COL['v-sub']:c==='ridge'?COL['v-ridge']:c==='rift'?COL['v-rift']:c==='hotspot'?COL['v-hot']:COL.mute}
+function visibleQuakes(){var lo=S.win>=9999?-Infinity:S.cut-S.win*864e5,hi=S.cut,m=S.minmag;return S.quakes.filter(function(q){return q.t<=hi&&q.t>lo&&q.mag>=m})}
+function erIn(v){var lo=S.vmin===null?-1e9:S.vmin,hi=S.vmax===null?1e9:S.vmax,l=S.er&&S.er[v.num]||[];return l.filter(function(r){return r[1]>=lo&&r[1]<=hi})}
+function visibleVolc(){var lo=S.vmin,hi=S.vmax;return S.volc.filter(function(v){if(!S.vcat[v.cat])return false;if(lo===null&&hi===null)return true;
+  if(erIn(v).length)return true;
+  return v.last!==null&&v.last!==undefined&&(lo===null||v.last>=lo)&&(hi===null||v.last<=hi)})}
+
+/* ---------- interactions ---------- */
+var ptrs={},drag=null,pinch=null,moved=0;
+cv.addEventListener('pointerdown',function(e){cv.setPointerCapture(e.pointerId);ptrs[e.pointerId]={x:e.clientX,y:e.clientY};moved=0;
+  var ids=Object.keys(ptrs);if(ids.length===2){var a=ptrs[ids[0]],b=ptrs[ids[1]];pinch={d:Math.hypot(a.x-b.x,a.y-b.y),k:S.k}}else{drag={x:e.clientX,y:e.clientY}}});
+cv.addEventListener('pointermove',function(e){var p=ptrs[e.pointerId];if(!p)return;
+  var ids=Object.keys(ptrs);
+  if(ids.length===2&&pinch){p.x=e.clientX;p.y=e.clientY;var a=ptrs[ids[0]],b=ptrs[ids[1]];S.k=clampK(pinch.k*Math.hypot(a.x-b.x,a.y-b.y)/pinch.d);moved+=5;dirty();return}
+  var dx=e.clientX-p.x,dy=e.clientY-p.y;p.x=e.clientX;p.y=e.clientY;moved+=Math.abs(dx)+Math.abs(dy);
+  if(!drag)return;
+  var sc=proj.scale(),deg=180/Math.PI/sc;
+  if(S.mode==='flat'){S.rot[0]+=dx*deg;S.pan+=dy}else{S.rot[0]+=dx*deg;S.rot[1]=Math.max(-90,Math.min(90,S.rot[1]-dy*deg))}
+  dirty()});
+function up(e){delete ptrs[e.pointerId];if(Object.keys(ptrs).length<2)pinch=null;
+  if(!Object.keys(ptrs).length){drag=null;if(moved<6&&e.type==='pointerup')pick(e)}}
+cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);
+function clampK(k){return Math.max(.8,Math.min(14,k))}
+cv.addEventListener('wheel',function(e){e.preventDefault();S.k=clampK(S.k*Math.exp(-e.deltaY*.0015));dirty()},{passive:false});
+$('#zin').onclick=function(){S.k=clampK(S.k*1.5);dirty()};$('#zout').onclick=function(){S.k=clampK(S.k/1.5);dirty()};
+$$('#proj-seg button').forEach(function(b){b.onclick=function(){S.mode=b.dataset.p;S.k=1;S.pan=0;if(S.mode==='globe'&&Math.abs(S.rot[1])<5)S.rot[1]=-15;$$('#proj-seg button').forEach(function(x){x.classList.toggle('on',x===b)});dirty()}});
+
+function pick(e){
+  var r=cv.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,best=null,bd=14;
+  function test(list,kind){(list||[]).forEach(function(o){if(!visible(o.lon,o.lat))return;var p=proj([o.lon,o.lat]);if(!p)return;var d=Math.hypot(p[0]-x,p[1]-y);if(d<bd){bd=d;best={o:o,kind:kind}}})}
+  if(S.layers.quakes)test(S.vq,'q');
+  if(S.layers.volc)test(S.vv,'v');
+  if(S.layers.markers)test(S.markers,'m');
+  if(S.live.on){test(S.lq,'q');test(S.lvv,'v')}
+  if(!best){S.sel=null;$('#info').hidden=true;dirty();return}
+  S.sel=best.o;showInfo(best);dirty();
+}
+function fmtDate(t){return new Date(t).toLocaleString('fr-FR',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'UTC'})+' UTC'}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function erInfo(o){var all=(S.er&&S.er[o.num])||[];if(!all.length)return '';var sel=erIn(o),flt=(S.vmin!==null||S.vmax!==null);
+  var yrs=(flt?sel:all).slice(-6).map(function(r){return r[1]+(r[4]!=null?' (VEI '+r[4]+')':'')}).join(', ');
+  return '<dt>Éruptions (depuis l\'an 0)</dt><dd>'+all.length+(flt?' · dans l\'intervalle : '+sel.length:'')+'<div class="note">'+(flt?'Dans l\'intervalle : ':'Dernières : ')+esc(yrs||'—')+'</div></dd>'}
+function showInfo(b){
+  var o=b.o,h='';
+  if(b.kind==='m'){h='<h3>'+esc(o.label||'Marqueur')+'</h3>'+(o.text?'<p style="margin:4px 0 0">'+esc(o.text)+'</p>':'')+'<div class="note" style="margin-top:6px">'+o.lat.toFixed(2)+'°, '+o.lon.toFixed(2)+'°</div>'}
+  else if(b.kind==='q'){
+    h='<h3>Séisme M '+o.mag.toFixed(1)+'</h3><dl><dt>Lieu</dt><dd>'+esc(o.place)+'</dd><dt>Date</dt><dd>'+fmtDate(o.t)+'</dd><dt>Profondeur</dt><dd>'+Math.round(o.depth)+' km</dd><dt>Contexte</dt><dd>'+CLS[o.cls]+' <span class="note">('+(o.cls0?'':'estimé : ')+esc(o.how)+')</span></dd>'+(o.note?'<dt>Note</dt><dd>'+esc(o.note)+'</dd>':'')+(o.add?'<dt>Source</dt><dd>ajouté par l\'enseignant</dd>':(o.mod?'<dt>Données</dt><dd>corrigées par l\'enseignant</dd>':''))+'</dl>';
+  }else{
+    var tl={subduction:'Zone de subduction',ridge:'Dorsale / rift océanique',rift:'Rift continental',hotspot:'Point chaud / intraplaque',unknown:'Non classé'}[o.cat];
+    h='<h3>'+esc(o.name)+'</h3><dl><dt>Pays</dt><dd>'+esc(o.country)+'</dd><dt>Type</dt><dd>'+esc(o.type||'—')+'</dd><dt>Contexte</dt><dd>'+tl+'</dd><dt>Dernière éruption</dt><dd>'+(o.last===null?'inconnue':(o.last<0?Math.abs(o.last)+' av. J.-C.':o.last))+'</dd>'+erInfo(o)+(o.note?'<dt>Note</dt><dd>'+esc(o.note)+'</dd>':'')+(o.add?'<dt>Source</dt><dd>ajouté par l\'enseignant</dd>':(o.mod?'<dt>Données</dt><dd>corrigées par l\'enseignant</dd>':''))+(o.liveStatus?'<dt>Statut live</dt><dd>'+esc(o.liveStatus)+'</dd>':'')+'</dl>';
+  }
+  var el=$('#info');el.innerHTML='<button class="x" aria-label="Fermer">✕</button>'+h;el.hidden=false;el.querySelector('.x').onclick=function(){el.hidden=true;S.sel=null;dirty()};
+}
+
+/* ---------- données ---------- */
+function setStatus(t){$('#status').textContent=t}
+function rowsToQuakes(rows){return rows.map(function(r,i){return {lon:r[0],lat:r[1],depth:Math.max(0,r[2]||0),mag:r[3],t:r[4],place:r[5]||'—',id:i}})}
+function setQuakes(list,label,tmin,tmax){
+  list.forEach(classify);list.forEach(function(q){if(q.cls0){q.cls=q.cls0;q.how='défini par l\'enseignant'}});S.quakes=list;
+  if(tmin==null){tmin=list.reduce(function(a,q){return Math.min(a,q.t)},Infinity);tmax=list.reduce(function(a,q){return Math.max(a,q.t)},-Infinity);if(!isFinite(tmin)){tmin=Date.now()-30*864e5;tmax=Date.now()}}
+  S.tmin=tmin;S.tmax=tmax;S.cut=tmax;
+  var tl=$('#tl');tl.min=tmin;tl.max=tmax;tl.step=3600000;tl.value=tmax;
+  setStatus(label+' · '+list.length+' séismes');updTL();dirty();
+}
+function updTL(){$('#tl-date').textContent=new Date(S.cut).toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric',timeZone:'UTC'});var n=visibleQuakes().length;$('#tl-count').textContent=n+' affichés'}
+function getJSON(u){return fetch(u).then(function(r){if(!r.ok)throw new Error(r.status);return r.json()})}
+function loadLiveData(){
+  return Promise.all([getJSON('data/live_4.5_month.json'),getJSON('data/live_volcans.json')]).then(function(r){
+    var d=r[0],vd=r[1];S.live.now=d.generated;S.live.qs=rowsToQuakes(d.q);S.live.qs.forEach(classify);
+    var by={};S.volc.forEach(function(v){by[v.num]=v});var seen={},out=[];
+    (vd.gvp||[]).forEach(function(g){var b=by[g.num]||{};var o=Object.assign({},b,{num:g.num,name:b.name||g.name,lat:g.lat,lon:g.lon,liveStatus:'Éruption en cours depuis '+g.start+' (Smithsonian, mise à jour possible en retard)'});seen[g.num]=o;out.push(o)});
+    Object.keys(vd.hans||{}).forEach(function(k){var n=parseInt(k,10),hh=vd.hans[k],b=by[n];if(!b)return;var t='Alerte USGS : '+hh.alert_level+' ('+hh.color_code+')';if(seen[n])seen[n].liveStatus+=' · '+t;else out.push(Object.assign({},b,{liveStatus:t}))});
+    S.live.vs=out;S.live.when=new Date(d.generated);liveNote();dirty();
+  }).catch(function(e){$('#live-note').textContent='Données live introuvables ('+e.message+')'});
+}
+function liveNote(){
+  var n=$('#live-note');if(!S.live.when){return}
+  var cut=S.live.now-S.live.span*864e5,c=S.live.qs.filter(function(q){return q.t>=cut}).length;
+  var lab={3:'3 derniers jours',14:'2 dernières semaines',30:'dernier mois'}[S.live.span];
+  n.textContent='Instantané du '+S.live.when.toLocaleString('fr-FR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})+' · '+lab+' : '+c+' séismes, '+S.live.vs.length+' volcans actifs.'
+}
+var archSeq=0;
+function readYears(){
+  var a=parseInt($('#y1').value,10),b=parseInt($('#y2').value,10);
+  if(!(a>=1960&&a<=2026))a=2011; if(!(b>=1960&&b<=2026))b=a;
+  if(b<a){var t=a;a=b;b=t}
+  return [a,b];
+}
+function loadArch(force){
+  if(!S.ready)return Promise.resolve();
+  var yy=readYears(),a=yy[0],b=yy[1],qy=S.cons&&S.cons.qy;
+  if(qy){a=clampN(a,qy[0],qy[1]);b=clampN(b,qy[0],qy[1])}
+  $('#y1').value=a;$('#y2').value=b;
+  var n=b-a+1,o5=$('#amag5');
+  if(n>10){o5.disabled=true;if($('#amag').value==='5')$('#amag').value='6'}else o5.disabled=false;
+  var mm=parseFloat($('#amag').value);
+  if(S.cons&&S.cons.amag&&mm<S.cons.amag){mm=S.cons.amag;$('#amag').value=String(mm)}
+  var sig=[a,b,mm,curScen().id].join('-');
+  if(!force&&sig===S.archSig)return Promise.resolve();
+  S.archSig=sig;
+  var seq=++archSeq,lab=(a===b?String(a):a+'–'+b);
+  setStatus('Archives '+lab+' : chargement…');
+  var ps=[];for(var y=a;y<=b;y++)ps.push(getJSON('data/arch_'+y+'.json'));
+  return Promise.all(ps).then(function(all){
+    if(seq!==archSeq)return;
+    var rows=[].concat.apply([],all).filter(function(r){return r[3]>=mm});
+    var t0=Date.UTC(a,0,1),t1=Date.UTC(b+1,0,1)-1;
+    var list=applyQOv(rowsToQuakes(rows),t0,t1);
+    $('#win').value='9999';S.win=9999;
+    setQuakes(list,'Archives '+lab+' · M ≥ '+mm,t0,t1);
+    S.cut=S.tmax;$('#tl').value=S.cut;updTL();dirty();
+  }).catch(function(e){S.archSig='';setStatus('Archives : année introuvable ('+e.message+')')});
+}
+Promise.all(['data/land.json','data/plates.json','data/boundaries3.json','data/volcans.json','data/eruptions.json'].map(function(u){return fetch(u).then(function(r){return r.json()})})).then(function(a){
+  S.land=a[0];S.plates=platesLines(a[1]);S.bound=a[2];
+  S.volcBase=a[3].map(function(r){return {num:r[0],name:r[1],lat:r[2],lon:r[3],lon_:r[3],type:r[4],last:r[5],country:r[6],cat:r[7],setting:r[8]}});rebuildVolc();rebuildMarkers();
+  S.er={};a[4].forEach(function(r){if(r[5]!==1)return;(S.er[r[0]]=S.er[r[0]]||[]).push(r)});
+  buildGrid();S.ready=true;syncUI();dirty();loadLiveData();return Promise.resolve().then(function(){var sc=curScen();applyStep(sc.steps[curIdx()]||null);return loadArch(true)});
+}).catch(function(){setStatus('Fichiers de données introuvables')});
+
+/* contours de plaques : retire les segments sur l'antiméridien / les pôles (ligne verticale parasite) */
+function platesLines(fc){
+  var out=[];
+  function ring(r){var cur=[];
+    for(var i=0;i<r.length-1;i++){var p=r[i],q=r[i+1];
+      var seam=(Math.abs(Math.abs(p[0])-180)<1e-6&&Math.abs(Math.abs(q[0])-180)<1e-6)||Math.abs(p[0]-q[0])>180||(Math.abs(Math.abs(p[1])-90)<1e-6&&Math.abs(Math.abs(q[1])-90)<1e-6);
+      if(seam){if(cur.length>1)out.push(cur);cur=[];continue}
+      if(!cur.length)cur.push(p);cur.push(q)}
+    if(cur.length>1)out.push(cur)}
+  fc.features.forEach(function(f){var g=f.geometry;
+    if(g.type==='Polygon')g.coordinates.forEach(ring);
+    else if(g.type==='MultiPolygon')g.coordinates.forEach(function(pg){pg.forEach(ring)})});
+  return {type:'MultiLineString',coordinates:out};
+}
+/* menus contextuels : options grisées quand leur couche est inactive */
+function applyCtx(){
+  var on={quakes:S.layers.quakes,bound:S.layers.bound,volc:S.layers.volc,live:S.live.on};
+  $$('[data-ctx]').forEach(function(el){
+    var act=!!on[el.dataset.ctx];
+    el.classList.toggle('off',!act);
+    el.querySelectorAll('input,select,button').forEach(function(c){
+      if(c.id==='amag5'||c.id==='play'&&false)return;
+      c.disabled=!act;
+    });
+  });
+  var o5=$('#amag5');if(o5){var n=readYears();o5.disabled=(n[1]-n[0]+1>10)}
+  $$('.mi-g').forEach(function(el){el.querySelectorAll('input,select,button').forEach(function(c){c.disabled=true});if(/^(INPUT|SELECT|BUTTON)$/.test(el.tagName))el.disabled=true});
+}
+/* ---------- panneau couches ---------- */
+function syncUI(){
+  $$('[data-layer]').forEach(function(c){c.checked=!!S.layers[c.dataset.layer]});
+  $$('[data-btype]').forEach(function(c){c.checked=!!S.btypes[c.dataset.btype]});
+  $$('#col-seg button').forEach(function(b){b.classList.toggle('on',b.dataset.col===S.colorMode)});
+  renderLegend();applyCtx();refreshNext();
+}
+$$('[data-layer]').forEach(function(c){c.onchange=function(){S.layers[c.dataset.layer]=c.checked;renderLegend();applyCtx();refreshNext();dirty()}});
+$$('[data-btype]').forEach(function(c){c.onchange=function(){S.btypes[c.dataset.btype]=c.checked;dirty()}});
+$$('#col-seg button').forEach(function(b){b.onclick=function(){S.colorMode=b.dataset.col;syncUI();dirty()}});
+$('#y-all').onclick=function(){var qy=(S.cons&&S.cons.qy)||[1960,2026];$('#y1').value=qy[0];$('#y2').value=qy[1];if($('#amag').value==='5')$('#amag').value='6';loadArch()};
+$('#v-all').onclick=function(){var vy=(S.cons&&S.cons.vy)||[0,2026];$('#vy1').value=Math.max(0,vy[0]);$('#vy2').value=vy[1];readVY()};
+$('#y1').onchange=loadArch;$('#y2').onchange=loadArch;$('#amag').onchange=loadArch;
+$('#minmag').oninput=function(){S.minmag=Math.max(parseFloat(this.value),(S.cons&&S.cons.minmag)||0);$('#minmag-v').textContent=this.value;updTL();dirty()};
+$('#live-btn').onclick=function(){S.live.on=!S.live.on;this.classList.toggle('on',S.live.on);this.setAttribute('aria-pressed',String(S.live.on));renderLegend();applyCtx();dirty()};
+$$('#live-span button').forEach(function(b){b.onclick=function(){S.live.span=parseInt(b.dataset.d,10);$$('#live-span button').forEach(function(x){x.classList.toggle('on',x===b)});liveNote();dirty()}});
+$('#LV-q').onchange=function(){S.live.q=this.checked;dirty()};$('#LV-v').onchange=function(){S.live.v=this.checked;dirty()};
+$('#win').onchange=function(){S.win=parseInt(this.value,10);updTL();dirty()};
+$('#tl').oninput=function(){S.cut=parseInt(this.value,10);updTL();dirty()};
+function readVY(){var a=parseInt($('#vy1').value,10),b=parseInt($('#vy2').value,10);var vy=(S.cons&&S.cons.vy)||null;if(vy){if(!isNaN(a))a=clampN(a,vy[0],vy[1]);if(!isNaN(b))b=clampN(b,vy[0],vy[1])}S.vmin=isNaN(a)?null:a;S.vmax=isNaN(b)?null:b;$('#vy1').value=S.vmin===null?'':S.vmin;$('#vy2').value=S.vmax===null?'':S.vmax;
+  if(S.vmin!==null&&S.vmax!==null&&S.vmin>S.vmax){var t=S.vmin;S.vmin=S.vmax;S.vmax=t;$('#vy1').value=S.vmin;$('#vy2').value=S.vmax}
+  dirty()}
+$('#vy1').onchange=readVY;$('#vy2').onchange=readVY;
+
+var VC=[['subduction','Subduction','v-sub'],['ridge','Dorsale océanique','v-ridge'],['rift','Rift continental','v-rift'],['hotspot','Point chaud / intraplaque','v-hot']];
+$('#vcats').innerHTML=VC.map(function(c){return '<div class="row"><input type="checkbox" id="V-'+c[0]+'" data-vcat="'+c[0]+'" checked><span class="sw tri" style="background:var(--'+c[2]+')"></span><label for="V-'+c[0]+'">'+c[1]+'</label></div>'}).join('');
+$$('[data-vcat]').forEach(function(c){c.onchange=function(){S.vcat[c.dataset.vcat]=c.checked;dirty()}});
+function renderLegend(){
+  var h='';
+  if(S.layers.quakes){
+    if(S.colorMode==='depth')h+=row('dot','var(--d1)','Séisme 0–70 km')+row('dot','var(--d2)','Séisme 70–300 km')+row('dot','var(--d3)','Séisme 300–700 km');
+    else h+=row('dot','var(--conv)','Séisme convergent')+row('dot','var(--div)','Séisme divergent')+row('dot','var(--trans)','Séisme cisaillant')+row('dot','var(--intra)','Intraplaque / indéterminé')+'<div class="note">Contexte estimé, pas mesuré.</div>';
+  }
+  if(S.layers.volc)h+=VC.map(function(c){return row('tri','var(--'+c[2]+')',c[1])}).join('');
+  if(S.live.on){if(S.live.q)h+=row('dot','var(--live)','Séisme récent (écho)');if(S.live.v)h+=row('tri','var(--livev)','Volcan actif (écho)')}
+  $('#legend').innerHTML=h||'<span class="note">Active une couche.</span>';
+  function row(sh,c,t){return '<div class="row"><span class="sw '+sh+'" style="background:'+c+'"></span><span>'+t+'</span></div>'}
+}
+
+/* ---------- frise : lecture ---------- */
+var timer=null;
+$('#play').onclick=function(){
+  if(S.playing){stop();return}
+  S.playing=true;this.textContent='❚❚';if(S.cut>=S.tmax-1)S.cut=S.tmin;
+  var step=Math.max(3600000,(S.tmax-S.tmin)/250);
+  timer=setInterval(function(){S.cut=Math.min(S.tmax,S.cut+step);$('#tl').value=S.cut;updTL();dirty();if(S.cut>=S.tmax)stop()},70);
+};
+function stop(){S.playing=false;$('#play').textContent='▶';clearInterval(timer)}
+
+/* ---------- scénarios, surcharges, compte (admin) ---------- */
+var DEFAULT_SCEN={"id":"sc-base","title":"Découvrir la répartition des séismes et des volcans","intro":"8 questions pour repérer où se trouvent les séismes et les volcans, et comment ils s'organisent.","steps":[{"id":"s1","title":"Diagnostic","intro":"Bloc A","proposal":"Réponds d'abord avec ton intuition, sans regarder la carte.","question":"Avant de regarder la carte : où penses-tu qu'on trouve le plus de séismes sur Terre ?","type":"qcm","opts":["Un peu partout, au hasard","Concentrés dans certaines zones","Surtout au centre des continents"],"ok":1,"fb":["Active d'abord les séismes, puis regarde.","","Compare avec la carte de l'étape suivante."],"ctext":"","bank":[],"ans":[],"crit":[],"ai":false,"rubric":"","minlen":15,"hints":["Pense à des endroits dont tu as entendu parler.","Tu verras la réponse à l'étape 2.","La bonne réponse : les séismes sont concentrés dans certaines zones."],"why":"Réponse enregistrée. Vérifie-la maintenant avec la carte.","diag":true,"menu":{},"cons":{"qy":null,"vy":null,"amag":null,"minmag":null},"view":{"layers":{"quakes":false,"volc":false,"bound":false,"plates":false,"coast":true}},"pass":{"answer":"correct","score":0,"tries":0,"layers":[]}},{"id":"s2","title":"Répartition des séismes","intro":"Bloc A","proposal":"Active la couche Séismes et observe la carte, en plane puis en globe.","question":"Décris la répartition des séismes sur la carte : quelle forme ont-ils ? Où y en a-t-il beaucoup ? Où n'y en a-t-il presque pas ?","type":"text","opts":["","",""],"ok":0,"fb":["","",""],"ctext":"","bank":[],"ans":[],"crit":[{"label":"Bandes / lignes (pas au hasard)","pts":6,"need":1,"kw":["band|ligne|aligne|file|chaine|ceinture|arc"],"hint":"Les points sont-ils au hasard ou en lignes ?"},{"label":"Zones denses nommées","pts":6,"need":3,"kw":["pacifique","mediterran","himalaya|asie","atlantique|dorsale","japon|andes|indones|ceinture de feu|amerique"],"hint":"Nomme au moins trois zones où il y a beaucoup de séismes."},{"label":"Zones vides","pts":4,"need":2,"kw":["continent|interieur|australie|bresil|afrique|russie","centre|ocean|milieu|vide|presque pas|peu de|aucun|rien"],"hint":"Zoome sur l'intérieur du Brésil ou de l'Australie : que vois-tu ?"},{"label":"Vocabulaire précis","pts":4,"need":2,"kw":["repartition|reparti","aligne|concentr|zone|dense|dispers","magnitude|profondeur|plaque|frontiere|faille"],"hint":"Utilise des mots comme répartition, alignés, zone, concentrés."}],"ai":false,"rubric":"","minlen":15,"hints":["Regarde la forme que dessinent les points.","Passe en globe et fais-le tourner.","Pense au Pacifique, à l'Atlantique, à la Méditerranée et à l'intérieur des continents."],"why":"","diag":false,"menu":{},"cons":{"qy":null,"vy":null,"amag":null,"minmag":null},"view":{"layers":{"quakes":true,"volc":false,"bound":false,"coast":true},"colorMode":"depth"},"pass":{"answer":"sent","score":0,"tries":0,"layers":["quakes"]}},{"id":"s3","title":"Séismes et volcans","intro":"Bloc A","proposal":"Active aussi la couche Volcans, puis affiche-la et cache-la pour comparer.","question":"Active aussi les volcans. Par rapport aux séismes, les volcans sont…","type":"qcm","opts":["Très souvent sur les mêmes lignes","Ailleurs, dans d'autres zones","Sans lien visible avec les séismes"],"ok":0,"fb":["","Compare les deux couches : affiche puis cache les volcans.","Affiche puis cache les volcans (bouton couche) et compare."],"ctext":"","bank":[],"ans":[],"crit":[],"ai":false,"rubric":"","minlen":15,"hints":["Affiche puis cache les volcans pour comparer.","Regarde le pourtour du Pacifique.","Les volcans sont très souvent sur les mêmes lignes que les séismes."],"why":"Oui, mais pas toujours : la question suivante teste cette nuance.","diag":false,"menu":{},"cons":{"qy":null,"vy":null,"amag":null,"minmag":null},"view":{"layers":{"quakes":true,"volc":true,"bound":false,"coast":true}},"pass":{"answer":"correct","score":0,"tries":0,"layers":["quakes","volc"]}},{"id":"s4","title":"Pas toujours superposés","intro":"Bloc A","proposal":"Garde séismes et volcans visibles. Observe la Californie et Hawaï.","question":"Complète la phrase.","type":"cloze","opts":["","",""],"ok":0,"fb":["","",""],"ctext":"Presque tous les volcans actifs sont situés dans des zones de ___ ; pourtant il existe des zones de ___ sans volcan à proximité (par exemple la Californie), et des volcans (par exemple Hawaï) loin des grandes lignes de ___.","bank":["séismes","volcans","montagnes","océans"],"ans":["séismes","séismes","séismes"],"crit":[],"ai":false,"rubric":"","minlen":15,"hints":["Regarde la Californie : des séismes, mais des volcans ?","Regarde Hawaï : des volcans, mais loin des grandes lignes de quoi ?","Les trois mots à placer sont identiques."],"why":"Séismes et volcans se superposent le plus souvent, mais pas toujours.","diag":false,"menu":{},"cons":{"qy":null,"vy":null,"amag":null,"minmag":null},"view":{"layers":{"quakes":true,"volc":true,"bound":false,"coast":true}},"pass":{"answer":"correct","score":0,"tries":0,"layers":["quakes","volc"]}},{"id":"s5","title":"Des lignes connectées","intro":"Bloc B","proposal":"Passe en globe et fais-le tourner pour suivre les lignes.","question":"Les zones où il y a des séismes et des volcans forment…","type":"qcm","opts":["Des taches isolées","Des lignes qui se prolongent sur tout le globe","Un anneau seulement autour du Pacifique"],"ok":1,"fb":["Passe en globe et relie les points.","","Suis la ligne qui traverse l'Atlantique et l'océan Indien."],"ctext":"","bank":[],"ans":[],"crit":[],"ai":false,"rubric":"","minlen":15,"hints":["Passe en globe et fais-le tourner.","Suis la ligne de l'Atlantique : où continue-t-elle ?","Ce sont des lignes qui se prolongent sur tout le globe."],"why":"Pacifique, mais aussi Atlantique, océan Indien, Méditerranée–Himalaya.","diag":false,"menu":{},"cons":{"qy":null,"vy":null,"amag":null,"minmag":null},"view":{"layers":{"quakes":true,"volc":true,"bound":false,"coast":true}},"pass":{"answer":"correct","score":0,"tries":0,"layers":[]}},{"id":"s6","title":"Compter les lignes","intro":"Bloc B","proposal":"Suis les points (pas les côtes) et compte les lignes continues.","question":"Combien de lignes principales d'activité vois-tu ? Quelles régions relient-elles ? Écris ta réponse.","type":"text","opts":["","",""],"ok":0,"fb":["","",""],"ctext":"","bank":[],"ans":[],"crit":[{"label":"Lignes dénombrées (au moins 3)","pts":8,"need":2,"kw":["re:\\b(3|trois|4|quatre|5|cinq|plusieurs)\\b","ligne|bande|ceinture"],"hint":"Donne un nombre de lignes, au moins trois."},{"label":"Liens entre les lignes","pts":6,"need":1,"kw":["relie|connect|rejoin|continu|prolong|reseau|joint|croise"],"hint":"Les lignes sont-elles séparées ou reliées entre elles ?"},{"label":"Régions reliées","pts":6,"need":3,"kw":["pacifique","atlantique|dorsale","ocean indien|indien","mediterran|himalaya|alpes|asie"],"hint":"Nomme les régions que chaque ligne traverse."}],"ai":false,"rubric":"","minlen":15,"hints":["Suis les points, pas les côtes.","Une ligne entoure le Pacifique. Où en vois-tu d'autres ?","Cherche au milieu de l'Atlantique, dans l'océan Indien et de la Méditerranée à l'Asie."],"why":"","diag":false,"menu":{},"cons":{"qy":null,"vy":null,"amag":null,"minmag":null},"view":{"layers":{"quakes":true,"volc":true,"coast":true,"bound":false}},"pass":{"answer":"sent","score":0,"tries":0,"layers":[]}},{"id":"s7","title":"Profondeur des séismes","intro":"Bloc C","proposal":"Colore les séismes par profondeur. Zoome sur les Andes ou sur le Japon.","question":"Observe les couleurs : le long du Pacifique ouest et de l'Amérique du Sud, la profondeur des séismes…","type":"qcm","opts":["Est toujours faible","Augmente régulièrement dans une direction à partir de la fosse","Est aléatoire"],"ok":1,"fb":["Compare avec une dorsale (Atlantique) : même profondeur ?","","Regarde les couleurs sur une coupe est–ouest près des Andes."],"ctext":"","bank":[],"ans":[],"crit":[],"ai":false,"rubric":"","minlen":15,"hints":["Zoome sur les Andes ou sur le Japon.","Les couleurs changent-elles dans une même direction ?","La profondeur augmente jusqu'à environ 700 km."],"why":"Cette ligne de séismes de plus en plus profonds s'appelle un plan de subduction (pour la suite).","diag":false,"menu":{},"cons":{"qy":null,"vy":null,"amag":null,"minmag":null},"view":{"layers":{"quakes":true,"volc":false,"bound":false,"coast":true},"colorMode":"depth"},"pass":{"answer":"correct","score":0,"tries":0,"layers":[]}},{"id":"s8","title":"Dorsales et fosses","intro":"Bloc C","proposal":"Affiche les frontières de plaques et compare les dorsales et les fosses.","question":"Complète la phrase.","type":"cloze","opts":["","",""],"ok":0,"fb":["","",""],"ctext":"Près des dorsales, les séismes sont ___ et les volcans émettent des laves ___ ; près des fosses, les séismes vont de superficiels à ___ et les volcans sont souvent explosifs.","bank":["peu profonds","profonds","fluides","visqueuses"],"ans":["peu profonds","fluides","profonds"],"crit":[],"ai":false,"rubric":"","minlen":15,"hints":["Regarde la couleur des séismes sur la dorsale atlantique.","Compare les volcans de la dorsale et ceux de la subduction.","Dorsale : peu profonds et fluides. Fosse : jusqu'à profonds."],"why":"Les séismes et les volcans ne sont pas les mêmes selon l'endroit : chaque type va avec un contexte.","diag":false,"menu":{},"cons":{"qy":null,"vy":null,"amag":null,"minmag":null},"view":{"layers":{"quakes":true,"volc":true,"bound":true,"coast":true},"colorMode":"depth"},"pass":{"answer":"correct","score":0,"tries":0,"layers":["quakes","volc","bound"]}}]};
+var ADM_KEY='tecto.proto.adm.v1';
+function emptyOv(){return {q:{},aq:[],v:{},av:[],mk:[]}}
+var adm={code:'1447',active:null,scens:null,ov:{g:emptyOv(),s:{}},pause:false,prov:'mistral'};
+try{var ra=localStorage.getItem(ADM_KEY);if(ra){var oa=JSON.parse(ra);if(oa&&typeof oa==='object'){['code','active','scens','pause','prov'].forEach(function(k){if(oa[k]!==undefined)adm[k]=oa[k]});if(oa.ov){adm.ov.g=Object.assign(emptyOv(),oa.ov.g||{});adm.ov.s=oa.ov.s||{}}}}}catch(e){}
+if(!adm.scens||!adm.scens.length)adm.scens=[JSON.parse(JSON.stringify(DEFAULT_SCEN))];
+if(!adm.active||!adm.scens.some(function(s){return s.id===adm.active}))adm.active=adm.scens[0].id;
+function admSave(){try{localStorage.setItem(ADM_KEY,JSON.stringify(adm))}catch(e){}}
+var PV=null;
+function curScen(){var id=PV?PV.sid:(store.scen||adm.active);return adm.scens.filter(function(s){return s.id===id})[0]||adm.scens[0]}
+function curIdx(){var sc=curScen(),n=Math.max(0,sc.steps.length-1);return Math.min(PV?PV.idx:(store.pos[sc.id]|0),n)}
+function setIdx(i){var sc=curScen();if(PV){PV.idx=i;return}store.pos[sc.id]=i;save()}
+function ansBox(){return PV?PV.answers:store.answers}
+function akey(sc,st){return sc.id+'/'+st.id}
+function persist(){if(!PV)save()}
+
+/* surcharges de données : globales + propres au scénario */
+function ovAll(){var o=[adm.ov.g],s=adm.ov.s[curScen().id];if(s)o.push(Object.assign(emptyOv(),s));return o}
+function qKey(q){return Math.round(q.t/1000)+'|'+(+q.lon).toFixed(2)+'|'+(+q.lat).toFixed(2)}
+function applyQOv(list,tmin,tmax){
+  var os=ovAll(),patch={};
+  os.forEach(function(o){Object.keys(o.q).forEach(function(k){patch[k]=Object.assign(patch[k]||{},o.q[k])})});
+  var out=[];
+  list.forEach(function(q){q.key=qKey(q);var p=patch[q.key];
+    if(p){if(p.hidden)return;['lon','lat','depth','mag','t','place','note'].forEach(function(f){if(p[f]!==undefined&&p[f]!==null)q[f]=p[f]});q.cls0=p.cls||null;q.mod=true}
+    out.push(q)});
+  os.forEach(function(o){o.aq.forEach(function(a){if(a.hidden)return;if(a.t<tmin||a.t>tmax)return;out.push({lon:a.lon,lat:a.lat,depth:Math.max(0,a.depth||0),mag:a.mag,t:a.t,place:a.place||'—',note:a.note,cls0:a.cls||null,id:-1,add:true,key:'A'+a.id})})});
+  return out;
+}
+function rebuildVolc(){
+  var os=ovAll(),patch={},prev={};
+  (S.volc||[]).forEach(function(v){if(v.liveStatus)prev[v.num]=v.liveStatus});
+  os.forEach(function(o){Object.keys(o.v).forEach(function(k){patch[k]=Object.assign(patch[k]||{},o.v[k])})});
+  var out=[];
+  (S.volcBase||[]).forEach(function(b){var v=Object.assign({},b),p=patch[b.num];
+    if(p){if(p.hidden)return;['name','country','lat','lon','type','cat','last','note'].forEach(function(f){if(p[f]!==undefined&&p[f]!==null)v[f]=p[f]});v.lon_=v.lon;v.mod=true}
+    if(prev[v.num])v.liveStatus=prev[v.num];out.push(v)});
+  os.forEach(function(o){o.av.forEach(function(a){if(a.hidden)return;out.push({num:'A'+a.id,name:a.name,lat:a.lat,lon:a.lon,lon_:a.lon,type:a.type||'—',last:(a.last===undefined||a.last===null)?null:a.last,country:a.country||'—',cat:a.cat||'unknown',setting:'',note:a.note,add:true})})});
+  S.volc=out;dirty();
+}
+function rebuildMarkers(){
+  var m=[];ovAll().forEach(function(o){o.mk.forEach(function(k){if(!k.hidden)m.push(k)})});
+  S.markers=m;var sec=$('#mk-sec');if(sec)sec.hidden=!m.length;dirty();
+}
+
+/* politique de menu, contraintes, vue par défaut */
+function clampN(v,a,b){return Math.max(a,Math.min(b,v))}
+function applyMenu(m){
+  m=m||{};
+  $$('[data-mi]').forEach(function(el){el.classList.remove('mi-h','mi-g');el.querySelectorAll('input,select,button').forEach(function(c){c.disabled=false});if(/^(INPUT|SELECT|BUTTON)$/.test(el.tagName))el.disabled=false});
+  $$('[data-mi]').forEach(function(el){var s=m[el.dataset.mi]||'show';if(s==='hide')el.classList.add('mi-h');else if(s==='grey')el.classList.add('mi-g')});
+  $$('#layers .sec').forEach(function(sec){if(sec.hasAttribute('data-mi'))return;sec.classList.remove('mi-h');var items=[].slice.call(sec.querySelectorAll('[data-mi]'));if(items.length&&items.every(function(e){return e.classList.contains('mi-h')}))sec.classList.add('mi-h')});
+  applyCtx();
+}
+function applyCons(c){
+  c=c||{};S.cons={qy:c.qy||null,vy:c.vy||null,amag:c.amag||null,minmag:c.minmag||null};
+  var qy=S.cons.qy||[1960,2026],vy=S.cons.vy||[-10000,2026];
+  ['#y1','#y2'].forEach(function(s){$(s).min=qy[0];$(s).max=qy[1]});
+  ['#vy1','#vy2'].forEach(function(s){$(s).min=vy[0];$(s).max=vy[1]});
+  $$('#amag option').forEach(function(o){o.disabled=!!(S.cons.amag&&+o.value<S.cons.amag)});
+  $('#minmag').min=S.cons.minmag||0;
+  $('#y-all').textContent='Tout ('+qy[0]+'–'+qy[1]+')';
+  var a=+$('#y1').value,b=+$('#y2').value,a2=clampN(a,qy[0],qy[1]),b2=clampN(b,qy[0],qy[1]);
+  if(a2!==a||b2!==b){$('#y1').value=a2;$('#y2').value=b2}
+  if(S.cons.amag&&+$('#amag').value<S.cons.amag)$('#amag').value=String(S.cons.amag);
+  var mm=Math.max(S.minmag,S.cons.minmag||0);if(mm!==S.minmag){S.minmag=mm}
+  $('#minmag').value=S.minmag;$('#minmag-v').textContent=S.minmag;
+  if(S.vmin!==null)S.vmin=clampN(S.vmin,vy[0],vy[1]);if(S.vmax!==null)S.vmax=clampN(S.vmax,vy[0],vy[1]);
+  $('#vy1').value=S.vmin===null?'':S.vmin;$('#vy2').value=S.vmax===null?'':S.vmax;
+}
+function applyView(v){
+  if(!v)return;
+  if(v.mode){S.mode=v.mode;$$('#proj-seg button').forEach(function(x){x.classList.toggle('on',x.dataset.p===S.mode)})}
+  if(v.rot){S.rot=[v.rot[0],v.rot[1]]}
+  if(v.k!=null)S.k=v.k;
+  if(v.pan!=null)S.pan=v.pan;else if(v.mode||v.rot)S.pan=0;
+  if(v.layers)Object.keys(v.layers).forEach(function(k){S.layers[k]=v.layers[k]});
+  if(v.btypes)Object.assign(S.btypes,v.btypes);
+  if(v.vcat)Object.assign(S.vcat,v.vcat);
+  if(v.colorMode)S.colorMode=v.colorMode;
+  if(v.minmag!=null){S.minmag=v.minmag}
+  if(v.y){$('#y1').value=v.y[0];$('#y2').value=v.y[1]}
+  if(v.amag!=null)$('#amag').value=String(v.amag);
+  if(v.vy){S.vmin=v.vy[0];S.vmax=v.vy[1]}
+  if(v.live){S.live.on=!!v.live.on;if(v.live.span){S.live.span=v.live.span;$$('#live-span button').forEach(function(x){x.classList.toggle('on',+x.dataset.d===S.live.span)})}
+    $('#live-btn').classList.toggle('on',S.live.on);$('#live-btn').setAttribute('aria-pressed',String(S.live.on))}
+}
+function captureView(){
+  var y=readYears();
+  return {mode:S.mode,rot:[Math.round(S.rot[0]),Math.round(S.rot[1])],k:Math.round(S.k*100)/100,pan:Math.round(S.pan),
+    layers:Object.assign({},S.layers),btypes:Object.assign({},S.btypes),vcat:Object.assign({},S.vcat),colorMode:S.colorMode,minmag:S.minmag,
+    y:[y[0],y[1]],amag:+$('#amag').value,vy:[S.vmin,S.vmax],live:{on:S.live.on,span:S.live.span}};
+}
+
+/* ---------- parcours guidé (piloté par le scénario actif) ---------- */
+function norm(s){return String(s).normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase()}
+function kwRe(g){
+  g=String(g||'').trim();if(!g)return null;
+  try{
+    if(g.indexOf('re:')===0)return new RegExp(norm(g.slice(3)));
+    var p=g.split('|').map(function(x){return norm(x.trim()).replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}).filter(Boolean);
+    return p.length?new RegExp(p.join('|')):null;
+  }catch(e){return null}
+}
+function gradeStep(text,st){
+  var t=norm(text),tot=0,max=0;
+  var det=(st.crit||[]).map(function(c){
+    var n=(c.kw||[]).filter(function(k){var r=kwRe(k);return r&&r.test(t)}).length;
+    var need=Math.max(1,c.need||1),f=n>=need?1:(n>=1?.5:0),pts=Math.round((c.pts||0)*f*2)/2;
+    tot+=pts;max+=(c.pts||0);return {label:c.label,pts:pts,max:c.pts||0,f:f,hint:c.hint}});
+  return {tot:tot,max:max,s20:max?Math.round(tot/max*20*2)/2:0,det:det};
+}
+var G={hint:0,tries:0,done:false,res:null,st:null};
+var TYPE_LABEL={qcm:'Au choix (3)',cloze:'Phrase à compléter',text:'Rédaction'};
+function renderProg(sc,i){$('#g-prog').innerHTML=sc.steps.map(function(s,k){return '<i class="'+(k<i?'done':k===i?'cur':'')+'"></i>'}).join('');$('#g-step').textContent=sc.steps.length?((i+1)+' / '+sc.steps.length):'—'}
+function renderStep(){
+  var sc=curScen(),b=$('#g-body');
+  if(!sc.steps.length){b.innerHTML='<div class="note">Ce scénario ne contient encore aucune question.</div>';renderProg(sc,0);G.st=null;return}
+  var i=curIdx(),st=sc.steps[i];G={hint:0,tries:0,done:false,res:null,st:st};renderProg(sc,i);
+  var h='<div class="note" style="margin-bottom:6px">'+esc(sc.title)+'</div>';
+  h+='<div class="stt">'+esc(st.title||'Question '+(i+1))+'</div>';
+  if(st.intro)h+='<p class="sti">'+esc(st.intro)+'</p>';
+  if(st.proposal)h+='<div class="prop"><b>À faire</b><br>'+esc(st.proposal)+'</div>';
+  h+='<div><span class="tag">'+TYPE_LABEL[st.type]+'</span></div>';
+  h+='<div id="g-q">'+esc(st.question)+'</div>';
+  if(st.type==='qcm'){h+=(st.opts||[]).map(function(o,k){return o?'<button class="opt" data-i="'+k+'">'+esc(o)+'</button>':''}).join('')}
+  if(st.type==='cloze')h+=clozeHtml(st);
+  if(st.type==='text'){h+='<textarea id="ans" aria-label="Ta réponse" placeholder="Écris ta réponse ici."></textarea><div class="note" style="margin-top:4px">N\'écris ni ton nom ni aucune information personnelle.</div>'}
+  h+='<div id="fb"></div><div id="pmsg" class="note"></div><div class="actions" id="act"></div>';
+  b.innerHTML=h;b.scrollTop=0;
+  var prev=ansBox()[akey(sc,st)];
+  if(st.type==='text'&&prev&&prev.text)$('#ans').value=prev.text;
+  var act='';
+  if(st.type==='cloze')act+='<button class="btn" id="chk">Vérifier</button>';
+  if(st.type==='text')act+='<button class="btn" id="chk">Envoyer ma réponse</button>';
+  if((st.hints||[]).some(Boolean))act+='<button class="btn ghost" id="hint">Indice</button>';
+  var last=i>=sc.steps.length-1;
+  $('#act').innerHTML=act+'<button class="btn" id="next" hidden>'+(last?'Terminer':'Étape suivante')+'</button>';
+  if($('#hint'))$('#hint').onclick=giveHint;
+  $('#next').onclick=function(){if(!last){setIdx(i+1);renderStep();applyStep(curScen().steps[i+1])}else finish()};
+  if(st.type==='qcm')$$('.opt').forEach(function(btn){btn.onclick=function(){answerQcm(sc,st,btn)}});
+  if(st.type==='cloze')$('#chk').onclick=function(){checkCloze(sc,st)};
+  if(st.type==='text')$('#chk').onclick=function(){sendText(sc,st)};
+  refreshNext();
+}
+function clozeHtml(st){
+  var parts=String(st.ctext||'').split('___'),bank=(st.bank||[]).filter(Boolean);
+  return '<span class="cloze">'+parts.map(function(p,i){var s=esc(p);
+    if(i<parts.length-1)s+=bank.length?'<select data-b="'+i+'" aria-label="Trou '+(i+1)+'"><option value="">…</option>'+bank.map(function(w){return '<option>'+esc(w)+'</option>'}).join('')+'</select>':'<input class="cin" data-b="'+i+'" aria-label="Trou '+(i+1)+'" autocomplete="off">';
+    return s}).join('')+'</span>';
+}
+function showFb(cls,html){var f=$('#fb');if(f)f.innerHTML='<div class="fb '+cls+'">'+html+'</div>'}
+var LAYER_LABEL={coast:'Continents',grat:'Quadrillage',plates:'Plaques (contours)',bound:'Frontières de plaques',quakes:'Séismes',volc:'Volcans',markers:'Marqueurs',hans:'Alertes'};
+function passState(st){
+  var p=st.pass||{},r=G.res||{},miss=[],mode=p.answer||'correct',ok=true;
+  var ansOK=true;
+  if(mode==='sent'){ansOK=!!r.sent}
+  else if(mode==='correct'){
+    if(st.type==='text'){ansOK=!!r.sent&&(st.ai||!(p.score>0)||(r.s20||0)>=p.score)}
+    else ansOK=!!r.correct;
+  }
+  var tries=p.tries>0&&G.tries>=p.tries&&!!r.sent;
+  if(!ansOK&&!tries){ok=false;
+    miss.push(mode==='sent'?'Réponds à la question.':st.type==='text'?(p.score>0&&r.sent&&!st.ai?'Améliore ta réponse : note minimale '+p.score+' / 20.':'Envoie ta réponse.'):'Trouve la bonne réponse.')}
+  var lm=(p.layers||[]).filter(function(k){return !S.layers[k]});
+  if(lm.length){ok=false;miss.push('Affiche sur la carte : '+lm.map(function(k){return LAYER_LABEL[k]||k}).join(', ')+'.')}
+  return {ok:ok,miss:miss};
+}
+function refreshNext(){
+  if(!G.st||!$('#next'))return;
+  var ps=passState(G.st);$('#next').hidden=!ps.ok;
+  var pm=$('#pmsg');if(pm)pm.textContent=ps.ok?'':(ps.miss.length?'Pour continuer : '+ps.miss.join(' '):'');
+  if(ps.ok&&!G.done){G.done=true}
+}
+function answerQcm(sc,st,btn){
+  var i=parseInt(btn.dataset.i,10),right=(i===st.ok);G.tries++;
+  $$('.opt').forEach(function(o){o.classList.remove('sel','bad')});
+  ansBox()[akey(sc,st)]={choice:i,tries:G.tries};persist();
+  if(st.diag){btn.classList.add('sel');$$('.opt').forEach(function(o){o.disabled=true});var okb=$$('.opt').filter(function(o){return +o.dataset.i===st.ok})[0];if(okb)okb.classList.add('good');
+    G.res={sent:true,correct:true};showFb(right?'good':'hint',(right?'Bonne intuition. ':'Ce n\'est pas ce que montrent les données. ')+esc(st.why||''));refreshNext();return}
+  if(right){btn.classList.add('good');$$('.opt').forEach(function(o){o.disabled=true});G.res={sent:true,correct:true};showFb('good','Correct. '+esc(st.why||''))}
+  else{btn.classList.add('bad');G.res={sent:true,correct:false};showFb('bad',esc((st.fb&&st.fb[i])||'Regarde la carte et réessaie.'))}
+  refreshNext();
+}
+function checkCloze(sc,st){
+  var els=$$('.cloze [data-b]'),okAll=true,ans=st.ans||[];G.tries++;
+  els.forEach(function(s,i){s.classList.remove('good','bad');if(!s.value){okAll=false;return}
+    var acc=String(ans[i]||'').split('|').map(function(x){return norm(x.trim())}),good=acc.indexOf(norm(s.value.trim()))>=0;
+    s.classList.add(good?'good':'bad');if(!good)okAll=false});
+  ansBox()[akey(sc,st)]={vals:els.map(function(s){return s.value}),tries:G.tries};persist();
+  G.res={sent:true,correct:okAll};
+  if(okAll){showFb('good','Correct. '+esc(st.why||''));$('#chk').disabled=true}
+  else showFb('bad','Un ou plusieurs trous sont à revoir.'+((st.hints||[]).some(Boolean)?' Utilise l\'indice si besoin.':''));
+  refreshNext();
+}
+function sendText(sc,st){
+  var t=$('#ans').value.trim();G.tries++;
+  if(t.length<(st.minlen||15)){showFb('hint','Écris au moins une phrase complète.');return}
+  var r=gradeStep(t,st),miss=r.det.filter(function(d){return d.f<1});
+  ansBox()[akey(sc,st)]={text:t,score:r.s20,ai:!!st.ai,pending:!!st.ai};persist();
+  G.res={sent:true,correct:true,s20:r.s20};
+  var tbl='<table>'+r.det.map(function(d){return '<tr><td>'+esc(d.label)+'</td><td>'+d.pts+' / '+d.max+'</td></tr>'}).join('')+'<tr><td><b>Total</b></td><td><b>'+r.s20+' / 20</b></td></tr></table>';
+  var tip=miss.length?'<div style="margin-top:8px"><b>À améliorer :</b><br>'+miss.map(function(m){return '• '+esc(m.hint||m.label)}).join('<br>')+'</div>':'<div style="margin-top:8px">Toutes les idées-clés sont présentes.</div>';
+  var note=st.ai?'Note provisoire donnée par l\'IA, avant vérification par l\'enseignant.':'Correction automatique par mots-clés.';
+  showFb(r.s20>=12?'good':'hint','Réponse enregistrée.'+tbl+tip+'<div class="note" style="margin-top:8px">'+note+'</div>');
+  refreshNext();
+}
+function giveHint(){var st=G.st,hs=(st.hints||[]).filter(Boolean);if(!hs.length)return;var h=hs[Math.min(G.hint,hs.length-1)];G.hint++;showFb('hint','<b>Indice '+Math.min(G.hint,hs.length)+' / '+hs.length+'</b><br>'+esc(h))}
+function bilanOf(sc){
+  var AN=ansBox(),rows=[],ok=0,tot=0;
+  sc.steps.forEach(function(st,i){
+    var r=AN[akey(sc,st)],mark='—',cls='na',label=st.title||('Question '+(i+1));
+    if(st.type==='qcm'){tot++;if(r){if(r.choice===st.ok){mark='Réussie';cls='ok';ok++}else{mark='Manquée';cls='ko'}}}
+    else if(st.type==='cloze'){tot++;if(r&&r.vals){var all=true;(st.ans||[]).forEach(function(a,k){var g=String(a).split('|').map(norm);if(g.indexOf(norm(String(r.vals[k]||'')))<0)all=false});if(all){mark='Réussie';cls='ok';ok++}else{mark='Manquée';cls='ko'}}}
+    else if(r&&r.text){mark='Rédigée';cls='ok'}
+    rows.push({n:i+1,label:label,mark:mark,cls:cls});
+  });
+  return {ok:ok,tot:tot,rows:rows};
+}
+function bilanText(sc,b){
+  var bin=store.bin?'Binôme n° '+('0'+store.bin).slice(-2)+' · ':'';
+  return 'Bilan : '+sc.title+'\n'+bin+(PV?'(aperçu)':new Date().toLocaleDateString('fr-FR'))+'\nQuestions réussies : '+b.ok+' / '+b.tot+'\n'+b.rows.map(function(r){return r.n+'. '+r.label+' : '+r.mark}).join('\n');
+}
+function finish(){
+  var sc=curScen(),b=bilanOf(sc),txt=bilanText(sc,b);
+  if($('#app').dataset.r!=='open'){$('#hr').click()}
+  $('#g-body').innerHTML='<div id="g-q">Bravo, tu as terminé « '+esc(sc.title)+' ».</div>'
+    +'<div class="bilan"><div class="bn"><b>'+b.ok+'</b> / '+b.tot+' questions réussies</div><ol class="bl">'+b.rows.map(function(r){return '<li><span class="bm '+r.cls+'">'+esc(r.mark)+'</span>'+esc(r.label)+'</li>'}).join('')+'</ol></div>'
+    +'<label class="note" for="bilan-txt">'+(PV?'Aperçu : rien n\'est enregistré.':'Copie ton bilan et envoie-le à ton enseignant.')+'</label>'
+    +'<textarea id="bilan-txt" readonly rows="6">'+esc(txt)+'</textarea>'
+    +'<div class="actions"><button class="btn" id="bilan-copy" type="button">Copier mon bilan</button><button class="btn ghost" id="restart" type="button">Recommencer</button></div><div class="note" id="bilan-msg" role="status"></div>';
+  $('#bilan-copy').onclick=function(){
+    var t=$('#bilan-txt'),m=$('#bilan-msg');
+    function ok(){m.textContent='Bilan copié.'}
+    function fb(){t.focus();t.select();var d=false;try{d=document.execCommand('copy')}catch(e){}m.textContent=d?'Bilan copié.':'Sélectionne le texte puis copie-le.'}
+    if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(ok,fb)}else fb();
+  };
+  $('#restart').onclick=function(){if(!PV){Object.keys(store.answers).forEach(function(k){if(k.indexOf(sc.id+'/')===0)delete store.answers[k]})}else PV.answers={};setIdx(0);persist();renderStep();applyStep(curScen().steps[0])};
+}
+function applyStep(st){
+  if(!st)return;
+  applyCons(st.cons);applyView(st.view);syncUI();applyMenu(st.menu);loadArch();dirty();
+}
+function scenChanged(){rebuildVolc();rebuildMarkers();S.archSig='';loadArch(true);renderStep();var sc=curScen();applyStep(sc.steps[curIdx()]||null);if(!sc.steps.length){applyMenu({});applyCons({})}}
+function previewStep(sid,idx,onCapture){PV={sid:sid,idx:idx,answers:{},onCapture:onCapture};$('#adm').hidden=true;$('#edbar').hidden=false;scenChanged()}
+function endPreview(){PV=null;$('#edbar').hidden=true;$('#adm').hidden=false;scenChanged()}
+
+/* ---------- binôme, réglages, onglets ---------- */
+var tmpBin=0;
+function newBin(){tmpBin=Math.floor(1+Math.random()*99);$('#bin-big').textContent=('0'+tmpBin).slice(-2)}
+function openBin(){newBin();$('#bin-in').value='';$('#ov-bin').hidden=false}
+$('#bin-new').onclick=newBin;
+$('#bin-ok').onclick=function(){var v=parseInt($('#bin-in').value,10);var n=(v>=1&&v<=99)?v:tmpBin;store.bin=n;save();$('#bin-n').textContent=('0'+n).slice(-2);$('#ov-bin').hidden=true};
+$('#chip-bin').onclick=openBin;$('#chip-bin').style.cursor='pointer';
+function applySettings(){
+  var s=store.set,r=document.documentElement;
+  if(s.th==='auto')r.removeAttribute('data-theme');else r.setAttribute('data-theme',s.th);
+  var fs=s.fs/100;r.style.setProperty('--fs',s.pm?Math.max(1.3,fs):fs);
+  $('#app').classList.toggle('proj',!!s.pm);document.body.classList.toggle('proj',!!s.pm);
+  $$('#theme-seg button').forEach(function(b){b.classList.toggle('on',b.dataset.th===s.th)});
+  $$('#proj-mode button').forEach(function(b){b.classList.toggle('on',(b.dataset.pm==='1')===!!s.pm)});
+  $('#fs').value=s.fs;$('#fs-v').textContent=s.fs+' %';$('#ps').value=s.ps;$('#ps-v').textContent=s.ps+' %';
+  setTimeout(function(){resize()},30);
+}
+$('#btn-set').onclick=function(){$('#ov-set').hidden=false};
+$('#set-ok').onclick=function(){$('#ov-set').hidden=true};
+$$('#theme-seg button').forEach(function(b){b.onclick=function(){store.set.th=b.dataset.th;save();applySettings()}});
+$$('#proj-mode button').forEach(function(b){b.onclick=function(){store.set.pm=parseInt(b.dataset.pm,10);save();applySettings();var c=colState();setCols(store.set.pm?false:c.l,c.r,false)}});
+$('#fs').oninput=function(){store.set.fs=parseInt(this.value,10);save();applySettings()};
+$('#ps').oninput=function(){store.set.ps=parseInt(this.value,10);save();applySettings();dirty()};
+var mqN=window.matchMedia('(max-width:900px)');
+function colState(){var a=$('#app');return {l:a.dataset.l==='open',r:a.dataset.r==='open'}}
+function setCols(l,r,persist){
+  var a=$('#app');a.dataset.l=l?'open':'closed';a.dataset.r=r?'open':'closed';
+  $('#hl').setAttribute('aria-expanded',String(l));$('#hr').setAttribute('aria-expanded',String(r));
+  $('#hl .ar').textContent=l?'‹':'›';$('#hr .ar').textContent=r?'›':'‹';
+  if(persist){store.set.cl=l;store.set.cr=r;save()}
+  setTimeout(resize,30);
+}
+$('#hl').onclick=function(){var c=colState(),l=!c.l;setCols(l,(mqN.matches&&l)?false:c.r,true)};
+$('#hr').onclick=function(){var c=colState(),r=!c.r;setCols((mqN.matches&&r)?false:c.l,r,true)};
+function initCols(){var s=store.set,l=s.cl===undefined?!mqN.matches:s.cl,r=s.cr===undefined?!mqN.matches:s.cr;if(mqN.matches&&l&&r)r=false;if(s.pm)l=false;setCols(l,r,false)}
+$$('.ov').forEach(function(o){o.addEventListener('click',function(e){if(e.target===o&&o.id!=='ov-bin')o.hidden=true})});
+document.addEventListener('keydown',function(e){if(e.key==='Escape')$$('.ov').forEach(function(o){if(o.id!=='ov-bin')o.hidden=true})});
+window.addEventListener('resize',resize);
+if(window.matchMedia)window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',dirty);
+if(window.ResizeObserver)new ResizeObserver(resize).observe(cv.parentNode);
+
+/* ---------- démarrage ---------- */
+applySettings();initCols();readColors();resize();
+if(store.bin){$('#bin-n').textContent=('0'+store.bin).slice(-2)}else openBin();
+renderStep();
+loop();
+/*ADMIN_GLUE*/
+window.APP={S:S,adm:adm,store:store,admSave:admSave,save:save,getJSON:getJSON,esc:esc,fmtDate:fmtDate,CLS:CLS,norm:norm,gradeStep:gradeStep,kwRe:kwRe,
+  qKey:qKey,loadArch:loadArch,rebuildVolc:rebuildVolc,rebuildMarkers:rebuildMarkers,captureView:captureView,preview:previewStep,endPreview:endPreview,
+  scenChanged:scenChanged,DEFAULT_SCEN:DEFAULT_SCEN,emptyOv:emptyOv,curScen:curScen,PVget:function(){return PV},resize:resize,dirty:dirty,readYears:readYears,TYPE_LABEL:TYPE_LABEL,LAYER_LABEL:LAYER_LABEL,rowsToQuakes:rowsToQuakes,classify:classify,applyCtx:applyCtx,finish:finish};
+})();
+</script>
+<script>
+(function(){
+'use strict';
+var A=window.APP;if(!A)return;
+var $=function(s,r){return (r||document).querySelector(s)},$$=function(s,r){return [].slice.call((r||document).querySelectorAll(s))};
+var esc=A.esc,adm=A.adm,S=A.S;
+var ST={tab:'scen',view:'list',si:0,sub:'content',dtab:'q',dscope:'g',sid:null};
+var unlocked=false;
+function uid(p){return p+Date.now().toString(36)+Math.floor(Math.random()*1296).toString(36)}
+function clone(o){return JSON.parse(JSON.stringify(o))}
+function save(){A.admSave()}
+
+/* ---------- pavé numérique ---------- */
+var pin={buf:'',fails:0,lock:0};
+(function buildPad(){
+  var keys=['1','2','3','4','5','6','7','8','9','⌫','0','OK'],h='';
+  keys.forEach(function(k){h+='<button type="button" data-k="'+k+'"'+(k==='OK'?' class="ok"':'')+' aria-label="'+(k==='⌫'?'Effacer':k)+'">'+k+'</button>'});
+  $('#pin-pad').innerHTML=h;
+})();
+function pinDots(){$('#pin-dots').innerHTML=pin.buf.split('').map(function(){return '<i></i>'}).join('')}
+function pinMsg(t,bad){var m=$('#pin-msg');m.textContent=t;m.style.color=bad?'var(--bad)':''}
+function openPin(){
+  if(unlocked){openAdmin();return}
+  pin.buf='';pinDots();pinMsg('Saisis le code.');$('#ov-pin').hidden=false;
+}
+function pinCheck(){
+  var now=Date.now();
+  if(pin.lock>now){pinMsg('Trop d\'essais. Réessaie dans '+Math.ceil((pin.lock-now)/1000)+' s.',true);pin.buf='';pinDots();return}
+  if(pin.buf===String(adm.code)){pin.fails=0;unlocked=true;$('#ov-pin').hidden=true;pin.buf='';openAdmin();return}
+  pin.fails++;var box=$('#ov-pin .pin');box.classList.remove('shake');void box.offsetWidth;box.classList.add('shake');
+  if(pin.fails>=5){pin.lock=now+30000;pin.fails=0;pinMsg('Trop d\'essais. Patiente 30 secondes.',true)}else pinMsg('Code incorrect.',true);
+  pin.buf='';pinDots();
+}
+function pinKey(k){
+  if(k==='⌫'){pin.buf=pin.buf.slice(0,-1)}
+  else if(k==='OK'){pinCheck();return}
+  else if(pin.buf.length<10){pin.buf+=k}
+  pinDots();
+  if(pin.buf.length===String(adm.code).length&&k!=='⌫')pinCheck();
+}
+$('#pin-pad').addEventListener('click',function(e){var b=e.target.closest('button');if(b)pinKey(b.dataset.k)});
+$('#pin-x').onclick=function(){$('#ov-pin').hidden=true};
+$('#ov-pin').addEventListener('click',function(e){if(e.target.id==='ov-pin')$('#ov-pin').hidden=true});
+document.addEventListener('keydown',function(e){
+  if($('#ov-pin').hidden)return;
+  if(/^[0-9]$/.test(e.key)){pinKey(e.key);e.preventDefault()}
+  else if(e.key==='Backspace'){pinKey('⌫')}
+  else if(e.key==='Enter'){pinKey('OK')}
+  else if(e.key==='Escape'){$('#ov-pin').hidden=true}
+});
+$('#btn-adm').onclick=openPin;
+
+/* ---------- coque ---------- */
+function openAdmin(){$('#adm').hidden=false;renderAdmin()}
+function closeAdmin(lock){
+  closeModal();$('#adm').hidden=true;if(lock)unlocked=false;
+  A.scenChanged();
+}
+function renderAdmin(){
+  var tabs=[['scen','Scénarios'],['data','Données'],['acc','Compte']];
+  var h='<div class="adm-top"><h2>Administration</h2><nav class="adm-nav" aria-label="Sections">'+tabs.map(function(t){return '<button data-tab="'+t[0]+'"'+(ST.tab===t[0]?' class="on"':'')+'>'+t[1]+'</button>'}).join('')+'</nav><span class="sp" style="flex:1"></span><button class="ibtn" data-act="exit">Retour à l\'app</button><button class="ibtn" data-act="lock">Verrouiller</button></div><div id="adm-body"></div>';
+  $('#adm').innerHTML=h;renderBody();
+}
+function renderBody(){
+  var b=$('#adm-body');
+  if(!b)return;
+  var y=b.scrollTop;
+  if(ST.tab==='scen')b.innerHTML=ST.view==='list'?scenListHtml():scenEditHtml();
+  else if(ST.tab==='data')b.innerHTML=dataHtml();
+  else b.innerHTML=accHtml();
+  if(ST.tab==='data')dataMount();
+  b.scrollTop=y;
+}
+
+/* ---------- modales ---------- */
+function modal(html,mount){
+  closeModal();var d=document.createElement('div');d.className='adm-mo';d.id='adm-mo';d.innerHTML='<div class="box" role="dialog" aria-modal="true">'+html+'</div>';
+  $('#adm').appendChild(d);d.addEventListener('click',function(e){if(e.target===d)closeModal()});if(mount)mount(d);return d;
+}
+function closeModal(){var m=$('#adm-mo');if(m)m.parentNode.removeChild(m)}
+document.addEventListener('keydown',function(e){if(e.key==='Escape'&&$('#adm-mo'))closeModal()});
+function showText(title,text,fname){
+  modal('<h3>'+esc(title)+'</h3><textarea class="big" id="tx-out" readonly></textarea><div class="msg" id="tx-msg">Copie le texte ou télécharge-le.</div><div class="acts"><button class="sb" id="tx-copy">Copier</button><button class="sb pri" id="tx-dl">Télécharger</button><button class="sb" id="tx-x">Fermer</button></div>',function(d){
+    $('#tx-out').value=text;
+    $('#tx-x').onclick=closeModal;
+    $('#tx-copy').onclick=function(){var t=$('#tx-out');t.select();var ok=false;try{ok=document.execCommand('copy')}catch(e){}
+      if(!ok&&navigator.clipboard)navigator.clipboard.writeText(text).then(function(){$('#tx-msg').textContent='Copié.'},function(){});else $('#tx-msg').textContent=ok?'Copié.':'Sélectionne le texte puis copie-le à la main.'};
+    $('#tx-dl').onclick=function(){try{var u=URL.createObjectURL(new Blob([text],{type:'text/plain;charset=utf-8'}));var a=document.createElement('a');a.href=u;a.download=fname||'export.txt';document.body.appendChild(a);a.click();setTimeout(function(){document.body.removeChild(a);URL.revokeObjectURL(u)},500);$('#tx-msg').textContent='Téléchargement lancé (sinon, copie le texte).'}catch(e){$('#tx-msg').textContent='Téléchargement impossible ici : copie le texte.'}};
+  });
+}
+function askText(title,help,cb){
+  modal('<h3>'+esc(title)+'</h3><p class="msg">'+esc(help)+'</p><textarea class="big" id="tx-in" placeholder="Colle le contenu ici"></textarea><div class="fl"><span>…ou choisis un fichier</span><input type="file" id="tx-file" accept=".json,.csv,.txt,text/*"></div><div class="msg" id="tx-msg"></div><div class="acts"><button class="sb pri" id="tx-ok">Importer</button><button class="sb" id="tx-x">Annuler</button></div>',function(d){
+    $('#tx-x').onclick=closeModal;
+    $('#tx-file').onchange=function(){var f=this.files[0];if(!f)return;var r=new FileReader();r.onload=function(){$('#tx-in').value=String(r.result)};r.readAsText(f)};
+    $('#tx-ok').onclick=function(){var t=$('#tx-in').value;if(!t.trim()){$('#tx-msg').textContent='Rien à importer.';return}var res=cb(t);if(res===true)closeModal();else{$('#tx-msg').className='msg bad';$('#tx-msg').textContent=res||'Import impossible.'}};
+  });
+}
+var confirmT={};
+function twoStep(btn,label,fn){
+  var k=btn.dataset.act+'|'+(btn.dataset.id||'');
+  if(confirmT[k]){clearTimeout(confirmT[k]);confirmT[k]=0;btn.textContent=btn.dataset.lbl;fn();return}
+  btn.dataset.lbl=btn.textContent;btn.textContent=label||'Confirmer ?';
+  confirmT[k]=setTimeout(function(){confirmT[k]=0;if(btn.isConnected)btn.textContent=btn.dataset.lbl},3000);
+}
+
+/* ---------- liaison champs (data-b) ---------- */
+function root(n){return n==='sc'?scEd():n==='st'?stEd():n==='acc'?adm:n==='v'?(stEd()&&stEd().view):null}
+function getp(path){var p=path.split('.'),o=root(p[0]);for(var i=1;i<p.length-1&&o;i++)o=o[p[i]];return {o:o,k:p[p.length-1]}}
+document.addEventListener('input',onField);document.addEventListener('change',onField);
+function onField(e){
+  var t=e.target;if(!t.closest||!t.closest('#adm'))return;
+  if(t.dataset.b&&(e.type==='change'||(t.type!=='checkbox'&&t.type!=='radio'&&t.tagName!=='SELECT'))){
+    var r=getp(t.dataset.b);if(!r.o)return;
+    var v=t.type==='checkbox'?t.checked:t.value;
+    if(t.dataset.t==='n'){v=(v===''||isNaN(+v))?null:+v}
+    if(t.dataset.t==='lines'){v=String(v).split('\n').map(function(x){return x.trim()}).filter(Boolean)}
+    if(t.dataset.t==='code'){v=String(v).trim()||null}
+    if(t.dataset.t==='csv'){v=String(v).split(',').map(function(x){return x.trim()}).filter(Boolean)}
+    r.o[r.k]=v;save();
+    if(t.dataset.b==='st.title'){var it=$('.ed-steps .it.on .tt');if(it)it.firstChild.textContent=v||'(sans titre)'}
+    if(t.dataset.re&&e.type==='change')renderBody();
+    if(t.dataset.b==='sc.title'){}
+  }
+  if(t.dataset.c&&(e.type==='change'))consField(t);
+  if(t.dataset.d&&(e.type==='change'||t.type==='text'||t.type==='search'))dataField(t,e);
+  if(t.dataset.a&&e.type==='change')accField(t);
+  if(t.dataset.test&&e.type==='input')testGrade();
+}
+document.addEventListener('click',function(e){
+  var t=e.target;if(!t.closest||!t.closest('#adm'))return;
+  var tab=t.closest('[data-tab]');if(tab){ST.tab=tab.dataset.tab;if(ST.tab==='scen')ST.view='list';renderAdmin();return}
+  var sub=t.closest('[data-sub]');if(sub){ST.sub=sub.dataset.sub;renderBody();return}
+  var b=t.closest('[data-act]');if(!b)return;
+  actions(b,e);
+});
+function actions(b,e){
+  var a=b.dataset.act;
+  if(a==='exit'){closeAdmin(false);return}
+  if(a==='lock'){closeAdmin(true);return}
+  if(scenAct(a,b))return;
+  if(dataAct(a,b))return;
+  accAct(a,b);
+}
+
+/* ---------- scénarios ---------- */
+function scEd(){return adm.scens.filter(function(s){return s.id===ST.sid})[0]||null}
+function stEd(){var sc=scEd();return sc?sc.steps[ST.si]||null:null}
+function newStep(){
+  return {id:uid('q'),title:'Nouvelle question',intro:'',proposal:'',question:'',type:'qcm',opts:['','',''],ok:0,fb:['','',''],ctext:'',bank:[],ans:[],crit:[],ai:false,rubric:'',minlen:15,hints:['','',''],why:'',diag:false,menu:{},cons:{qy:null,vy:null,amag:null,minmag:null},view:null,pass:{answer:'correct',score:0,tries:0,layers:[]}};
+}
+function scenListHtml(){
+  var h='<div class="adm-wrap"><div class="adm-h"><h3>Scénarios pédagogiques</h3><button class="sb" data-act="sc-import">Importer</button><button class="sb pri" data-act="sc-new">Nouveau scénario</button></div><div class="msg">Un scénario est une série de questions. Celui qui est actif s\'affiche dans le panneau Questions de la classe.</div><div class="scl">';
+  adm.scens.forEach(function(sc){
+    var act=sc.id===adm.active;
+    h+='<div class="card sc"><div><b>'+esc(sc.title||'(sans titre)')+'</b>'+(act?'<span class="badge">Actif</span>':'')+'<div class="msg">'+sc.steps.length+' question'+(sc.steps.length>1?'s':'')+(sc.intro?' · '+esc(sc.intro.slice(0,110)):'')+(sc.code?' · <span class="badge">Code : '+esc(sc.code)+'</span>':'')+'</div></div><div class="acts">'
+      +(act?'':'<button class="sb" data-act="sc-activate" data-id="'+sc.id+'">Activer</button>')
+      +'<button class="sb pri" data-act="sc-edit" data-id="'+sc.id+'">Modifier</button><button class="sb" data-act="sc-preview" data-id="'+sc.id+'" data-i="0">Aperçu élève</button><button class="sb" data-act="sc-dup" data-id="'+sc.id+'">Dupliquer</button><button class="sb" data-act="sc-export" data-id="'+sc.id+'">Exporter</button><button class="sb dng" data-act="sc-del" data-id="'+sc.id+'"'+(adm.scens.length<2?' disabled':'')+'>Supprimer</button></div></div>';
+  });
+  return h+'</div></div>';
+}
+var MI=[
+ ['Fond',[['coast','Continents'],['grat','Quadrillage'],['plates','Plaques (contours)']]],
+ ['Frontières de plaques',[['bound','Afficher les frontières'],['btypes','Types de frontières']]],
+ ['Séismes archivés',[['quakes','Couche séismes'],['qy','Intervalle d\'années'],['amag','Magnitude de l\'archive'],['minmag','Magnitude minimale affichée'],['colormode','Couleur des points']]],
+ ['Volcans',[['volc','Couche volcans'],['vy','Intervalle d\'éruptions'],['vcats','Types de volcans']]],
+ ['Marqueurs',[['markers','Marqueurs de l\'enseignant']]],
+ ['Live',[['live','Section Live']]],
+ ['Carte',[['proj','Plane / Globe'],['zoom','Zoom + / −'],['timeline','Frise temporelle'],['legend','Légende']]]
+];
+var LAYERS=[['coast','Continents'],['grat','Quadrillage'],['plates','Plaques (contours)'],['bound','Frontières'],['quakes','Séismes'],['volc','Volcans'],['markers','Marqueurs']];
+function tabs6(){return [['content','Contenu'],['answer','Réponse'],['menu','Menu'],['data','Données'],['view','Affichage'],['pass','Passage']]}
+function scenEditHtml(){
+  var sc=scEd();if(!sc)return '<div class="adm-wrap"><button class="sb" data-act="sc-back">← Scénarios</button></div>';
+  var st=stEd();
+  var h='<div class="adm-wrap"><div class="adm-h"><button class="sb" data-act="sc-back">← Scénarios</button><h3>Modifier le scénario</h3>'+(sc.id===adm.active?'<span class="badge">Actif</span>':'<button class="sb" data-act="sc-activate" data-id="'+sc.id+'">Activer pour la classe</button>')+'<button class="sb" data-act="sc-export" data-id="'+sc.id+'">Exporter</button><button class="sb pri" data-act="sc-preview" data-i="0" title="Tester comme un élève">Aperçu élève</button></div>';
+  h+='<div class="card"><div class="fl" style="margin-top:0"><span>Titre du scénario</span><input type="text" data-b="sc.title" value="'+esc(sc.title)+'"></div><div class="fl"><span>Texte d\'introduction</span><textarea data-b="sc.intro">'+esc(sc.intro||'')+'</textarea></div><div class="fl" style="margin-bottom:0"><span>Code de séance (vide = pas de code : le scénario est proposé directement)</span><input type="text" data-b="sc.code" data-t="code" maxlength="20" value="'+esc(sc.code||'')+'" placeholder="ex. SISMO24"></div></div>';
+  h+='<div class="ed-cols"><div><div class="adm-h" style="margin-bottom:6px"><b>Questions</b><span style="flex:1"></span><button class="sb pri" data-act="st-add">+ Ajouter</button></div><div class="ed-steps">';
+  sc.steps.forEach(function(s,i){
+    h+='<div class="it'+(i===ST.si?' on':'')+'" data-act="st-sel" data-i="'+i+'"><div class="tt">'+esc(s.title||'(sans titre)')+'<small>'+(i+1)+' · '+esc(A.TYPE_LABEL[s.type]||s.type)+(s.ai?' · IA':'')+'</small></div><div class="mv"><button data-act="st-up" data-i="'+i+'" title="Monter" aria-label="Monter">↑</button><button data-act="st-down" data-i="'+i+'" title="Descendre" aria-label="Descendre">↓</button><button data-act="st-dup" data-i="'+i+'" title="Dupliquer" aria-label="Dupliquer">⧉</button><button data-act="st-del" data-i="'+i+'" title="Supprimer" aria-label="Supprimer">✕</button></div></div>';
+  });
+  h+='</div></div><div>';
+  if(!st){h+='<div class="card msg">Ajoute une première question.</div>'}
+  else{
+    h+='<div class="subtabs">'+tabs6().map(function(t){return '<button data-sub="'+t[0]+'"'+(ST.sub===t[0]?' class="on"':'')+'>'+t[1]+'</button>'}).join('')+'</div><div class="card" style="margin-top:10px">';
+    h+=({content:tContent,answer:tAnswer,menu:tMenu,data:tData,view:tView,pass:tPass})[ST.sub](st);
+    h+='</div>';
+  }
+  return h+'</div></div></div>';
+}
+function tContent(st){
+  var h='<div class="fl" style="margin-top:0"><span>Titre de la question</span><input type="text" data-b="st.title" value="'+esc(st.title)+'"></div>';
+  h+='<div class="fl"><span>Texte d\'introduction</span><textarea data-b="st.intro" placeholder="Contexte donné à l\'élève">'+esc(st.intro)+'</textarea></div>';
+  h+='<div class="fl"><span>Proposition (ce que l\'élève doit faire)</span><textarea data-b="st.proposal" placeholder="Ex. Active la couche Séismes et observe.">'+esc(st.proposal)+'</textarea></div>';
+  h+='<div class="fl"><span>Question</span><textarea data-b="st.question">'+esc(st.question)+'</textarea></div>';
+  h+='<div class="fl"><span>Type de réponse</span><select data-b="st.type" data-re="1">'+[['qcm','Au choix parmi 3'],['cloze','Compléter des phrases'],['text','Rédiger des phrases']].map(function(o){return '<option value="'+o[0]+'"'+(st.type===o[0]?' selected':'')+'>'+o[1]+'</option>'}).join('')+'</select></div>';
+  h+='<div class="fl"><span>Indices (jusqu\'à 3, du plus discret au plus direct)</span>'+[0,1,2].map(function(i){return '<input type="text" data-b="st.hints.'+i+'" value="'+esc(st.hints[i]||'')+'" placeholder="Indice '+(i+1)+'" style="margin-bottom:4px">'}).join('')+'</div>';
+  h+='<div class="fl"><span>Message affiché quand c\'est réussi</span><input type="text" data-b="st.why" value="'+esc(st.why||'')+'"></div>';
+  return h;
+}
+function tAnswer(st){
+  var h='';
+  if(st.type==='qcm'){
+    h+='<div class="opts3">'+[0,1,2].map(function(i){
+      return '<div class="opt3"><input type="radio" name="okopt" data-c="ok" data-i="'+i+'"'+(st.ok===i?' checked':'')+' aria-label="Bonne réponse '+(i+1)+'"><div class="fl" style="margin:0"><span>Proposition '+(i+1)+(st.ok===i?' · bonne réponse':'')+'</span><input type="text" data-b="st.opts.'+i+'" value="'+esc(st.opts[i]||'')+'"></div>'+(st.ok===i?'':'<div class="fbk"><input type="text" class="adm-in" data-b="st.fb.'+i+'" value="'+esc(st.fb[i]||'')+'" placeholder="Message si l\'élève choisit celle-ci (facultatif)"></div>')+'</div>';
+    }).join('')+'</div><label class="ck" style="margin-top:10px"><input type="checkbox" data-b="st.diag"'+(st.diag?' checked':'')+'> Question de diagnostic (l\'élève répond avec son intuition, pas de blocage)</label>';
+  }else if(st.type==='cloze'){
+    var n=(String(st.ctext||'').split('___').length-1);
+    h+='<div class="fl" style="margin-top:0"><span>Phrase : écris ___ (3 tirets bas) à chaque trou</span><textarea data-b="st.ctext" data-c="ctext">'+esc(st.ctext||'')+'</textarea></div>';
+    h+='<div class="fl"><span>Mots proposés (séparés par des virgules ; vide = l\'élève tape le mot)</span><input type="text" data-b="st.bank" data-t="csv" value="'+esc((st.bank||[]).join(', '))+'"></div>';
+    h+='<div class="fl"><span>Réponses attendues, dans l\'ordre ('+n+' trou'+(n>1?'x':'')+') — plusieurs possibles avec |</span>';
+    for(var i=0;i<n;i++)h+='<input type="text" data-b="st.ans.'+i+'" value="'+esc((st.ans||[])[i]||'')+'" placeholder="Trou '+(i+1)+'" style="margin-bottom:4px">';
+    h+='</div>'+(n===0?'<div class="msg bad">Aucun trou : ajoute ___ dans la phrase.</div>':'');
+  }else{
+    h+='<div class="row2"><div class="fl" style="margin-top:0"><span>Longueur minimale (caractères)</span><input type="number" min="0" data-b="st.minlen" data-t="n" value="'+(st.minlen==null?15:st.minlen)+'"></div></div>';
+    h+='<label class="ck"><input type="checkbox" data-b="st.ai" data-re="1"'+(st.ai?' checked':'')+'> Correction par l\'IA (note /20)</label>';
+    if(st.ai)h+='<div class="fl"><span>Consignes de notation pour l\'IA (critères, barème)</span><textarea data-b="st.rubric" placeholder="Ex. 6 pts : l\'élève décrit des bandes de séismes…">'+esc(st.rubric||'')+'</textarea></div><div class="msg">Prototype : la note affichée reste une estimation par mots-clés. L\'IA réelle sera branchée côté serveur.</div>';
+    var tot=(st.crit||[]).reduce(function(a,c){return a+(+c.pts||0)},0);
+    h+='<div class="fl"><span>Critères de correction automatique (total '+tot+' pts, ramené sur 20)</span></div>';
+    (st.crit||[]).forEach(function(c,i){
+      h+='<div class="crit"><div class="fl" style="margin-top:0"><span>Critère '+(i+1)+'</span><input type="text" data-b="st.crit.'+i+'.label" value="'+esc(c.label)+'"></div><div class="fl"><span>Mots-clés attendus : un groupe par ligne, synonymes avec |</span><textarea data-b="st.crit.'+i+'.kw" data-t="lines" placeholder="band|ligne|ceinture&#10;pacifique">'+esc((c.kw||[]).join('\n'))+'</textarea></div><div class="row2"><div class="fl" style="margin:0"><span>Points</span><input type="number" min="0" step="0.5" data-b="st.crit.'+i+'.pts" data-t="n" value="'+(c.pts==null?'':c.pts)+'"></div><div class="fl" style="margin:0"><span>Groupes requis</span><input type="number" min="1" data-b="st.crit.'+i+'.need" data-t="n" value="'+(c.need==null?1:c.need)+'"></div></div><div class="fl"><span>Conseil si le critère manque</span><input type="text" data-b="st.crit.'+i+'.hint" value="'+esc(c.hint||'')+'"></div><button class="sb dng" data-act="crit-del" data-i="'+i+'">Retirer ce critère</button></div>';
+    });
+    h+='<button class="sb" data-act="crit-add">+ Ajouter un critère</button>';
+    h+='<div class="fl" style="margin-top:14px"><span>Tester avec une réponse d\'exemple</span><textarea data-test="1" id="test-in" placeholder="Colle une réponse d\'élève pour voir la note"></textarea></div><div id="test-out" class="msg"></div>';
+  }
+  return h;
+}
+function testGrade(){
+  var st=stEd(),t=$('#test-in');if(!st||!t)return;
+  var r=A.gradeStep(t.value,st);
+  $('#test-out').innerHTML=r.det.map(function(d){return esc(d.label)+' : <b>'+d.pts+' / '+d.max+'</b>'}).join('<br>')+'<br><b>Note : '+r.s20+' / 20</b>';
+}
+function tMenu(st){
+  var h='<div class="msg" style="margin-bottom:8px">Pour cette question, choisis ce que l\'élève voit dans le menu de la carte.</div><div class="adm-h" style="margin-bottom:6px"><button class="sb" data-act="mi-all" data-v="show">Tout afficher</button><button class="sb" data-act="mi-all" data-v="grey">Tout griser</button><button class="sb" data-act="mi-all" data-v="hide">Tout masquer</button></div><table class="mtab"><tr><th>Élément</th><th class="r">Afficher</th><th class="r">Griser</th><th class="r">Masquer</th></tr>';
+  MI.forEach(function(g){
+    h+='<tr><td class="g" colspan="4">'+esc(g[0])+'</td></tr>';
+    g[1].forEach(function(it){var cur=st.menu[it[0]]||'show';
+      h+='<tr><td>'+esc(it[1])+'</td>'+['show','grey','hide'].map(function(v){return '<td class="r"><input type="radio" name="mi-'+it[0]+'" data-act="mi" data-k="'+it[0]+'" data-v="'+v+'"'+(cur===v?' checked':'')+' aria-label="'+esc(it[1])+' : '+v+'"></td>'}).join('')+'</tr>'});
+  });
+  return h+'</table>';
+}
+function tData(st){
+  var c=st.cons||(st.cons={qy:null,vy:null,amag:null,minmag:null});
+  var h='<div class="msg" style="margin-bottom:8px">Limite ce que l\'élève peut choisir dans les champs de données.</div>';
+  h+='<div class="card" style="background:var(--bg)"><h4>Séismes</h4><label class="ck"><input type="checkbox" data-c="qy-on"'+(c.qy?' checked':'')+'> Limiter les années</label>';
+  if(c.qy)h+='<div class="row2"><div class="fl" style="margin:6px 0 0"><span>De (min 1960)</span><input type="number" min="1960" max="2026" data-c="qy0" value="'+c.qy[0]+'"></div><div class="fl" style="margin:6px 0 0"><span>à (max 2026)</span><input type="number" min="1960" max="2026" data-c="qy1" value="'+c.qy[1]+'"></div></div>';
+  h+='<div class="row2"><div class="fl"><span>Magnitude minimale de l\'archive</span><select data-c="amag"><option value="">Pas de limite</option>'+[5,6,7].map(function(m){return '<option value="'+m+'"'+(c.amag===m?' selected':'')+'>M ≥ '+m+'</option>'}).join('')+'</select></div><div class="fl"><span>Magnitude minimale affichée</span><input type="number" min="0" max="8" step="0.5" data-c="minmag" value="'+(c.minmag==null?'':c.minmag)+'" placeholder="aucune"></div></div></div>';
+  h+='<div class="card" style="background:var(--bg);margin-top:10px"><h4>Volcans</h4><label class="ck"><input type="checkbox" data-c="vy-on"'+(c.vy?' checked':'')+'> Limiter les années d\'éruption</label>';
+  if(c.vy)h+='<div class="row2"><div class="fl" style="margin:6px 0 0"><span>De (min −10000)</span><input type="number" min="-10000" max="2026" data-c="vy0" value="'+c.vy[0]+'"></div><div class="fl" style="margin:6px 0 0"><span>à (max 2026)</span><input type="number" min="-10000" max="2026" data-c="vy1" value="'+c.vy[1]+'"></div></div>';
+  return h+'</div>';
+}
+function tView(st){
+  var v=st.view,h='<label class="ck" style="margin-bottom:8px"><input type="checkbox" data-c="view-on"'+(v?' checked':'')+'> Définir l\'affichage de départ de cette question</label>';
+  if(!v)return h+'<div class="msg">Sans réglage, la carte garde l\'affichage précédent.</div>';
+  h+='<div class="adm-h" style="margin-bottom:8px"><button class="sb pri" data-act="view-capture">Capturer l\'affichage de la carte</button><button class="sb" data-act="view-preview">Voir sur la carte</button></div><div class="msg">« Capturer » ouvre la carte : règle-la (zoom, couches, années, globe…), puis valide.</div>';
+  h+='<div class="fl"><span>Projection</span><select data-b="v.mode" data-re="1"><option value="flat"'+(v.mode==='flat'?' selected':'')+'>Plane</option><option value="globe"'+(v.mode==='globe'?' selected':'')+'>Globe</option></select></div>';
+  h+='<div class="row2"><div class="fl" style="margin:0"><span>Longitude du centre</span><input type="number" data-c="lon" value="'+(v.rot?Math.round(-v.rot[0]):'')+'" placeholder="auto"></div><div class="fl" style="margin:0"><span>Latitude du centre (globe)</span><input type="number" data-c="lat" value="'+(v.rot?Math.round(-v.rot[1]):'')+'" placeholder="auto"></div><div class="fl" style="margin:0"><span>Zoom</span><input type="number" min="0.8" max="14" step="0.1" data-b="v.k" data-t="n" value="'+(v.k==null?'':v.k)+'" placeholder="1"></div></div>';
+  h+='<div class="fl"><span>Couches visibles au départ</span>'+LAYERS.map(function(l){return '<label class="ck"><input type="checkbox" data-c="vl" data-k="'+l[0]+'"'+((v.layers||{})[l[0]]?' checked':'')+'> '+l[1]+'</label>'}).join('')+'</div>';
+  h+='<div class="row2"><div class="fl" style="margin:0"><span>Séismes : de</span><input type="number" min="1960" max="2026" data-c="y0" value="'+(v.y?v.y[0]:'')+'" placeholder="inchangé"></div><div class="fl" style="margin:0"><span>à</span><input type="number" min="1960" max="2026" data-c="y1" value="'+(v.y?v.y[1]:'')+'" placeholder="inchangé"></div><div class="fl" style="margin:0"><span>Magnitude archive</span><select data-b="v.amag" data-t="n"><option value="">inchangée</option>'+[5,6,7].map(function(m){return '<option value="'+m+'"'+(v.amag===m?' selected':'')+'>M ≥ '+m+'</option>'}).join('')+'</select></div></div>';
+  h+='<div class="row2" style="margin-top:10px"><div class="fl" style="margin:0"><span>Volcans : de</span><input type="number" min="-10000" max="2026" data-c="vy0v" value="'+(v.vy&&v.vy[0]!=null?v.vy[0]:'')+'" placeholder="∞"></div><div class="fl" style="margin:0"><span>à</span><input type="number" min="-10000" max="2026" data-c="vy1v" value="'+(v.vy&&v.vy[1]!=null?v.vy[1]:'')+'" placeholder="∞"></div><div class="fl" style="margin:0"><span>Couleur des séismes</span><select data-b="v.colorMode"><option value="depth"'+(v.colorMode==='depth'?' selected':'')+'>Profondeur</option><option value="ctx"'+(v.colorMode==='ctx'?' selected':'')+'>Contexte</option></select></div></div>';
+  h+='<div class="fl"><span>Mode Live</span><label class="ck"><input type="checkbox" data-c="live"'+((v.live&&v.live.on)?' checked':'')+'> Activer le Live au départ</label></div>';
+  return h;
+}
+function tPass(st){
+  var p=st.pass||(st.pass={answer:'correct',score:0,tries:0,layers:[]}),h='<div class="msg" style="margin-bottom:8px">Condition pour que l\'élève puisse passer à la question suivante.</div>';
+  var modes=[['none','Aucune réponse requise'],['sent','Répondre, juste ou faux'],['correct',st.type==='text'?'Rédaction envoyée avec une note minimale':'Bonne réponse']];
+  h+='<div class="fl"><span>Réponse</span>'+modes.map(function(m){return '<label class="ck"><input type="radio" name="pmode" data-c="pmode" data-v="'+m[0]+'"'+(p.answer===m[0]?' checked':'')+'> '+m[1]+'</label>'}).join('')+'</div>';
+  if(st.type==='text'&&p.answer==='correct'&&!st.ai)h+='<div class="fl" style="max-width:200px"><span>Note minimale /20</span><input type="number" min="0" max="20" step="0.5" data-b="st.pass.score" data-t="n" value="'+(p.score||0)+'"></div>';
+  if(st.type==='text'&&st.ai&&p.answer==='correct')h+='<div class="msg">Avec la correction IA, l\'élève passe dès l\'envoi : la note arrive ensuite.</div>';
+  h+='<div class="fl" style="max-width:260px"><span>Débloquer quand même après N essais (0 = jamais)</span><input type="number" min="0" max="20" data-b="st.pass.tries" data-t="n" value="'+(p.tries||0)+'"></div>';
+  h+='<div class="fl"><span>Couches à afficher sur la carte pour continuer</span>'+LAYERS.map(function(l){return '<label class="ck"><input type="checkbox" data-c="pl" data-k="'+l[0]+'"'+((p.layers||[]).indexOf(l[0])>=0?' checked':'')+'> '+l[1]+'</label>'}).join('')+'</div>';
+  var parts=[];
+  parts.push(p.answer==='none'?'aucune réponse n\'est exigée':p.answer==='sent'?'l\'élève a répondu':st.type==='text'?(st.ai?'la rédaction est envoyée':'la rédaction est envoyée'+(p.score>0?' avec au moins '+p.score+' / 20':'')):'la réponse est juste');
+  if(p.tries>0)parts.push('ou après '+p.tries+' essais');
+  var lay=(p.layers||[]).map(function(k){return (A.LAYER_LABEL[k]||k).toLowerCase()});
+  h+='<div class="sum">L\'élève passe à la suite quand '+parts.join(' ')+(lay.length?', et que ces couches sont affichées : '+lay.join(', '):'')+'.</div>';
+  return h;
+}
+function consField(t){
+  var st=stEd();if(!st)return;var c=t.dataset.c,v=st.view,p=st.pass,k=st.cons;
+  if(c==='ok'){st.ok=+t.dataset.i;save();renderBody();return}
+  if(c==='ctext'){save();renderBody();return}
+  if(c==='qy-on'){k.qy=t.checked?[1960,2026]:null;save();renderBody();return}
+  if(c==='qy0'||c==='qy1'){var i=c==='qy0'?0:1;k.qy=k.qy||[1960,2026];k.qy[i]=Math.max(1960,Math.min(2026,+t.value||k.qy[i]));if(k.qy[0]>k.qy[1])k.qy=[k.qy[1],k.qy[0]];save();renderBody();return}
+  if(c==='vy-on'){k.vy=t.checked?[-10000,2026]:null;save();renderBody();return}
+  if(c==='vy0'||c==='vy1'){var j=c==='vy0'?0:1;k.vy=k.vy||[-10000,2026];k.vy[j]=Math.max(-10000,Math.min(2026,t.value===''?k.vy[j]:+t.value));if(k.vy[0]>k.vy[1])k.vy=[k.vy[1],k.vy[0]];save();renderBody();return}
+  if(c==='amag'){k.amag=t.value?+t.value:null;save();return}
+  if(c==='minmag'){k.minmag=t.value===''?null:Math.max(0,Math.min(8,+t.value));save();return}
+  if(c==='view-on'){st.view=t.checked?(st.view||A.captureView()):null;save();renderBody();return}
+  if(!v&&/^(lon|lat|vl|y0|y1|vy0v|vy1v|live)$/.test(c))return;
+  if(c==='lon'){v.rot=v.rot||[0,-15];v.rot[0]=t.value===''?v.rot[0]:-(+t.value);save();return}
+  if(c==='lat'){v.rot=v.rot||[0,-15];v.rot[1]=t.value===''?v.rot[1]:-(+t.value);save();return}
+  if(c==='vl'){v.layers=v.layers||{};v.layers[t.dataset.k]=t.checked;save();return}
+  if(c==='y0'||c==='y1'){var a=$('[data-c=y0]').value,b=$('[data-c=y1]').value;v.y=(a===''&&b==='')?null:[a===''?2011:+a,b===''?(a===''?2011:+a):+b];save();return}
+  if(c==='vy0v'||c==='vy1v'){var x=$('[data-c=vy0v]').value,y=$('[data-c=vy1v]').value;v.vy=[x===''?null:+x,y===''?null:+y];save();return}
+  if(c==='live'){v.live={on:t.checked,span:(v.live&&v.live.span)||3};save();return}
+  if(c==='pmode'){p.answer=t.dataset.v;save();renderBody();return}
+  if(c==='pl'){p.layers=p.layers||[];var ix=p.layers.indexOf(t.dataset.k);if(t.checked&&ix<0)p.layers.push(t.dataset.k);if(!t.checked&&ix>=0)p.layers.splice(ix,1);save();renderBody();return}
+}
+function exportScen(sc){return JSON.stringify({type:'scenario',version:1,scenario:sc},null,1)}
+function importScen(text){
+  try{var o=JSON.parse(text);var sc=o.scenario||o;if(!sc||!Array.isArray(sc.steps))return 'Fichier de scénario non reconnu.';
+    sc=clone(sc);sc.id=uid('sc-');sc.title=sc.title||'Scénario importé';sc.steps.forEach(function(s){s.id=s.id||uid('q');['menu','cons','pass'].forEach(function(k){if(!s[k])s[k]=k==='pass'?{answer:'correct',score:0,tries:0,layers:[]}:k==='cons'?{qy:null,vy:null,amag:null,minmag:null}:{}});['opts','fb','hints'].forEach(function(k){if(!Array.isArray(s[k]))s[k]=['','','']})});
+    adm.scens.push(sc);save();ST.view='list';renderBody();return true}
+  catch(e){return 'JSON invalide.'}
+}
+function scenAct(a,b){
+  var id=b.dataset.id,i=+b.dataset.i,sc=scEd(),st=stEd();
+  switch(a){
+    case 'sc-new':var n={id:uid('sc-'),title:'Nouveau scénario',intro:'',steps:[newStep()]};adm.scens.push(n);save();ST.sid=n.id;ST.si=0;ST.sub='content';ST.view='edit';renderBody();return true;
+    case 'sc-import':askText('Importer un scénario','Colle le JSON exporté depuis cette page.',importScen);return true;
+    case 'sc-activate':adm.active=id;save();renderBody();return true;
+    case 'sc-edit':ST.sid=id;ST.si=0;ST.sub='content';ST.view='edit';renderBody();return true;
+    case 'sc-preview':A.preview(id||sc.id,i||0,null);$('#edbar-cap').hidden=true;return true;
+    case 'sc-back':ST.view='list';renderBody();return true;
+    case 'sc-dup':var o=clone(adm.scens.filter(function(s){return s.id===id})[0]);o.id=uid('sc-');o.title=o.title+' (copie)';o.code='';adm.scens.push(o);save();renderBody();return true;
+    case 'sc-export':var s0=adm.scens.filter(function(s){return s.id===id})[0];showText('Export du scénario « '+s0.title+' »',exportScen(s0),'scenario.json');return true;
+    case 'sc-del':twoStep(b,'Confirmer ?',function(){adm.scens=adm.scens.filter(function(s){return s.id!==id});delete adm.ov.s[id];if(adm.active===id)adm.active=adm.scens[0].id;save();renderBody()});return true;
+    case 'st-add':sc.steps.push(newStep());ST.si=sc.steps.length-1;ST.sub='content';save();renderBody();return true;
+    case 'st-sel':ST.si=i;renderBody();return true;
+    case 'st-up':if(i>0){var t=sc.steps[i];sc.steps[i]=sc.steps[i-1];sc.steps[i-1]=t;ST.si=i-1;save();renderBody()}return true;
+    case 'st-down':if(i<sc.steps.length-1){var t2=sc.steps[i];sc.steps[i]=sc.steps[i+1];sc.steps[i+1]=t2;ST.si=i+1;save();renderBody()}return true;
+    case 'st-dup':var c=clone(sc.steps[i]);c.id=uid('q');c.title=c.title+' (copie)';sc.steps.splice(i+1,0,c);ST.si=i+1;save();renderBody();return true;
+    case 'st-del':twoStep(b,'Sûr ?',function(){sc.steps.splice(i,1);ST.si=Math.max(0,Math.min(ST.si,sc.steps.length-1));save();renderBody()});return true;
+    case 'crit-add':st.crit.push({label:'Nouveau critère',pts:5,need:1,kw:[],hint:''});save();renderBody();return true;
+    case 'crit-del':st.crit.splice(i,1);save();renderBody();return true;
+    case 'mi':if(b.dataset.v==='show')delete st.menu[b.dataset.k];else st.menu[b.dataset.k]=b.dataset.v;save();return true;
+    case 'mi-all':st.menu={};if(b.dataset.v!=='show')MI.forEach(function(g){g[1].forEach(function(it){st.menu[it[0]]=b.dataset.v})});save();renderBody();return true;
+    case 'view-capture':A.preview(sc.id,ST.si,function(v){st.view=v;save()});$('#edbar-cap').hidden=false;return true;
+    case 'view-preview':A.preview(sc.id,ST.si,null);$('#edbar-cap').hidden=true;return true;
+  }
+  return false;
+}
+$('#edbar-back').onclick=function(){A.endPreview();renderBody()};
+$('#edbar-cap').onclick=function(){var pv=A.PVget();if(pv&&pv.onCapture)pv.onCapture(A.captureView());A.endPreview();renderBody()};
+
+/* ---------- données (séismes, volcans, marqueurs) ---------- */
+var DT={y0:2011,y1:2011,mag:7,q:'',mod:false,page:0,cache:{},view:[],sel:null,edit:null,pick:false,proj:null,msg:''};
+var PS=100;
+function curOv(){
+  if(ST.dscope==='g')return adm.ov.g;
+  var o=adm.ov.s[ST.dscope];if(!o)o=adm.ov.s[ST.dscope]=A.emptyOv();
+  ['q','v'].forEach(function(k){o[k]=o[k]||{}});['aq','av','mk'].forEach(function(k){o[k]=o[k]||[]});return o;
+}
+function ovList(){var l=[adm.ov.g];if(ST.dscope!=='g')l.push(curOv());return l}
+function patchOf(kind,key){var p=null;ovList().forEach(function(o){var x=(kind==='q'?o.q:o.v)[key];if(x)p=Object.assign(p||{},x)});return p}
+function pad2(n){return (n<10?'0':'')+n}
+function fmtD(t){return new Date(t).toISOString().slice(0,16).replace('T',' ')}
+function parseD(s){
+  var m=/^\s*(-?\d{4})-(\d\d)-(\d\d)(?:[ T](\d\d):(\d\d))?/.exec(String(s||''));
+  if(!m)return null;var t=Date.UTC(+m[1],+m[2]-1,+m[3],+(m[4]||0),+(m[5]||0));return isNaN(t)?null:t;
+}
+function num(v){if(v===''||v==null)return null;var n=parseFloat(String(v).replace(',','.'));return isNaN(n)?null:n}
+
+var QF=[['date','Date UTC (AAAA-MM-JJ HH:MM)','text'],['lon','Longitude','number'],['lat','Latitude','number'],['depth','Profondeur (km)','number'],['mag','Magnitude','number'],['place','Lieu','text'],['cls','Contexte tectonique','cls'],['note','Note (affichée dans la fiche)','area']];
+var VF=[['name','Nom','text'],['country','Pays','text'],['lat','Latitude','number'],['lon','Longitude','number'],['type','Type','text'],['cat','Catégorie','cat'],['last','Dernière éruption (année, négatif = av. J.-C.)','number'],['note','Note (affichée dans la fiche)','area']];
+var MF=[['name','Nom','text'],['lat','Latitude','number'],['lon','Longitude','number'],['note','Texte affiché dans la fiche','area']];
+
+/* ----- construction de la liste ----- */
+function loadYears(){
+  var a=Math.max(1960,Math.min(2026,DT.y0|0)),b=Math.max(a,Math.min(2026,DT.y1|0));
+  if(b-a>9)b=a+9;DT.y0=a;DT.y1=b;
+  var ps=[];
+  for(var y=a;y<=b;y++)(function(y){if(!DT.cache[y])ps.push(A.getJSON('data/arch_'+y+'.json').then(function(r){DT.cache[y]=A.rowsToQuakes(r).map(function(q){q.key=A.qKey(q);return q})}).catch(function(){DT.cache[y]=[]}))})(y);
+  return Promise.all(ps);
+}
+function effQ(b){
+  var p=patchOf('q',b.key),e=Object.assign({},b);e.cls=null;
+  if(p){['lon','lat','depth','mag','t','place','note','cls'].forEach(function(f){if(p[f]!==undefined&&p[f]!==null)e[f]=p[f]})}
+  return {key:b.key,kind:'q',e:e,mod:!!p&&Object.keys(p).some(function(k){return k!=='hidden'}),hid:!!(p&&p.hidden),add:false};
+}
+function buildView(){
+  var rows=[],qq=DT.q.trim().toLowerCase();
+  if(ST.dtab==='q'){
+    for(var y=DT.y0;y<=DT.y1;y++)(DT.cache[y]||[]).forEach(function(b){if(b.mag>=DT.mag)rows.push(effQ(b))});
+    rows.sort(function(a,b){return b.e.mag-a.e.mag||b.e.t-a.e.t});
+    curOv().aq.forEach(function(a){rows.unshift({key:'A'+a.id,kind:'q',e:a,mod:false,hid:!!a.hidden,add:true})});
+    if(qq)rows=rows.filter(function(r){return String(r.e.place||'').toLowerCase().indexOf(qq)>=0});
+  }else if(ST.dtab==='v'){
+    (A.S.volcBase||[]).forEach(function(b){
+      var p=patchOf('v',b.num),e=Object.assign({},b);
+      if(p)['name','country','lat','lon','type','cat','last','note'].forEach(function(f){if(p[f]!==undefined&&p[f]!==null)e[f]=p[f]});
+      rows.push({key:String(b.num),kind:'v',e:e,mod:!!p&&Object.keys(p).some(function(k){return k!=='hidden'}),hid:!!(p&&p.hidden),add:false});
+    });
+    curOv().av.forEach(function(a){rows.unshift({key:'A'+a.id,kind:'v',e:a,mod:false,hid:!!a.hidden,add:true})});
+    if(qq)rows=rows.filter(function(r){return (String(r.e.name||'')+' '+String(r.e.country||'')).toLowerCase().indexOf(qq)>=0});
+  }else{
+    curOv().mk.forEach(function(a){rows.push({key:'A'+a.id,kind:'m',e:a,mod:false,hid:!!a.hidden,add:true})});
+    if(qq)rows=rows.filter(function(r){return String(r.e.name||'').toLowerCase().indexOf(qq)>=0});
+  }
+  if(DT.mod)rows=rows.filter(function(r){return r.mod||r.add||r.hid});
+  DT.view=rows;
+}
+
+/* ----- rendu ----- */
+function dataHtml(){
+  var tabs=[['q','Séismes'],['v','Volcans'],['m','Marqueurs']];
+  var h='<div class="adm-wrap"><div class="adm-h"><h3>Données</h3><div class="subtabs">'+tabs.map(function(t){return '<button data-act="dt-tab" data-v="'+t[0]+'"'+(ST.dtab===t[0]?' class="on"':'')+'>'+t[1]+'</button>'}).join('')+'</div></div>';
+  h+='<div class="msg">Les originaux ne sont jamais modifiés : chaque correction est une surcharge, avec « Rétablir l\'original ». Les changements sont visibles dans l\'app après « Retour à l\'app ».</div>';
+  h+='<div class="card"><div class="row2"><div class="fl" style="margin:0"><span>Portée des modifications</span><select data-d="scope"><option value="g"'+(ST.dscope==='g'?' selected':'')+'>Global (tous les scénarios)</option>'+adm.scens.map(function(s){return '<option value="'+s.id+'"'+(ST.dscope===s.id?' selected':'')+'>Seulement : '+esc(s.title)+'</option>'}).join('')+'</select></div><div class="fl" style="margin:0"><span>Recherche</span><input type="search" data-d="q" value="'+esc(DT.q)+'" placeholder="'+(ST.dtab==='v'?'Nom ou pays':ST.dtab==='q'?'Lieu':'Nom')+'"></div></div>';
+  if(ST.dtab==='q'){
+    h+='<div class="row2" style="margin-top:10px"><div class="fl" style="margin:0"><span>De (1960–2026, 10 ans max)</span><input type="number" min="1960" max="2026" data-d="y0" value="'+DT.y0+'"></div><div class="fl" style="margin:0"><span>à</span><input type="number" min="1960" max="2026" data-d="y1" value="'+DT.y1+'"></div><div class="fl" style="margin:0"><span>Magnitude minimale</span><select data-d="mag">'+[5,6,7,8].map(function(m){return '<option value="'+m+'"'+(DT.mag===m?' selected':'')+'>M ≥ '+m+'</option>'}).join('')+'</select></div></div>';
+  }
+  h+='<div class="adm-h" style="margin-top:10px"><label class="ck"><input type="checkbox" data-d="mod"'+(DT.mod?' checked':'')+'> Seulement les lignes modifiées / masquées / ajoutées</label><span style="flex:1"></span><button class="sb pri" data-act="dt-new">+ Ajouter</button><button class="sb" data-act="dt-export">Export CSV</button><button class="sb" data-act="dt-import">Import CSV</button></div></div>';
+  h+='<div class="dsplit"><div class="card" style="padding:0"><div id="dt-count" class="msg" style="padding:8px 10px"></div><div id="dt-tbl" style="max-height:62vh;overflow:auto"></div></div><div><canvas class="mm" id="dt-map"></canvas><div class="msg" id="dt-hint" style="margin:4px 0 8px"></div><div id="dt-form"></div></div></div></div>';
+  return h;
+}
+function dataMount(){
+  var p=(ST.dtab==='q')?loadYears():Promise.resolve();
+  $('#dt-tbl').innerHTML='<div class="msg" style="padding:10px">Chargement…</div>';
+  p.then(function(){if(!$('#dt-tbl'))return;DT.page=0;refresh();renderForm()});
+}
+function refresh(){
+  if(!$('#dt-tbl'))return;
+  buildView();
+  var n=DT.view.length,pages=Math.max(1,Math.ceil(n/PS));DT.page=Math.min(DT.page,pages-1);
+  var rows=DT.view.slice(DT.page*PS,DT.page*PS+PS),h='<table class="dtable"><tr>';
+  var heads=ST.dtab==='q'?['Date (UTC)','Lieu','M','Prof.','']:ST.dtab==='v'?['Nom','Pays','Type','Dern. éruption','']:['Nom','Latitude','Longitude',''];
+  h+=heads.map(function(x){return '<th>'+x+'</th>'}).join('')+'</tr>';
+  rows.forEach(function(r,i){
+    var e=r.e,st=r.add?'Ajouté':r.hid?'Masqué':r.mod?'Modifié':'',idx=DT.page*PS+i;
+    h+='<tr class="'+(DT.sel===r.kind+r.key?'sel ':'')+(r.hid?'hid':'')+'" data-act="dt-sel" data-i="'+idx+'" style="cursor:pointer">';
+    if(r.kind==='q')h+='<td>'+fmtD(e.t)+'</td><td class="pl">'+esc(e.place||'')+'</td><td>'+(+e.mag).toFixed(1)+'</td><td>'+Math.round(e.depth||0)+'</td>';
+    else if(r.kind==='v')h+='<td class="pl">'+esc(e.name||'')+'</td><td>'+esc(e.country||'')+'</td><td>'+esc(e.type||'')+'</td><td>'+(e.last==null?'—':e.last)+'</td>';
+    else h+='<td class="pl">'+esc(e.name||'')+'</td><td>'+(+e.lat).toFixed(2)+'</td><td>'+(+e.lon).toFixed(2)+'</td>';
+    h+='<td><span class="msg">'+st+'</span></td></tr>';
+  });
+  h+='</table>';
+  if(!rows.length)h='<div class="msg" style="padding:10px">Aucune ligne.</div>';
+  $('#dt-tbl').innerHTML=h;
+  var c=$('#dt-count');
+  c.innerHTML=n+' ligne'+(n>1?'s':'')+(n>PS?' · page '+(DT.page+1)+' / '+pages+' <button class="sb" data-act="dt-page" data-v="-1">‹</button><button class="sb" data-act="dt-page" data-v="1">›</button>':'')+(DT.msg?' · <b>'+esc(DT.msg)+'</b>':'');
+  drawMap();
+}
+function rowBySel(){var r=DT.view.filter(function(x){return DT.sel===x.kind+x.key})[0];return r||null}
+function selectRow(i){
+  var r=DT.view[i];if(!r)return;DT.sel=r.kind+r.key;
+  var e=Object.assign({},r.e);
+  if(r.kind==='q')e.date=fmtD(e.t);
+  DT.edit={kind:r.kind,key:r.key,add:r.add,vals:e,hid:r.hid,isNew:false};DT.pick=false;
+  refresh();renderForm();
+}
+function newRow(){
+  var k=ST.dtab,e;
+  if(k==='q')e={date:fmtD(Date.now()),lon:0,lat:0,depth:10,mag:6,place:'',cls:'',note:''};
+  else if(k==='v')e={name:'',country:'',lat:0,lon:0,type:'',cat:'unknown',last:'',note:''};
+  else e={name:'',lat:0,lon:0,note:''};
+  DT.edit={kind:k,key:null,add:true,vals:e,hid:false,isNew:true};DT.sel=null;DT.pick=false;refresh();renderForm();
+}
+function fieldsOf(k){return k==='q'?QF:k==='v'?VF:MF}
+function renderForm(){
+  var f=$('#dt-form');if(!f)return;
+  var ed=DT.edit;
+  if(!ed||ed.kind!==ST.dtab){f.innerHTML='<div class="msg">Clique une ligne ou un point de la carte pour le modifier, ou « + Ajouter ».</div>';return}
+  var h='<div class="card"><h4 style="margin:0 0 8px">'+(ed.isNew?'Nouvel élément':ed.add?'Élément ajouté':'Corriger')+'</h4>';
+  fieldsOf(ed.kind).forEach(function(d){
+    var v=ed.vals[d[0]];if(v==null)v='';
+    h+='<div class="fl" style="margin-top:6px"><span>'+d[1]+'</span>';
+    if(d[2]==='area')h+='<textarea data-d="f" data-f="'+d[0]+'">'+esc(v)+'</textarea>';
+    else if(d[2]==='cls')h+='<select data-d="f" data-f="cls"><option value="">Automatique</option>'+Object.keys(A.CLS).map(function(k){return '<option value="'+k+'"'+(v===k?' selected':'')+'>'+esc(A.CLS[k])+'</option>'}).join('')+'</select>';
+    else if(d[2]==='cat'){var cats={};(A.S.volcBase||[]).forEach(function(b){cats[b.cat]=1});cats[v]=1;h+='<select data-d="f" data-f="cat">'+Object.keys(cats).map(function(k){return '<option'+(v===k?' selected':'')+'>'+esc(k)+'</option>'}).join('')+'</select>'}
+    else h+='<input type="'+(d[2]==='number'?'text':'text')+'" '+(d[2]==='number'?'inputmode="decimal" ':'')+'data-d="f" data-f="'+d[0]+'" value="'+esc(v)+'">';
+    h+='</div>';
+  });
+  h+='<label class="ck" style="margin-top:8px"><input type="checkbox" data-d="f" data-f="hidden"'+(ed.hid?' checked':'')+'> Masquer (ne s\'affiche plus pour les élèves)</label>';
+  h+='<div class="adm-h" style="margin-top:10px"><button class="sb'+(DT.pick?' pri':'')+'" data-act="dt-pick">'+(DT.pick?'Clique sur la carte…':'Choisir sur la carte')+'</button><span style="flex:1"></span>';
+  if(!ed.isNew&&ed.add)h+='<button class="sb dng" data-act="dt-del">Supprimer</button>';
+  if(!ed.isNew&&!ed.add&&(ed.kind==='q'?curOv().q[ed.key]:curOv().v[ed.key]))h+='<button class="sb" data-act="dt-restore">Rétablir l\'original</button>';
+  h+='<button class="sb pri" data-act="dt-save">Enregistrer</button></div><div class="msg" id="dt-fmsg" style="margin-top:6px"></div></div>';
+  f.innerHTML=h;
+}
+function fmsg(t,bad){var m=$('#dt-fmsg');if(m){m.textContent=t;m.className='msg '+(bad?'bad':'ok')}}
+
+/* ----- mini-carte ----- */
+function drawMap(){
+  var cv=$('#dt-map');if(!cv)return;
+  var w=cv.clientWidth||400,h=Math.round(w/2),dpr=window.devicePixelRatio||1;
+  cv.width=w*dpr;cv.height=h*dpr;var c=cv.getContext('2d');c.setTransform(dpr,0,0,dpr,0,0);
+  var p=d3.geoEquirectangular().rotate([-170,0]).fitExtent([[0,0],[w,h]],{type:'Sphere'});DT.proj=p;
+  var path=d3.geoPath(p,c);
+  c.clearRect(0,0,w,h);
+  if(A.S.land){c.beginPath();path(A.S.land);c.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--land')||'#cbd5d0';c.fill()}
+  var mod=getComputedStyle(document.documentElement).getPropertyValue('--accent')||'#c0392b';
+  DT.view.forEach(function(r){
+    var q=p([+r.e.lon,+r.e.lat]);if(!q)return;
+    var sel=DT.sel===r.kind+r.key;
+    c.beginPath();c.arc(q[0],q[1],sel?6:(r.kind==='q'?1.2+Math.max(0,(r.e.mag-5))*.9:2.2),0,6.283);
+    c.fillStyle=sel?mod:r.hid?'rgba(120,120,120,.4)':(r.add||r.mod)?'#e08a00':(r.kind==='v'?'#b5362a':'#2a6fb5');
+    c.globalAlpha=sel?1:.7;c.fill();c.globalAlpha=1;
+    if(sel){c.lineWidth=2;c.strokeStyle='#fff';c.stroke()}
+  });
+  $('#dt-hint').textContent=DT.pick?'Clique sur la carte pour fixer la position.':'Orange = modifié ou ajouté · gris = masqué.';
+}
+document.addEventListener('click',function(e){
+  var cv=e.target;if(!cv||cv.id!=='dt-map'||!DT.proj)return;
+  var r=cv.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,ll=DT.proj.invert([x,y]);
+  if(!ll)return;
+  if(DT.pick&&DT.edit){
+    DT.edit.vals.lon=+ll[0].toFixed(3);DT.edit.vals.lat=+ll[1].toFixed(3);DT.pick=false;renderForm();drawMap();return;
+  }
+  var best=-1,bd=14*14;
+  DT.view.forEach(function(row,i){var q=DT.proj([+row.e.lon,+row.e.lat]);if(!q)return;var d=(q[0]-x)*(q[0]-x)+(q[1]-y)*(q[1]-y);if(d<bd){bd=d;best=i}});
+  if(best>=0){selectRow(best);var tr=$('#dt-tbl tr.sel');if(tr&&tr.scrollIntoView)tr.scrollIntoView({block:'nearest'})}
+});
+window.addEventListener('resize',function(){if(!$('#adm').hidden&&ST.tab==='data')drawMap()});
+
+/* ----- champs & actions ----- */
+function dataField(t,e){
+  var d=t.dataset.d;
+  if(d==='f'){
+    if(!DT.edit)return;var f=t.dataset.f;
+    if(f==='hidden')DT.edit.hid=t.checked;else DT.edit.vals[f]=t.value;
+    return;
+  }
+  if(d==='q'){DT.q=t.value;DT.page=0;refresh();return}
+  if(e.type!=='change')return;
+  if(d==='scope'){ST.dscope=t.value;DT.edit=null;DT.sel=null;refresh();renderForm();return}
+  if(d==='mod'){DT.mod=t.checked;DT.page=0;refresh();return}
+  if(d==='mag'){DT.mag=+t.value;DT.page=0;refresh();return}
+  if(d==='y0'||d==='y1'){
+    var v=Math.round(+t.value);if(isNaN(v))return;
+    if(d==='y0'){DT.y0=v;if(DT.y1<v)DT.y1=v}else{DT.y1=v;if(DT.y0>v)DT.y0=v}
+    DT.edit=null;DT.sel=null;renderBody();
+  }
+}
+function readVals(ed){
+  var v=ed.vals,out={},k=ed.kind;
+  if(k==='q'){
+    var t=parseD(v.date);if(t==null)return 'Date invalide (AAAA-MM-JJ HH:MM).';
+    var lon=num(v.lon),lat=num(v.lat),mag=num(v.mag),dep=num(v.depth);
+    if(lon==null||lat==null||lon<-180||lon>180||lat<-90||lat>90)return 'Latitude / longitude invalides.';
+    if(mag==null||mag<0||mag>10)return 'Magnitude invalide.';
+    out={t:t,lon:lon,lat:lat,mag:mag,depth:Math.max(0,dep==null?0:dep),place:String(v.place||'').trim(),cls:v.cls||null,note:String(v.note||'').trim()};
+  }else if(k==='v'){
+    var lo=num(v.lon),la=num(v.lat);
+    if(lo==null||la==null||lo<-180||lo>180||la<-90||la>90)return 'Latitude / longitude invalides.';
+    if(!String(v.name||'').trim())return 'Le nom est obligatoire.';
+    var ls=num(v.last);
+    out={name:String(v.name).trim(),country:String(v.country||'').trim(),lat:la,lon:lo,type:String(v.type||'').trim(),cat:v.cat||'unknown',last:ls,note:String(v.note||'').trim()};
+  }else{
+    var lo2=num(v.lon),la2=num(v.lat);
+    if(lo2==null||la2==null||lo2<-180||lo2>180||la2<-90||la2>90)return 'Latitude / longitude invalides.';
+    if(!String(v.name||'').trim())return 'Le nom est obligatoire.';
+    out={name:String(v.name).trim(),lat:la2,lon:lo2,note:String(v.note||'').trim()};
+  }
+  return out;
+}
+function baseOf(ed){
+  if(ed.kind==='q'){for(var y=DT.y0;y<=DT.y1;y++){var l=DT.cache[y]||[];for(var i=0;i<l.length;i++)if(l[i].key===ed.key)return l[i]}}
+  else if(ed.kind==='v'){return (A.S.volcBase||[]).filter(function(b){return String(b.num)===ed.key})[0]}
+  return null;
+}
+function saveEdit(){
+  var ed=DT.edit;if(!ed)return;
+  var o=readVals(ed);if(typeof o==='string'){fmsg(o,true);return}
+  var ov=curOv();
+  if(ed.add||ed.isNew){
+    var list=ed.kind==='q'?ov.aq:ed.kind==='v'?ov.av:ov.mk,rec;
+    if(ed.isNew){rec={id:uid('')};list.push(rec)}else rec=list.filter(function(a){return 'A'+a.id===ed.key})[0];
+    if(!rec){fmsg('Introuvable.',true);return}
+    Object.assign(rec,o);rec.hidden=!!ed.hid;ed.key='A'+rec.id;ed.isNew=false;ed.add=true;DT.sel=ed.kind+ed.key;
+  }else{
+    var b=baseOf(ed);if(!b){fmsg('Original introuvable.',true);return}
+    var p={},store=ed.kind==='q'?ov.q:ov.v,keys=ed.kind==='q'?['lon','lat','depth','mag','t','place']:['name','country','lat','lon','type','cat','last'];
+    keys.forEach(function(f){var a=o[f],c=b[f];if(a!==c&&!(a==null&&c==null)&&!(typeof a==='number'&&typeof c==='number'&&Math.abs(a-c)<1e-9))p[f]=a});
+    if(o.note)p.note=o.note;
+    if(ed.kind==='q'&&o.cls)p.cls=o.cls;
+    if(ed.hid)p.hidden=true;
+    if(Object.keys(p).length)store[ed.key]=p;else delete store[ed.key];
+    if(ed.kind==='v'&&p.last===undefined&&b.last==null&&o.last==null){}
+  }
+  save();DT.msg='Enregistré';refresh();selectAfterSave();fmsg('Enregistré.');
+}
+function selectAfterSave(){
+  var i=-1;DT.view.forEach(function(r,k){if(DT.sel===r.kind+r.key)i=k});
+  if(i>=0){var r=DT.view[i],e=Object.assign({},r.e);if(r.kind==='q')e.date=fmtD(e.t);DT.edit={kind:r.kind,key:r.key,add:r.add,vals:e,hid:r.hid,isNew:false};refresh()}
+  renderForm();
+}
+
+/* ----- CSV ----- */
+function csvCell(v){if(v==null)return '';v=String(v);return /[",\n;]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}
+function parseCSV(text){
+  var rows=[],row=[],cur='',q=false,i=0,sep=text.split('\n')[0].indexOf(';')>=0&&text.split('\n')[0].indexOf(',')<0?';':',';
+  text=text.replace(/^﻿/,'');
+  for(;i<text.length;i++){var ch=text[i];
+    if(q){if(ch==='"'){if(text[i+1]==='"'){cur+='"';i++}else q=false}else cur+=ch}
+    else if(ch==='"')q=true;
+    else if(ch===sep){row.push(cur);cur=''}
+    else if(ch==='\n'||ch==='\r'){if(ch==='\r'&&text[i+1]==='\n')i++;row.push(cur);cur='';if(row.length>1||row[0]!=='')rows.push(row);row=[]}
+    else cur+=ch;
+  }
+  if(cur!==''||row.length){row.push(cur);rows.push(row)}
+  return rows;
+}
+function exportCSV(){
+  var ov=curOv(),lines,k=ST.dtab;
+  if(k==='q'){
+    lines=['key,hidden,lon,lat,depth,mag,date,place,cls,note'];
+    Object.keys(ov.q).forEach(function(key){var p=ov.q[key];lines.push([key,p.hidden?1:'',p.lon,p.lat,p.depth,p.mag,p.t!=null?fmtD(p.t):'',p.place,p.cls,p.note].map(csvCell).join(','))});
+    ov.aq.forEach(function(a){lines.push(['A'+a.id,a.hidden?1:'',a.lon,a.lat,a.depth,a.mag,fmtD(a.t),a.place,a.cls,a.note].map(csvCell).join(','))});
+  }else if(k==='v'){
+    lines=['num,hidden,name,country,lat,lon,type,cat,last,note'];
+    Object.keys(ov.v).forEach(function(key){var p=ov.v[key];lines.push([key,p.hidden?1:'',p.name,p.country,p.lat,p.lon,p.type,p.cat,p.last,p.note].map(csvCell).join(','))});
+    ov.av.forEach(function(a){lines.push(['A'+a.id,a.hidden?1:'',a.name,a.country,a.lat,a.lon,a.type,a.cat,a.last,a.note].map(csvCell).join(','))});
+  }else{
+    lines=['id,hidden,name,lat,lon,note'];
+    ov.mk.forEach(function(a){lines.push(['A'+a.id,a.hidden?1:'',a.name,a.lat,a.lon,a.note].map(csvCell).join(','))});
+  }
+  showText('Export CSV ('+(k==='q'?'séismes':k==='v'?'volcans':'marqueurs')+', portée '+(ST.dscope==='g'?'globale':'scénario')+')',lines.join('\n'),'donnees-'+k+'.csv');
+}
+function importCSV(text){
+  var rows=parseCSV(text);if(rows.length<2)return 'Fichier vide.';
+  var hd=rows[0].map(function(x){return x.trim().toLowerCase()}),ov=curOv(),k=ST.dtab,n=0;
+  function col(r,name){var i=hd.indexOf(name);return i<0?undefined:r[i]}
+  var kc=k==='v'?'num':k==='m'?'id':'key';
+  if(hd.indexOf(kc)<0)return 'Colonne « '+kc+' » manquante.';
+  for(var i=1;i<rows.length;i++){
+    var r=rows[i],key=String(col(r,kc)||'').trim();if(!key&&k!=='m'&&k!=='v')continue;
+    var hid=/^(1|true|oui|x)$/i.test(String(col(r,'hidden')||'').trim());
+    function nn(name){var v=col(r,name);return (v===undefined||String(v).trim()==='')?undefined:num(v)}
+    function ss(name){var v=col(r,name);return (v===undefined||String(v).trim()==='')?undefined:String(v)}
+    if(k==='q'){
+      var p={};var t=ss('date')!==undefined?parseD(ss('date')):undefined;
+      ['lon','lat','depth','mag'].forEach(function(f){var v=nn(f);if(v!==undefined&&v!==null)p[f]=v});
+      if(t!=null)p.t=t;if(ss('place')!==undefined)p.place=ss('place');if(ss('cls')!==undefined)p.cls=ss('cls');if(ss('note')!==undefined)p.note=ss('note');
+      if(hid)p.hidden=true;
+      if(key.charAt(0)==='A'){
+        var id=key.slice(1),rec=ov.aq.filter(function(a){return String(a.id)===id})[0];
+        if(!rec){if(p.t==null||p.lon==null||p.lat==null||p.mag==null)continue;rec={id:id};ov.aq.push(rec)}
+        Object.assign(rec,p);rec.depth=rec.depth||0;rec.hidden=!!hid;n++;
+      }else{if(Object.keys(p).length){ov.q[key]=p;n++}}
+    }else if(k==='v'){
+      var pv={};['lat','lon','last'].forEach(function(f){var v=nn(f);if(v!==undefined&&v!==null)pv[f]=v});
+      ['name','country','type','cat','note'].forEach(function(f){var v=ss(f);if(v!==undefined)pv[f]=v});
+      if(hid)pv.hidden=true;
+      if(!key||key.charAt(0)==='A'){
+        var id2=key?key.slice(1):uid(''),rec2=ov.av.filter(function(a){return String(a.id)===id2})[0];
+        if(!rec2){if(pv.name==null||pv.lat==null||pv.lon==null)continue;rec2={id:id2};ov.av.push(rec2)}
+        Object.assign(rec2,pv);rec2.hidden=!!hid;n++;
+      }else if(Object.keys(pv).length){ov.v[key]=pv;n++}
+    }else{
+      var pm={lat:nn('lat'),lon:nn('lon'),name:ss('name'),note:ss('note')};
+      if(pm.lat==null||pm.lon==null||!pm.name)continue;
+      var id3=key?key.replace(/^A/,''):uid(''),rec3=ov.mk.filter(function(a){return String(a.id)===id3})[0];
+      if(!rec3){rec3={id:id3};ov.mk.push(rec3)}
+      Object.assign(rec3,pm);rec3.hidden=!!hid;n++;
+    }
+  }
+  save();DT.edit=null;DT.sel=null;DT.msg=n+' ligne'+(n>1?'s':'')+' importée'+(n>1?'s':'');renderBody();return true;
+}
+
+function dataAct(a,b){
+  switch(a){
+    case 'dt-tab':ST.dtab=b.dataset.v;DT.edit=null;DT.sel=null;DT.page=0;DT.msg='';renderBody();return true;
+    case 'dt-sel':selectRow(+b.dataset.i);return true;
+    case 'dt-page':DT.page=Math.max(0,DT.page+(+b.dataset.v));refresh();return true;
+    case 'dt-new':newRow();return true;
+    case 'dt-pick':if(!DT.edit)return true;DT.pick=!DT.pick;renderForm();drawMap();return true;
+    case 'dt-save':saveEdit();return true;
+    case 'dt-del':twoStep(b,'Sûr ?',function(){
+      var ed=DT.edit,ov=curOv(),list=ed.kind==='q'?ov.aq:ed.kind==='v'?ov.av:ov.mk;
+      for(var i=list.length-1;i>=0;i--)if('A'+list[i].id===ed.key)list.splice(i,1);
+      save();DT.edit=null;DT.sel=null;refresh();renderForm()});return true;
+    case 'dt-restore':var ed2=DT.edit,ov2=curOv();delete (ed2.kind==='q'?ov2.q:ov2.v)[ed2.key];save();DT.msg='Original rétabli';refresh();selectAfterSave();return true;
+    case 'dt-export':exportCSV();return true;
+    case 'dt-import':askText('Importer un CSV','Mêmes colonnes que l\'export. Les cellules vides laissent la valeur inchangée.',importCSV);return true;
+  }
+  return false;
+}
+
+/* ---------- compte ---------- */
+var ACC={msg:'',bad:false};
+function accHtml(){
+  var h='<div class="adm-wrap"><div class="adm-h"><h3>Compte et réglages</h3></div>';
+  h+='<div class="card"><h4>Code d\'accès</h4><div class="row2"><div class="fl" style="margin:0"><span>Nouveau code (4 à 8 chiffres)</span><input type="password" inputmode="numeric" id="acc-new" autocomplete="new-password" maxlength="8"></div><div class="fl" style="margin:0"><span>Confirmer</span><input type="password" inputmode="numeric" id="acc-new2" autocomplete="new-password" maxlength="8"></div></div><div class="adm-h" style="margin-top:8px"><button class="sb pri" data-act="acc-code">Changer le code</button></div><div class="msg'+(ACC.bad?' bad':' ok')+'" id="acc-msg">'+esc(ACC.msg)+'</div><div class="msg">Prototype : le code est vérifié dans le navigateur seulement. Avec PHP/MySQL, il sera vérifié côté serveur.</div></div>';
+  h+='<div class="card"><h4>Scénario actif pour la classe</h4><div class="fl" style="margin:0"><select data-a="active">'+adm.scens.map(function(s){return '<option value="'+s.id+'"'+(s.id===adm.active?' selected':'')+'>'+esc(s.title)+'</option>'}).join('')+'</select></div></div>';
+  h+='<div class="card"><h4>Correction par IA</h4><div class="fl" style="margin-top:0"><span>Fournisseur</span><select data-a="prov">'+[['mistral','Mistral'],['gemini','Gemini'],['none','Aucun (mots-clés seuls)']].map(function(o){return '<option value="'+o[0]+'"'+(adm.prov===o[0]?' selected':'')+'>'+o[1]+'</option>'}).join('')+'</select></div><label class="ck"><input type="checkbox" data-a="pause"'+(adm.pause?' checked':'')+'> Mettre en pause les corrections IA</label><div class="msg">Réglage mémorisé ; l\'appel réel à l\'IA viendra avec la version serveur.</div></div>';
+  var nA=Object.keys(A.store.answers||{}).length;
+  h+='<div class="card"><h4>Réponses des élèves</h4><div class="msg">'+nA+' réponse'+(nA>1?'s':'')+' enregistrée'+(nA>1?'s':'')+' sur cet appareil'+(A.store.bin?' (binôme '+('0'+A.store.bin).slice(-2)+')':'')+'.</div><div class="adm-h" style="margin-top:8px"><button class="sb pri" data-act="acc-ans">Exporter les réponses (CSV)</button></div><div class="msg">Notes IA : provisoires, avant vérification par l\'enseignant. Avec la version serveur, toutes les classes seront réunies ici.</div></div>';
+  h+='<div class="card"><h4>Sauvegarde</h4><div class="adm-h"><button class="sb" data-act="acc-export">Exporter tout (JSON)</button><button class="sb" data-act="acc-import">Importer</button></div><div class="msg">Contient scénarios, corrections de données et réglages, sans le code.</div></div>';
+  h+='<div class="card"><h4>Réinitialiser</h4><div class="adm-h"><button class="sb dng" data-act="acc-rs">Scénarios par défaut</button><button class="sb dng" data-act="acc-rd">Effacer les corrections de données</button><button class="sb dng" data-act="acc-ra">Effacer les réponses des élèves</button></div></div>';
+  return h+'</div>';
+}
+function accField(t){
+  var k=t.dataset.a;
+  if(k==='active'){adm.active=t.value}
+  else if(k==='prov'){adm.prov=t.value}
+  else if(k==='pause'){adm.pause=t.checked}
+  save();
+}
+function accAct(a,b){
+  function say(t,bad){ACC.msg=t;ACC.bad=!!bad;var m=$('#acc-msg');if(m){m.textContent=t;m.className='msg '+(bad?'bad':'ok')}}
+  if(a==='acc-code'){
+    var c=$('#acc-new').value,c2=$('#acc-new2').value;
+    if(!/^\d{4,8}$/.test(c)){say('Le code doit avoir 4 à 8 chiffres.',true);return}
+    if(c!==c2){say('Les deux saisies diffèrent.',true);return}
+    adm.code=c;save();$('#acc-new').value='';$('#acc-new2').value='';say('Code modifié.');return;
+  }
+  if(a==='acc-ans'){exportAnswers();return}
+  if(a==='acc-export'){var o=clone(adm);delete o.code;showText('Sauvegarde complète',JSON.stringify({type:'backup',version:1,data:o},null,1),'sauvegarde-carte.json');return}
+  if(a==='acc-import'){askText('Importer une sauvegarde','Colle le JSON exporté. Il remplace scénarios, corrections et réglages (pas le code).',function(t){
+    try{var o=JSON.parse(t);o=o.data||o;if(!Array.isArray(o.scens)||!o.scens.length)return 'Sauvegarde non reconnue.';
+      adm.scens=o.scens;adm.active=o.active&&o.scens.some(function(s){return s.id===o.active})?o.active:o.scens[0].id;
+      adm.ov.g=Object.assign(A.emptyOv(),(o.ov&&o.ov.g)||{});adm.ov.s=(o.ov&&o.ov.s)||{};
+      if(o.prov)adm.prov=o.prov;adm.pause=!!o.pause;save();ST.view='list';renderBody();return true}
+    catch(e){return 'JSON invalide.'}});return}
+  if(a==='acc-rs')return twoStep(b,'Confirmer ?',function(){adm.scens=[clone(A.DEFAULT_SCEN)];adm.active=adm.scens[0].id;save();say('Scénarios réinitialisés.');renderBody()});
+  if(a==='acc-rd')return twoStep(b,'Confirmer ?',function(){adm.ov.g=A.emptyOv();adm.ov.s={};save();say('Corrections effacées.')});
+  if(a==='acc-ra')return twoStep(b,'Confirmer ?',function(){A.store.answers={};A.store.pos={};A.save();say('Réponses effacées.')});
+}
+
+function exportAnswers(){
+  function c(v){v=v==null?'':String(v);return /[",\n;]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}
+  var L=['binome,scenario,question,titre,type,reponse,juste,note_sur_20,essais,statut'],bin=A.store.bin?('0'+A.store.bin).slice(-2):'';
+  adm.scens.forEach(function(sc){sc.steps.forEach(function(st,i){
+    var r=A.store.answers[sc.id+'/'+st.id];if(!r)return;
+    var rep='',ok='',note='',stat='';
+    if(st.type==='qcm'){rep=st.opts[r.choice]||'';ok=r.choice===st.ok?'oui':'non'}
+    else if(st.type==='cloze'){rep=(r.vals||[]).join(' / ');var all=(r.vals||[]).length>0;(r.vals||[]).forEach(function(v,k){var g=String((st.ans||[])[k]||'').split('|').map(A.norm);if(g.indexOf(A.norm(v))<0)all=false});ok=all?'oui':'non'}
+    else{rep=r.text||'';note=r.score==null?'':r.score;stat=r.ai?'note IA provisoire, à vérifier':'mots-clés'}
+    L.push([bin,sc.title,i+1,st.title,st.type,rep,ok,note,r.tries==null?'':r.tries,stat].map(c).join(','));
+  })});
+  showText('Réponses des élèves (CSV)',L.join('\n'),'reponses.csv');
+}
+
+})();
+
+</script>
+<script>
+(function(){
+'use strict';
+var A=window.APP;if(!A)return;
+var $=function(s){return document.querySelector(s)},S=A.S;
+var reduce=!!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches);
+S.amb=!reduce;
+
+/* ---------- sons discrets ---------- */
+var snd={on:true,ctx:null};
+try{snd.on=localStorage.getItem('tecto.snd')!=='0'}catch(e){}
+function ac(){
+  if(!snd.ctx){try{snd.ctx=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}
+  if(snd.ctx&&snd.ctx.state==='suspended'){try{snd.ctx.resume()}catch(e){}}
+  return snd.ctx;
+}
+function tone(f,t0,d,type,vol){
+  var c=ac();if(!c)return;
+  var o=c.createOscillator(),g=c.createGain(),t=c.currentTime+t0;
+  o.type=type||'sine';o.frequency.setValueAtTime(f,t);
+  g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(vol||.05,t+.02);g.gain.exponentialRampToValueAtTime(.0001,t+d);
+  o.connect(g);g.connect(c.destination);o.start(t);o.stop(t+d+.05);
+}
+function play(k){
+  if(!snd.on)return;
+  if(k==='ok'){tone(587,0,.16,'sine',.05);tone(880,.09,.24,'sine',.05)}
+  else if(k==='bad'){tone(200,0,.22,'triangle',.05);tone(165,.1,.26,'triangle',.04)}
+  else if(k==='tick'){tone(700,0,.06,'sine',.025)}
+  else if(k==='next'){tone(440,0,.1,'sine',.04);tone(660,.07,.16,'sine',.04)}
+  else if(k==='open'){tone(330,0,.14,'sine',.04);tone(494,.08,.14,'sine',.04);tone(740,.16,.3,'sine',.04)}
+}
+var ICON_ON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/><path d="M19 6a8.5 8.5 0 0 1 0 12"/></svg>';
+var ICON_OFF='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M17 9l5 6M22 9l-5 6"/></svg>';
+function paintSnd(){var b=$('#btn-snd');if(!b)return;b.innerHTML=snd.on?ICON_ON:ICON_OFF;b.setAttribute('aria-pressed',String(snd.on));b.title=snd.on?'Couper les sons':'Activer les sons';b.setAttribute('aria-label',b.title)}
+if($('#btn-snd')){paintSnd();$('#btn-snd').onclick=function(){snd.on=!snd.on;try{localStorage.setItem('tecto.snd',snd.on?'1':'0')}catch(e){}paintSnd();if(snd.on)play('tick')}}
+
+/* ---------- thème clair / sombre ---------- */
+var SUN='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4"/></svg>';
+var MOON='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/></svg>';
+function isDark(){var t=document.documentElement.getAttribute('data-theme');return t?t==='dark':!!(matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)}
+function paintTh(){var b=$('#btn-th');if(!b)return;b.innerHTML=isDark()?SUN:MOON;b.title=isDark()?'Passer en clair':'Passer en sombre';b.setAttribute('aria-label',b.title)}
+if($('#btn-th')){paintTh();$('#btn-th').onclick=function(){var want=isDark()?'light':'dark',btn=document.querySelector('#theme-seg button[data-th="'+want+'"]');if(btn)btn.click();paintTh();play('tick')}}
+new MutationObserver(paintTh).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+
+/* ---------- confettis discrets ---------- */
+function confetti(el){
+  if(reduce||!el||!el.animate)return;
+  var r=el.getBoundingClientRect(),cx=r.left+Math.min(r.width,120)*.5,cy=r.top+r.height*.5,cs=getComputedStyle(document.documentElement);
+  var cols=['--accent','--d1','--d2','--d3','--ok'].map(function(n){return cs.getPropertyValue(n).trim()||'#3cc4d9'});
+  for(var i=0;i<16;i++){
+    var p=document.createElement('i');p.className='cf';p.style.left=cx+'px';p.style.top=cy+'px';p.style.background=cols[i%cols.length];
+    if(i%3===0)p.style.borderRadius='50%';
+    document.body.appendChild(p);
+    var a=(Math.PI*2*i/16)+Math.random()*.5,d=40+Math.random()*60,dx=Math.cos(a)*d,dy=Math.sin(a)*d-30;
+    var an=p.animate([{transform:'translate(0,0) rotate(0)',opacity:1},{transform:'translate('+dx+'px,'+(dy+40)+'px) rotate('+(Math.random()*540-270)+'deg)',opacity:0}],{duration:850+Math.random()*350,easing:'cubic-bezier(.2,.7,.3,1)'});
+    an.onfinish=(function(n){return function(){n.remove()}})(p);
+  }
+}
+
+/* ---------- réactions du panneau de questions ---------- */
+var seen=new WeakSet();
+function react(n){
+  if(!n||n.nodeType!==1||seen.has(n))return;
+  if(n.matches&&n.matches('.fb.good')){seen.add(n);play('ok');confetti(n)}
+  else if(n.matches&&n.matches('.fb.bad')){seen.add(n);play('bad')}
+  else if(n.querySelectorAll){n.querySelectorAll('.fb.good,.fb.bad').forEach(react)}
+}
+var gb=$('#g-body');
+if(gb){
+  new MutationObserver(function(ms){ms.forEach(function(m){
+    if(m.type==='childList')m.addedNodes.forEach(react);
+    else if(m.type==='attributes')react(m.target);
+  })}).observe(gb,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
+  gb.addEventListener('click',function(e){if(e.target.closest&&e.target.closest('.opt,.chip'))play('tick')});
+}
+document.addEventListener('click',function(e){var t=e.target;if(t.closest&&t.closest('#next'))play('next')});
+
+/* ---------- accueil ---------- */
+var sp=$('#splash');
+if(sp){
+  var h=$('#splash h1'),txt=h.getAttribute('data-t')||h.textContent;h.textContent='';
+  txt.split('').forEach(function(ch,i){var s=document.createElement('span');s.textContent=ch===' '?' ':ch;s.style.animationDelay=(i*28)+'ms';h.appendChild(s)});
+  function go(){ac();play('open');sp.classList.add('out');setTimeout(function(){sp.hidden=true},600);document.removeEventListener('keydown',key)}
+  function key(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();go()}}
+  $('#splash-go').onclick=go;document.addEventListener('keydown',key);
+  setTimeout(function(){try{$('#splash-go').focus({preventScroll:true})}catch(e){}},900);
+}
+
+/* ---------- ouverture : parcours libre ou scénario (+ code de séance) ---------- */
+var pk=$('#ov-scen');
+function show(step){['#scen-s1','#scen-s2','#scen-s3'].forEach(function(s,i){$(s).hidden=(i!==step)})}
+function applyMode(){var a=$('#app');if(!a)return;var lib=!!A.store.set.libre;a.dataset.r=lib?'closed':'open';A.store.set.cr=!lib;A.save()}
+function openPicker(){
+  if(!pk)return;show(0);pk.hidden=false;
+  setTimeout(function(){try{$('#scen-libre').focus({preventScroll:true})}catch(e){}},60);
+}
+function closePicker(){pk.hidden=true}
+function finishPick(id){A.store.scen=id;A.store.set.libre=false;A.save();applyMode();closePicker();A.scenChanged();play('next')}
+function libre(){A.store.set.libre=true;A.save();applyMode();closePicker();play('tick')}
+function listScens(){
+  var h='';A.adm.scens.forEach(function(s){
+    h+='<button class="scen-item" type="button" data-id="'+s.id+'"><b>'+A.esc(s.title||'(sans titre)')+'</b><small>'+s.steps.length+' question'+(s.steps.length>1?'s':'')+(s.code?' · code requis':'')+'</small>'+(s.intro?'<span class="si">'+A.esc(String(s.intro).slice(0,120))+'</span>':'')+'</button>';
+  });
+  $('#scen-list').innerHTML=h||'<p class="note">Aucun scénario pour le moment.</p>';
+}
+var pendingScen=null;
+function pickScen(s){
+  pendingScen=s;
+  if(!s.code){finishPick(s.id);return}
+  $('#scen-t3').textContent=s.title||'Scénario';$('#scen-txt').textContent='Demande le code de séance à ton enseignant.';
+  $('#scen-code').value='';$('#scen-msg').textContent='';show(2);
+  setTimeout(function(){try{$('#scen-code').focus({preventScroll:true})}catch(e){}},60);
+}
+function tryCode(){
+  var c=$('#scen-code').value.trim().toLowerCase();
+  if(!c){$('#scen-msg').textContent='Entre le code de séance.';return}
+  if(!pendingScen||String(pendingScen.code).trim().toLowerCase()!==c){play('bad');$('#scen-msg').textContent='Code incorrect. Vérifie avec ton enseignant.';$('#scen-code').select();return}
+  finishPick(pendingScen.id);
+}
+if(pk){
+  $('#scen-libre').onclick=libre;
+  $('#scen-scens').onclick=function(){listScens();show(1)};
+  $('#scen-list').addEventListener('click',function(e){var b=e.target.closest('.scen-item');if(!b)return;var s=A.adm.scens.filter(function(x){return x.id===b.dataset.id})[0];if(s)pickScen(s)});
+  $('#scen-ok').onclick=tryCode;
+  $('#scen-code').addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();tryCode()}});
+  $('#scen-back').onclick=function(){show(1)};
+  $('#scen-later').onclick=function(){closePicker();applyMode()};
+  var gs=$('#g-scen');if(gs)gs.onclick=openPicker;
+  var tmr=setInterval(function(){
+    var sp2=$('#splash'),bn=$('#ov-bin');
+    if(A.S.ready&&(!sp2||sp2.hidden)&&(!bn||bn.hidden)){clearInterval(tmr);applyMode();openPicker();}
+  },250);
+}
+})();
+
+</script>

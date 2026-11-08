@@ -29,3 +29,5 @@ Chaque `push` sur `main` lance `.github/workflows/deploy.yml` et envoie les fich
 - Les réponses des élèves restent dans le navigateur (pas de base élève).
 - Les scénarios contiennent encore les bonnes réponses côté élève : à revoir avant une utilisation large.
 - Pas encore de limitation de débit sur le code de séance.
+
+<!-- Test de déploiement -->

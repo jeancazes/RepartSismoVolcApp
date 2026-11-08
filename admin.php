@@ -33,6 +33,13 @@ require __DIR__ . '/lib/http.php';
     <label>Mot de passe<input id="l-pass" type="password" autocomplete="current-password"></label>
     <button id="btn-login">Se connecter</button>
     <div class="msg" id="l-msg"></div>
+    <hr style="border:0;border-top:1px solid var(--line);margin:16px 0">
+    <h3 style="font-size:1rem;margin-top:0">Première connexion ? Crée ton compte</h3>
+    <label>Adresse académique (prenom.nom@ac-academie.fr)<input id="r-login" type="email" placeholder="prenom.nom@ac-academie.fr"></label>
+    <label>Nom affiché<input id="r-name"></label>
+    <label>Mot de passe (12 caractères minimum)<input id="r-pass" type="password" autocomplete="new-password"></label>
+    <button id="btn-register">Créer mon compte</button>
+    <div class="msg" id="r-msg"></div>
   </section>
 
   <section id="panel" <?= empty($_SESSION['teacher']) ? 'hidden' : '' ?>>
@@ -46,12 +53,6 @@ require __DIR__ . '/lib/http.php';
     <div class="card">
       <h2 style="font-size:1.1rem;margin-top:0">Comptes enseignants</h2>
       <div id="teachers"></div>
-      <h3 style="font-size:1rem">Ajouter un enseignant</h3>
-      <label>Adresse académique (prenom.nom@ac-academie.fr)<input id="t-login" type="email" placeholder="prenom.nom@ac-academie.fr"></label>
-      <label>Nom affiché<input id="t-name"></label>
-      <label>Mot de passe (12 caractères minimum)<input id="t-pass" type="password" autocomplete="new-password"></label>
-      <button id="btn-teacher">Créer le compte</button>
-      <div class="msg" id="t-msg"></div>
     </div>
 
     <div class="card">
@@ -137,6 +138,13 @@ require __DIR__ . '/lib/http.php';
       .catch(function (e) { $('e-msg').textContent = e.message; });
   };
 
+  $('btn-register').onclick = function () {
+    var m = $('r-msg'); m.className = 'msg'; m.style.color = '';
+    api('api/register.php', { method: 'POST', body: JSON.stringify({ login: $('r-login').value, name: $('r-name').value, password: $('r-pass').value }) })
+      .then(function (j) { m.style.color = 'var(--accent)'; m.textContent = j.message; $('r-pass').value = ''; })
+      .catch(function (e) { m.textContent = e.message; });
+  };
+
   var teachers = [], myId = null;
   function loadTeachers() {
     api('api/teachers.php').then(function (j) {
@@ -153,14 +161,6 @@ require __DIR__ . '/lib/http.php';
     if (t && confirm('Supprimer le compte de ' + t.name + ' ? Ses scénarios seront aussi supprimés.')) {
       api('api/teachers.php?id=' + t.id, { method: 'DELETE' }).then(loadTeachers).catch(function (err) { alert(err.message); });
     }
-  };
-  $('btn-teacher').onclick = function () {
-    api('api/teachers.php', { method: 'POST', body: JSON.stringify({ login: $('t-login').value, name: $('t-name').value, password: $('t-pass').value }) })
-      .then(function () {
-        $('t-msg').className = 'msg'; $('t-msg').textContent = 'Compte créé.';
-        $('t-login').value = ''; $('t-name').value = ''; $('t-pass').value = ''; loadTeachers();
-      })
-      .catch(function (e) { $('t-msg').className = 'msg'; $('t-msg').style.color = 'var(--bad)'; $('t-msg').textContent = e.message; });
   };
 
   if (!$('panel').hidden) { load(); loadTeachers(); }

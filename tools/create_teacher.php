@@ -11,6 +11,6 @@ if (!$login || !$name || !$pass || mb_strlen($pass) < 12 || !preg_match('/^[a-z]
     exit("Usage : php tools/create_teacher.php identifiant \"Nom\" \"mot de passe (12 caractères min.)\"\n");
 }
 
-$st = db()->prepare('INSERT INTO teachers (login, name, password_hash) VALUES (?, ?, ?)');
+$st = db()->prepare('INSERT INTO teachers (login, name, password_hash, verified_at) VALUES (?, ?, ?, NOW())');
 $st->execute([$login, $name, password_hash($pass, PASSWORD_DEFAULT)]);
 echo "Compte « {$login} » créé.\n";

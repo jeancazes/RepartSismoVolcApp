@@ -4,6 +4,9 @@ CREATE TABLE IF NOT EXISTS teachers (
   login VARCHAR(60) NOT NULL UNIQUE,
   name VARCHAR(120) NOT NULL,
   password_hash VARCHAR(255) NOT NULL,
+  verified_at DATETIME NULL,
+  verify_token CHAR(64) NULL,
+  verify_expires DATETIME NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 

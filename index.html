@@ -1,3 +1,4 @@
+<meta charset="utf-8">
 <title>Carte Tectonique 4e</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1035,7 +1036,7 @@ function captureView(){
 }
 
 /* ---------- parcours guidé (piloté par le scénario actif) ---------- */
-function norm(s){return String(s).normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase()}
+function norm(s){return String(s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()}
 function kwRe(g){
   g=String(g||'').trim();if(!g)return null;
   try{

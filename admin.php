@@ -59,6 +59,13 @@ require __DIR__ . '/lib/http.php';
       <h2 style="font-size:1.1rem;margin-top:0">Scénarios</h2>
       <div id="list"></div>
       <button id="btn-new">Nouveau scénario</button>
+      <details style="margin-top:12px">
+        <summary>Importer une sauvegarde du prototype</summary>
+        <p style="font-size:.9rem">Colle le JSON exporté depuis l'ancien admin (Compte > Exporter tout).</p>
+        <textarea id="imp-json" placeholder="{ &quot;type&quot;: &quot;backup&quot;, ... }"></textarea>
+        <button id="btn-import">Importer</button>
+        <div class="msg" id="imp-msg"></div>
+      </details>
     </div>
 
     <div class="card" id="editor" hidden>
@@ -148,6 +155,26 @@ require __DIR__ . '/lib/http.php';
     api('api/register.php', { method: 'POST', body: JSON.stringify({ login: $('r-login').value, name: $('r-name').value, password: $('r-pass').value }) })
       .then(function (j) { m.style.color = 'var(--accent)'; m.textContent = j.message; $('r-pass').value = ''; })
       .catch(function (e) { m.textContent = e.message; });
+  };
+
+  $('btn-import').onclick = function () {
+    var o, m = $('imp-msg'); m.style.color = '';
+    try { o = JSON.parse($('imp-json').value); } catch (e) { m.textContent = 'JSON invalide.'; return; }
+    o = o.data || o;
+    if (!Array.isArray(o.scens) || !o.scens.length) { m.textContent = 'Aucun scénario dans ce JSON.'; return; }
+    var n = 0, p = Promise.resolve();
+    o.scens.forEach(function (sc) {
+      p = p.then(function () {
+        var content = Object.assign({}, sc), code = content.code || '';
+        delete content.code;
+        return api('api/scenarios.php', { method: 'POST', body: JSON.stringify({
+          id: sc.id, title: sc.title || 'Sans titre', session_code: code, is_active: sc.id === o.active, content: content
+        }) }).then(function () { n++; });
+      });
+    });
+    m.textContent = 'Import en cours…';
+    p.then(function () { m.style.color = 'var(--accent)'; m.textContent = n + ' scénario(s) importé(s).'; $('imp-json').value = ''; load(); })
+      .catch(function (e) { m.style.color = 'var(--bad)'; m.textContent = 'Erreur : ' + e.message; load(); });
   };
 
   var teachers = [], myId = null;

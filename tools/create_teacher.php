@@ -7,7 +7,7 @@ if (PHP_SAPI !== 'cli') {
 require __DIR__ . '/../lib/db.php';
 
 [$script, $login, $name, $pass] = array_pad($argv, 4, null);
-if (!$login || !$name || !$pass || mb_strlen($pass) < 12) {
+if (!$login || !$name || !$pass || mb_strlen($pass) < 12 || !preg_match('/^[a-z]+(-[a-z]+)*\.[a-z]+(-[a-z]+)*@ac-[a-z]+(-[a-z]+)*\.fr$/i', $login)) {
     exit("Usage : php tools/create_teacher.php identifiant \"Nom\" \"mot de passe (12 caractères min.)\"\n");
 }
 

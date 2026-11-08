@@ -18,8 +18,12 @@ if ($method === 'POST') {
     $login = trim((string)($d['login'] ?? ''));
     $name = mb_substr(trim((string)($d['name'] ?? '')), 0, 120);
     $pass = (string)($d['password'] ?? '');
-    if (!preg_match('/^[a-z0-9._-]{3,60}$/i', $login) || $name === '') {
-        json_out(['error' => 'Identifiant (3 à 60 caractères simples) et nom obligatoires'], 422);
+    // Adresse académique obligatoire : prenom.nom@ac-academie.fr
+    if (!preg_match('/^[a-z]+(-[a-z]+)*\.[a-z]+(-[a-z]+)*@ac-[a-z]+(-[a-z]+)*\.fr$/i', $login) || strlen($login) > 60) {
+        json_out(['error' => 'L\'adresse doit être de la forme prenom.nom@ac-academie.fr'], 422);
+    }
+    if ($name === '') {
+        json_out(['error' => 'Le nom affiché est obligatoire'], 422);
     }
     if (mb_strlen($pass) < 12) {
         json_out(['error' => 'Mot de passe : 12 caractères minimum'], 422);

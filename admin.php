@@ -47,7 +47,7 @@ require __DIR__ . '/lib/http.php';
       <h2 style="font-size:1.1rem;margin-top:0">Comptes enseignants</h2>
       <div id="teachers"></div>
       <h3 style="font-size:1rem">Ajouter un enseignant</h3>
-      <label>Identifiant<input id="t-login"></label>
+      <label>Adresse académique (prenom.nom@ac-academie.fr)<input id="t-login" type="email" placeholder="prenom.nom@ac-academie.fr"></label>
       <label>Nom affiché<input id="t-name"></label>
       <label>Mot de passe (12 caractères minimum)<input id="t-pass" type="password" autocomplete="new-password"></label>
       <button id="btn-teacher">Créer le compte</button>

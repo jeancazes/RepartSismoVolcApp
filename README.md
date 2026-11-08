@@ -17,7 +17,7 @@ Application SVT 4e : carte interactive (séismes, volcans, plaques) et scénario
 1. Dans phpMyAdmin, créer la base et exécuter `db/schema.sql`.
 2. Copier `config.example.php` en `config.php` sur le serveur et remplir les accès MySQL et les clés IA.
 3. Créer les comptes : `php tools/create_teacher.php prof1 "Prénom Nom" "mot de passe de 12 caractères"`.
-4. Ajouter dans GitHub (Settings > Secrets > Actions) : `EX2_HOST`, `EX2_PORT`, `EX2_USER`, `EX2_PATH` (dossier web), `EX2_SSH_KEY` (clé privée SSH autorisée sur EX2).
+4. Ajouter dans GitHub (Settings > Secrets > Actions) : `EX2_FTP_HOST`, `EX2_FTP_USER`, `EX2_FTP_PASSWORD`, `EX2_FTP_DIR` (dossier web, par exemple `/public_html/RepartSismoVolcApp/`).
 
 ## Déploiement
 
@@ -30,4 +30,3 @@ Chaque `push` sur `main` lance `.github/workflows/deploy.yml` et envoie les fich
 - Les scénarios contiennent encore les bonnes réponses côté élève : à revoir avant une utilisation large.
 - Pas encore de limitation de débit sur le code de séance.
 
-<!-- Test de déploiement -->

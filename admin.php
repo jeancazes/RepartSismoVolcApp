@@ -177,14 +177,17 @@ require __DIR__ . '/lib/http.php';
     var o, m = $('imp-msg'); m.style.color = '';
     try { o = JSON.parse($('imp-json').value); } catch (e) { m.textContent = 'JSON invalide.'; return; }
     o = o.data || o;
-    if (!Array.isArray(o.scens) || !o.scens.length) { m.textContent = 'Aucun scénario dans ce JSON.'; return; }
+    // Formats acceptés : sauvegarde complète (scens), export d'un scénario (scenario) ou scénario seul (steps).
+    var list = Array.isArray(o.scens) ? o.scens : (o.scenario && Array.isArray(o.scenario.steps) ? [o.scenario] : (Array.isArray(o.steps) ? [o] : null));
+    if (!list || !list.length) { m.textContent = 'Aucun scénario reconnu dans ce JSON.'; return; }
+    var single = !Array.isArray(o.scens);
     var n = 0, p = Promise.resolve();
-    o.scens.forEach(function (sc) {
+    list.forEach(function (sc) {
       p = p.then(function () {
         var content = Object.assign({}, sc), code = content.code || '';
         delete content.code;
         return api('api/scenarios.php', { method: 'POST', body: JSON.stringify({
-          id: sc.id, title: sc.title || 'Sans titre', session_code: code, is_active: sc.id === o.active, content: content
+          id: sc.id, title: sc.title || 'Sans titre', session_code: code, is_active: single ? true : sc.id === o.active, content: content
         }) }).then(function () { n++; });
       });
     });

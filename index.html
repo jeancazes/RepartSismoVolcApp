@@ -2073,8 +2073,15 @@ function listScens(){
   $('#scen-list').innerHTML=h||'<p class="note">Aucun scénario pour le moment.</p>';
 }
 var pendingScen=null;
+function unlockRemote(s,c){
+  fetch('api/scenarios_public.php',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:s.id,code:c})})
+  .then(function(r){return r.text().then(function(t){var j;try{j=JSON.parse(t)}catch(e){throw new Error('réponse inattendue')}if(!r.ok)throw new Error(j.error||'erreur');return j})})
+  .then(function(j){var i=A.adm.scens.findIndex(function(x){return x.id===s.id});if(i>=0)A.adm.scens[i]=j.scenario;else A.adm.scens.push(j.scenario);finishPick(s.id)})
+  .catch(function(e){play('bad');$('#scen-msg').textContent=e.message==='Code incorrect'?'Code incorrect. Vérifie avec ton enseignant.':'Scénario indisponible : '+e.message});
+}
 function pickScen(s){
   pendingScen=s;
+  if(s.remote&&!s.code){unlockRemote(s,'');return}
   if(!s.code){finishPick(s.id);return}
   $('#scen-t3').textContent=s.title||'Scénario';$('#scen-txt').textContent='Demande le code de séance à ton enseignant.';
   $('#scen-code').value='';$('#scen-msg').textContent='';show(2);
@@ -2083,6 +2090,7 @@ function pickScen(s){
 function tryCode(){
   var c=$('#scen-code').value.trim().toLowerCase();
   if(!c){$('#scen-msg').textContent='Entre le code de séance.';return}
+  if(pendingScen&&pendingScen.remote){unlockRemote(pendingScen,c);return}
   if(!pendingScen||String(pendingScen.code).trim().toLowerCase()!==c){play('bad');$('#scen-msg').textContent='Code incorrect. Vérifie avec ton enseignant.';$('#scen-code').select();return}
   finishPick(pendingScen.id);
 }
@@ -2095,9 +2103,19 @@ if(pk){
   $('#scen-back').onclick=function(){show(1)};
   $('#scen-later').onclick=function(){closePicker();applyMode()};
   var gs=$('#g-scen');if(gs)gs.onclick=openPicker;
+  A.remoteReady=false;
+  fetch('api/scenarios_public.php').then(function(r){return r.json()}).then(function(j){
+    if(!j||!j.scenarios)return;
+    var old=A.adm.scens||[];
+    A.adm.scens=j.scenarios.map(function(s){
+      var prev=old.filter(function(x){return x.id===s.id&&Array.isArray(x.steps)&&x.steps.length===s.steps&&x.steps.every(function(st){return st&&st.id})})[0];
+      if(prev){prev.title=s.title;prev.code=s.requires_code?'•':'';prev.remote=true;return prev}
+      return {id:s.id,title:s.title,code:s.requires_code?'•':'',remote:true,steps:new Array(s.steps)};
+    });
+  }).catch(function(){}).then(function(){A.remoteReady=true});
   var tmr=setInterval(function(){
     var sp2=$('#splash'),bn=$('#ov-bin');
-    if(A.S.ready&&(!sp2||sp2.hidden)&&(!bn||bn.hidden)){clearInterval(tmr);applyMode();openPicker();}
+    if(A.S.ready&&A.remoteReady&&(!sp2||sp2.hidden)&&(!bn||bn.hidden)){clearInterval(tmr);applyMode();openPicker();}
   },250);
 }
 })();

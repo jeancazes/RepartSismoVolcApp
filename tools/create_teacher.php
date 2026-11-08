@@ -13,7 +13,8 @@ $login = mb_strtolower(trim((string)$login), 'UTF-8');
 if (!$login || !$name || !$pass) {
     exit($usage);
 }
-if (!preg_match('/^[a-z]+(-[a-z]+)*\.[a-z]+(-[a-z]+)*@ac-[a-z]+(-[a-z]+)*\.fr$/', $login)) {
+$extra = array_map('mb_strtolower', config()['extra_logins'] ?? []);
+if (!in_array($login, $extra, true) && !preg_match('/^[a-z]+(-[a-z]+)*\.[a-z]+(-[a-z]+)*@ac-[a-z]+(-[a-z]+)*\.fr$/', $login)) {
     exit("Adresse refusée : elle doit être de la forme prenom.nom@ac-academie.fr\n");
 }
 if (mb_strlen($pass) < 12) {

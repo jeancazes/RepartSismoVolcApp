@@ -13,7 +13,9 @@ $name = mb_substr(trim((string)($d['name'] ?? '')), 0, 120);
 $pass = (string)($d['password'] ?? '');
 
 // Adresse académique obligatoire : prenom.nom@ac-academie.fr
-if (strlen($login) > 60 || !preg_match('/^[a-z]+(-[a-z]+)*\.[a-z]+(-[a-z]+)*@ac-[a-z]+(-[a-z]+)*\.fr$/', $login)) {
+// Exceptions autorisées par config.php ('extra_logins') ; sinon adresse académique obligatoire.
+$extra = array_map('mb_strtolower', config()['extra_logins'] ?? []);
+if (strlen($login) > 60 || (!in_array($login, $extra, true) && !preg_match('/^[a-z]+(-[a-z]+)*\.[a-z]+(-[a-z]+)*@ac-[a-z]+(-[a-z]+)*\.fr$/', $login))) {
     json_out(['error' => "L'adresse doit être de la forme prenom.nom@ac-academie.fr"], 422);
 }
 if ($name === '') {

@@ -5,6 +5,8 @@ return [
     'session_name' => 'carte_admin',
     'base_url' => 'https://lelaboratoirefabuleux.com/RepartSismoVolcApp', // adresse publique du dossier (liens des mails)
     'mail_from' => 'noreply@lelaboratoirefabuleux.com',                    // expéditeur des mails (adresse existante sur EX2)
+    // Adresses autorisées hors domaine académique (renseigné uniquement sur le serveur).
+    'extra_logins' => [],
     'db' => [
         'host' => 'localhost',
         'name' => 'NOM_DE_LA_BASE',

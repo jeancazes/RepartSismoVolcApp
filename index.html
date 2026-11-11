@@ -230,6 +230,12 @@ footer.src{padding:8px 14px;border-top:1px solid var(--line);font-size:.74em;col
 .pin-pad button.ok{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
 .pin.shake{animation:shake .35s}
 @keyframes shake{20%{transform:translateX(-8px)}60%{transform:translateX(8px)}}
+#sits{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}
+#sits[hidden]{display:none}
+#sits .sitw{display:inline-flex;align-items:stretch}
+#sits .sit{font-size:.9em}
+#sits .sitx{border:1px solid var(--line);border-left:0;background:var(--bg);color:var(--fg);cursor:pointer;padding:0 7px}
+#sits .sit-save{font-size:.85em;border-style:dashed}
 #edbar{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:55;display:flex;gap:10px;align-items:center;background:var(--fg);color:var(--bg);padding:8px 12px;max-width:calc(100vw - 20px);flex-wrap:wrap;box-shadow:0 6px 24px rgba(0,0,0,.35)}
 #edbar span{font-size:.9em}
 #edbar .btn.ghost{color:var(--bg);border-color:var(--bg)}
@@ -1159,12 +1165,12 @@ function renderStep(){
   if(st.intro)h+='<p class="sti">'+esc(st.intro)+'</p>';
   if(st.proposal)h+='<div class="prop"><b>À faire</b><br>'+esc(st.proposal)+'</div>';
   h+='<div><span class="tag">'+TYPE_LABEL[st.type]+'</span></div>';
-  h+='<div id="g-q">'+esc(st.question)+'</div>';
+  h+='<div id="g-q">'+esc(st.question)+'</div><div id="sits" hidden></div>';
   if(st.type==='qcm'){h+=(st.opts||[]).map(function(o,k){return o?'<button class="opt" data-i="'+k+'">'+esc(o)+'</button>':''}).join('')}
   if(st.type==='cloze')h+=clozeHtml(st);
   if(st.type==='text'){h+='<textarea id="ans" aria-label="Ta réponse" placeholder="Écris ta réponse ici."></textarea><div class="note" style="margin-top:4px">N\'écris ni ton nom ni aucune information personnelle.</div>'}
   h+='<div id="fb"></div><div id="pmsg" class="note"></div><div class="actions" id="act"></div>';
-  b.innerHTML=h;b.scrollTop=0;
+  b.innerHTML=h;b.scrollTop=0;renderSits();
   var prev=ansBox()[akey(sc,st)];
   if(st.type==='text'&&prev&&prev.text)$('#ans').value=prev.text;
   var act='';
@@ -1291,6 +1297,48 @@ function resetState(){
   $('#live-btn').classList.remove('on');$('#live-btn').setAttribute('aria-pressed','false');
   $$('#live-span button').forEach(function(x){x.classList.toggle('on',+x.dataset.d===3)});
 }
+/* boutons « situation » sous la question + enregistrement par l'enseignant connecté */
+var TEACHER=null;
+function inPreviewWin(){return !!(window.APP&&window.APP.isPreview)}
+function sitView(v){var st=G&&G.st;resetState();applyCons(st&&st.cons);applyView(v);syncUI();loadArch();dirty()}
+function renderSits(){
+  var el=$('#sits');if(!el||!G||!G.st)return;var bs=G.st.buttons||[],h='',tch=TEACHER&&!PV&&!inPreviewWin();
+  bs.forEach(function(b,i){if(!b.view&&!tch)return;h+='<span class="sitw"><button class="btn ghost sit" type="button" data-i="'+i+'">'+esc(b.label||'Situation')+'</button>'+(tch?'<button class="sitx" type="button" data-i="'+i+'" title="Supprimer ce bouton" aria-label="Supprimer ce bouton">×</button>':'')+'</span>'});
+  if(tch)h+='<button class="btn sit-save" type="button" id="sit-save" title="Enregistre la carte telle qu\'elle est (position, zoom, réglages) dans un bouton sous cette question">＋ Enregistrer la situation</button>';
+  el.innerHTML=h;el.hidden=!h;
+  el.onclick=function(e){
+    var x=e.target.closest('.sitx');if(x){delSituation(+x.dataset.i);return}
+    if(e.target.closest('#sit-save')){saveSituation();return}
+    var b=e.target.closest('.sit');if(b){var bt=(G.st.buttons||[])[+b.dataset.i];if(bt&&bt.view)sitView(bt.view)}
+  };
+}
+function tApi(path,opt){opt=opt||{};opt.credentials='same-origin';return fetch(path,opt).then(function(r){return r.json().then(function(d){if(!r.ok)throw new Error(d.error||('Erreur '+r.status));return d},function(){throw new Error('Réponse serveur inattendue')})})}
+function mutateRemote(fn){
+  var sc=curScen(),stId=G.st.id;
+  return tApi('api/scenarios.php').then(function(d){
+    var rec=(d.scenarios||[]).filter(function(x){return x.id===sc.id})[0];
+    if(!rec)throw new Error('Ce scénario n\'est pas enregistré dans ton compte enseignant.');
+    var st=(rec.content.steps||[]).filter(function(x){return x.id===stId})[0];
+    if(!st)throw new Error('Question introuvable sur le serveur.');
+    fn(st);
+    return tApi('api/scenarios.php',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':d.csrf},body:JSON.stringify({id:rec.id,title:rec.title,session_code:rec.session_code||'',is_active:rec.is_active,content:rec.content})}).then(function(){return st});
+  });
+}
+function sitMsg(t,bad){var m=$('#pmsg');if(m){m.textContent=t;m.style.color=bad?'var(--bad)':''}}
+function saveSituation(){
+  var label=window.prompt('Nom du bouton (ex. « Séismes de 2011 »)','');if(!label||!label.trim())return;
+  var view=captureView();
+  mutateRemote(function(st){st.buttons=(st.buttons||[]).concat([{id:'b'+Date.now().toString(36),label:label.trim().slice(0,60),view:view}])})
+    .then(function(st){G.st.buttons=st.buttons;renderSits();sitMsg('Situation enregistrée dans le bouton « '+label.trim()+' ».')})
+    .catch(function(e){sitMsg(e.message,true)});
+}
+function delSituation(i){
+  var b=(G.st.buttons||[])[i];if(!b||!window.confirm('Supprimer le bouton « '+(b.label||'')+' » ?'))return;
+  mutateRemote(function(st){st.buttons=(st.buttons||[]).filter(function(x){return x.id!==b.id})})
+    .then(function(st){G.st.buttons=st.buttons;renderSits();sitMsg('Bouton supprimé.')})
+    .catch(function(e){sitMsg(e.message,true)});
+}
+tApi('api/me.php').then(function(d){TEACHER=d.teacher||null;if(TEACHER)renderSits()}).catch(function(){});
 var SNAPS={},LASTK=null;
 function stepKey(st){return (curScen().id||'')+'/'+st.id}
 function snapState(){var v=captureView();delete v.mode;delete v.rot;delete v.k;delete v.pan;return v}
@@ -1367,7 +1415,7 @@ loop();
 /*ADMIN_GLUE*/
 window.APP={S:S,adm:adm,store:store,admSave:admSave,save:save,getJSON:getJSON,esc:esc,fmtDate:fmtDate,CLS:CLS,norm:norm,gradeStep:gradeStep,kwRe:kwRe,
   qKey:qKey,loadArch:loadArch,rebuildVolc:rebuildVolc,rebuildMarkers:rebuildMarkers,captureView:captureView,preview:previewStep,endPreview:endPreview,
-  clearSnaps:function(){SNAPS={};LASTK=null},applyFree:applyFree,resetMap:resetMap,scenChanged:scenChanged,DEFAULT_SCEN:DEFAULT_SCEN,emptyOv:emptyOv,curScen:curScen,PVget:function(){return PV},resize:resize,dirty:dirty,readYears:readYears,TYPE_LABEL:TYPE_LABEL,LAYER_LABEL:LAYER_LABEL,rowsToQuakes:rowsToQuakes,classify:classify,applyCtx:applyCtx,finish:finish};
+  clearSnaps:function(){SNAPS={};LASTK=null},applyFree:applyFree,showSit:function(v){sitView(v)},resetMap:resetMap,scenChanged:scenChanged,DEFAULT_SCEN:DEFAULT_SCEN,emptyOv:emptyOv,curScen:curScen,PVget:function(){return PV},resize:resize,dirty:dirty,readYears:readYears,TYPE_LABEL:TYPE_LABEL,LAYER_LABEL:LAYER_LABEL,rowsToQuakes:rowsToQuakes,classify:classify,applyCtx:applyCtx,finish:finish};
 })();
 </script>
 <script>
@@ -2243,7 +2291,8 @@ function tryCode(){
 var isPv=/#preview/.test(location.hash);
 if(isPv){
   // Fenêtre d'aperçu ouverte depuis l'éditeur de scénarios : le scénario arrive par message, rien n'est enregistré.
-  A.isPreview=true;
+  A.isPreview=true;var CAPID=null;
+  document.addEventListener('click',function(e){var c=e.target.closest&&e.target.closest('#edbar-cap');if(!c||!CAPID)return;e.stopImmediatePropagation();e.preventDefault();if(window.opener)window.opener.postMessage({type:'tecto-capture',id:CAPID.id,view:A.captureView()},location.origin);c.textContent='Enregistré ✓';setTimeout(function(){c.textContent='Enregistrer la situation'},1800)},true);
   var hideT=setInterval(function(){['#splash','#ov-bin','#ov-scen'].forEach(function(q){var e=$(q);if(e)e.hidden=true})},150);
   setTimeout(function(){clearInterval(hideT)},12000);
   window.addEventListener('message',function(e){
@@ -2253,7 +2302,8 @@ if(isPv){
       var i=A.adm.scens.findIndex(function(x){return x.id===sc.id});
       if(i>=0)A.adm.scens[i]=sc;else A.adm.scens.push(sc);
       A.preview(sc.id,Math.min(d.idx||0,sc.steps.length-1),null);
-      var cap=$('#edbar-cap');if(cap)cap.hidden=true;
+      var cap=$('#edbar-cap');CAPID=d.capture||null;
+      if(cap){cap.hidden=!CAPID;if(CAPID){cap.textContent='Enregistrer la situation';var sp=$('#edbar span');if(sp)sp.textContent='Règle la carte (position, zoom, menus) puis enregistre la situation du bouton « '+(CAPID.label||'')+' »';if(CAPID.view)setTimeout(function(){A.showSit(CAPID.view)},400)}}
     };
     if(A.S.ready)go();else{var w=setInterval(function(){if(A.S.ready){clearInterval(w);go()}},150)}
   });

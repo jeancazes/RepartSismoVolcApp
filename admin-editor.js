@@ -15,7 +15,7 @@
   ];
   var LAYERS = [['coast', 'Continents'], ['grat', 'Quadrillage'], ['plates', 'Plaques (contours)'], ['bound', 'Frontières'], ['quakes', 'Séismes'], ['volc', 'Volcans'], ['gps', 'Stations GPS'], ['gpsv', 'Flèches GPS (cm/an)'], ['markers', 'Marqueurs']];
   var TYPE_LABEL = { qcm: 'Au choix', cloze: 'À compléter', text: 'Rédigée' };
-  var TABS = [['content', 'Contenu'], ['answer', 'Réponse'], ['menu', 'Menu'], ['data', 'Données'], ['view', 'Affichage'], ['pass', 'Passage']];
+  var TABS = [['content', 'Contenu'], ['answer', 'Réponse'], ['menu', 'Menu'], ['data', 'Données'], ['view', 'Affichage'], ['btns', 'Boutons'], ['pass', 'Passage']];
 
   var ctx = null;
 
@@ -47,6 +47,7 @@
     if (s.minlen == null) s.minlen = 15;
     if (s.diag == null) s.diag = false;
     if (s.points == null || isNaN(+s.points)) s.points = s.diag ? 0 : 1;
+    if (!Array.isArray(s.buttons)) s.buttons = [];
     if (!s.menu || typeof s.menu !== 'object') s.menu = {};
     if (!s.cons || typeof s.cons !== 'object') s.cons = { qy: null, vy: null, amag: null, minmag: null };
     if (s.view === undefined) s.view = null;
@@ -87,7 +88,7 @@
       h += '<div class="subtabs">' + TABS.map(function (t) {
         return '<button data-sub="' + t[0] + '"' + (ctx.sub === t[0] ? ' class="on"' : '') + '>' + t[1] + '</button>';
       }).join('') + '</div><div class="ed-block" style="margin-top:10px">' +
-        ({ content: tContent, answer: tAnswer, menu: tMenu, data: tData, view: tView, pass: tPass })[ctx.sub](st) + '</div>';
+        ({ content: tContent, answer: tAnswer, btns: tBtns, menu: tMenu, data: tData, view: tView, pass: tPass })[ctx.sub](st) + '</div>';
     }
     h += '</div></div><div class="msg" id="ed-msg"></div>';
     ctx.root.innerHTML = h;
@@ -106,6 +107,21 @@
     }).join('');
     h += '<label>Message affiché quand c\'est réussi<input type="text" data-b="st.why" value="' + esc(st.why || '') + '"></label>';
     return h;
+  }
+
+  function viewSummary(v) {
+    if (!v) return 'Pas encore de situation enregistrée.';
+    var on = LAYERS.filter(function (l) { return (v.layers || {})[l[0]]; }).map(function (l) { return l[1].toLowerCase(); });
+    return 'Projection ' + (v.mode === 'globe' ? 'globe' : 'plane') + ' · zoom ' + (v.k == null ? 1 : v.k) + (v.y ? ' · séismes ' + v.y[0] + (v.y[1] !== v.y[0] ? '–' + v.y[1] : '') : '') + ' · couches : ' + (on.join(', ') || 'aucune');
+  }
+  function tBtns(st) {
+    var h = '<div class="msg-n">Chaque bouton s\'affiche sous la question. Quand l\'élève clique, la carte prend la position, le zoom et les réglages enregistrés. Tu peux aussi en créer depuis l\'app, connecté en enseignant (« Enregistrer la situation »).</div>';
+    (st.buttons || []).forEach(function (b, i) {
+      h += '<div class="crit"><label>Texte du bouton<input type="text" data-b="st.buttons.' + i + '.label" value="' + esc(b.label || '') + '"></label>' +
+        '<div class="msg-n">' + esc(viewSummary(b.view)) + '</div>' +
+        '<div class="adm-h"><button class="pri" data-act="sit-cap" data-i="' + i + '">' + (b.view ? 'Refaire la capture' : 'Capturer la situation') + '</button><button data-act="sit-del" data-i="' + i + '">Supprimer</button></div></div>';
+    });
+    return h + '<button data-act="sit-add">＋ Ajouter un bouton</button>';
   }
 
   function tAnswer(st) {
@@ -329,7 +345,7 @@
     switch (a) {
       case 'cancel': ctx.onCancel(); break;
       case 'save': save(); break;
-      case 'preview': openPreview(); break;
+      case 'preview': openPreview(null); break;
       case 'st-add': sc.steps.push(newStep()); ctx.si = sc.steps.length - 1; ctx.sub = 'content'; render(); break;
       case 'st-up': if (i > 0) { var t = sc.steps[i]; sc.steps[i] = sc.steps[i - 1]; sc.steps[i - 1] = t; ctx.si = i - 1; render(); } break;
       case 'st-down': if (i < sc.steps.length - 1) { var t2 = sc.steps[i]; sc.steps[i] = sc.steps[i + 1]; sc.steps[i + 1] = t2; ctx.si = i + 1; render(); } break;
@@ -337,6 +353,9 @@
       case 'st-del':
         if (confirm('Supprimer cette question ?')) { sc.steps.splice(i, 1); ctx.si = Math.max(0, Math.min(ctx.si, sc.steps.length - 1)); render(); }
         break;
+      case 'sit-add': st.buttons.push({ id: uid('b'), label: 'Nouveau bouton', view: null }); render(); break;
+      case 'sit-del': st.buttons.splice(i, 1); render(); break;
+      case 'sit-cap': openPreview({ id: st.buttons[i].id, label: st.buttons[i].label, view: st.buttons[i].view }); break;
       case 'crit-add': st.crit.push({ label: 'Nouveau critère', pts: 5, need: 1, kw: [], hint: '' }); render(); break;
       case 'crit-del': st.crit.splice(i, 1); render(); break;
       case 'mi-all':
@@ -352,14 +371,21 @@
     var sc = clone(ctx.sc);
     sc.id = (ctx.rec && ctx.rec.id) || 'sc-preview';
     delete sc.code;
-    return { type: 'tecto-preview', scenario: sc, idx: ctx.si };
+    return { type: 'tecto-preview', scenario: sc, idx: ctx.si, capture: pendingCap };
   }
-  function openPreview() {
+  var pendingCap = null;
+  function openPreview(cap) {
+    pendingCap = cap && cap.id ? cap : null;
     if (pw && !pw.closed) { pw.postMessage(previewData(), location.origin); pw.focus(); return; }
     pw = window.open('index.html#preview', 'tecto-preview');
     if (!pw) say('Fenêtre bloquée : autorise les fenêtres pop-up pour ce site.');
   }
   window.addEventListener('message', function (e) {
+    if (e.origin === location.origin && e.data && e.data.type === 'tecto-capture' && ctx && pw && e.source === pw) {
+      var bt = (cur().buttons || []).filter(function (x) { return x.id === e.data.id; })[0];
+      if (bt) { bt.view = e.data.view; if (pendingCap && pendingCap.id === bt.id) pendingCap.view = bt.view; render(); say('Situation enregistrée dans le bouton « ' + (bt.label || '') + ' ».'); }
+      return;
+    }
     if (e.origin !== location.origin || !e.data || e.data.type !== 'tecto-ready') return;
     if (ctx && pw && e.source === pw) pw.postMessage(previewData(), location.origin);
   });
@@ -371,6 +397,7 @@
     for (var i = 0; i < sc.steps.length; i++) {
       var s = sc.steps[i];
       if (s.type === 'qcm' && !String(s.opts[s.ok] || '').trim()) { say('Question ' + (i + 1) + ' : la bonne réponse est vide.'); return; }
+      for (var bi = 0; bi < s.buttons.length; bi++) { if (!s.buttons[bi].view) { say('Question ' + (i + 1) + ' : le bouton « ' + (s.buttons[bi].label || '') + ' » n\'a pas de situation enregistrée.'); return; } }
       if (s.type === 'cloze' && String(s.ctext || '').indexOf('___') < 0) { say('Question ' + (i + 1) + ' : la phrase n\'a aucun trou (___).'); return; }
     }
     var content = clone(sc);

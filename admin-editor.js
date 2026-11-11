@@ -61,7 +61,7 @@
   function render() {
     var sc = ctx.sc, st = cur();
     var h = '<div class="ed-head"><h2 style="font-size:1.1rem;margin:0">Éditeur de scénario</h2><span>' +
-      '<button class="ghost" data-act="cancel">← Retour</button><button data-act="save">Enregistrer</button></span></div>';
+      '<button class="ghost" data-act="cancel">← Retour</button><button class="ghost" data-act="preview" title="Tester comme un élève, à partir de la question sélectionnée">Aperçu élève</button><button data-act="save">Enregistrer</button></span></div>';
     h += '<div class="ed-block">' +
       '<label>Titre du scénario<input type="text" data-b="sc.title" value="' + esc(sc.title) + '"></label>' +
       '<label>Texte d\'introduction<textarea class="short" data-b="sc.intro">' + esc(sc.intro || '') + '</textarea></label>' +
@@ -316,6 +316,7 @@
     switch (a) {
       case 'cancel': ctx.onCancel(); break;
       case 'save': save(); break;
+      case 'preview': openPreview(); break;
       case 'st-add': sc.steps.push(newStep()); ctx.si = sc.steps.length - 1; ctx.sub = 'content'; render(); break;
       case 'st-up': if (i > 0) { var t = sc.steps[i]; sc.steps[i] = sc.steps[i - 1]; sc.steps[i - 1] = t; ctx.si = i - 1; render(); } break;
       case 'st-down': if (i < sc.steps.length - 1) { var t2 = sc.steps[i]; sc.steps[i] = sc.steps[i + 1]; sc.steps[i + 1] = t2; ctx.si = i + 1; render(); } break;
@@ -331,6 +332,24 @@
         render(); break;
     }
   }
+
+  /* Aperçu élève : ouvre l'app dans une fenêtre et lui envoie le scénario en cours (non enregistré). */
+  var pw = null;
+  function previewData() {
+    var sc = clone(ctx.sc);
+    sc.id = (ctx.rec && ctx.rec.id) || 'sc-preview';
+    delete sc.code;
+    return { type: 'tecto-preview', scenario: sc, idx: ctx.si };
+  }
+  function openPreview() {
+    if (pw && !pw.closed) { pw.postMessage(previewData(), location.origin); pw.focus(); return; }
+    pw = window.open('index.html#preview', 'tecto-preview');
+    if (!pw) say('Fenêtre bloquée : autorise les fenêtres pop-up pour ce site.');
+  }
+  window.addEventListener('message', function (e) {
+    if (e.origin !== location.origin || !e.data || e.data.type !== 'tecto-ready') return;
+    if (ctx && pw && e.source === pw) pw.postMessage(previewData(), location.origin);
+  });
 
   function save() {
     var sc = ctx.sc;

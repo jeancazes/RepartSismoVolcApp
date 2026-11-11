@@ -6,9 +6,9 @@
   var MI = [
     ['Fond', [['coast', 'Continents'], ['grat', 'Quadrillage'], ['plates', 'Plaques (contours)']]],
     ['Live', [['live', 'Section Live']]],
-    ['Frontières de plaques', [['bound', 'Afficher les frontières'], ['btypes', 'Types : subduction / collision / accrétion / coulissant']]],
     ['Séismes archivés', [['quakes', 'Couche séismes'], ['qy', "Intervalle d'années"], ['amag', "Magnitude de l'archive"], ['minmag', 'Magnitude minimale affichée'], ['qtypes', 'Types : compression / extension / cisaillement'], ['colormode', 'Couleur des points']]],
-    ['Volcans', [['volc', 'Couche volcans'], ['vy', "Intervalle d'éruptions"], ['vcats', 'Contextes de volcans'], ['vmodes', 'Explosif / effusif']]],
+    ['Volcans', [['volc', 'Couche volcans'], ['vy', "Intervalle d'éruptions"], ['vcats', 'Contextes de volcans'], ['vdiff', 'Switch « Différencier les volcans »'], ['vmodes', 'Explosif / effusif (collège)']]],
+    ['Frontières de plaques', [['bound', 'Afficher les frontières'], ['btypes', 'Types : subduction / collision / accrétion / coulissant']]],
     ['GPS · déplacements', [['gps', 'Stations GPS'], ['gpsv', 'Flèches de déplacement (cm/an)']]],
     ['Marqueurs', [['markers', "Marqueurs de l'enseignant"]]],
     ['Carte', [['proj', 'Plane / Globe'], ['zoom', 'Zoom + / −'], ['timeline', 'Frise temporelle'], ['legend', 'Légende']]]
@@ -69,6 +69,7 @@
     h += '<div class="ed-block">' +
       '<label>Titre du scénario<input type="text" data-b="sc.title" value="' + esc(sc.title) + '"></label>' +
       '<label>Texte d\'introduction<textarea class="short" data-b="sc.intro">' + esc(sc.intro || '') + '</textarea></label>' +
+      '<label>Niveau d\'affichage<select data-b="sc.level"><option value=""' + (!sc.level ? ' selected' : '') + '>Au choix de l\'élève (barre du haut)</option><option value="col"' + (sc.level === 'col' ? ' selected' : '') + '>Imposer « Collège »</option><option value="adv"' + (sc.level === 'adv' ? ' selected' : '') + '>Imposer « Avancé »</option></select></label>' +
       '<label>Code de séance (vide = scénario proposé directement)<input type="text" maxlength="20" data-b="ctx.code" value="' + esc(ctx.code || '') + '" placeholder="ex. SISMO24"></label>' +
       '<label class="ck"><input type="checkbox" data-b="ctx.active"' + (ctx.active ? ' checked' : '') + '> Visible pour les élèves</label></div>';
 
@@ -236,6 +237,7 @@
     h += '<div class="row3"><label>Volcans : de<input type="number" min="-10000" max="2026" data-c="vy0v" value="' + (v.vy && v.vy[0] != null ? v.vy[0] : '') + '" placeholder="∞"></label>' +
       '<label>à<input type="number" min="-10000" max="2026" data-c="vy1v" value="' + (v.vy && v.vy[1] != null ? v.vy[1] : '') + '" placeholder="∞"></label>' +
       '<label>Couleur des séismes<select data-b="v.colorMode"><option value="depth"' + (v.colorMode === 'depth' ? ' selected' : '') + '>Profondeur</option><option value="ctx"' + (v.colorMode === 'ctx' ? ' selected' : '') + '>Type (compression/extension/cisaillement)</option></select></label></div>';
+    h += '<label class="ck"><input type="checkbox" data-b="v.diffv"' + (v.diffv ? ' checked' : '') + '> Volcans différenciés (couleur par type)</label>';
     h += '<label class="ck"><input type="checkbox" data-c="live"' + ((v.live && v.live.on) ? ' checked' : '') + '> Activer le Live au départ</label>';
     return h;
   }

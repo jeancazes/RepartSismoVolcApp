@@ -235,6 +235,11 @@ footer.src{padding:8px 14px;border-top:1px solid var(--line);font-size:.74em;col
 #sits .sitw{display:inline-flex;align-items:stretch}
 #sits .sit{font-size:.9em}
 #sits .sitx{border:1px solid var(--line);border-left:0;background:var(--bg);color:var(--fg);cursor:pointer;padding:0 7px}
+body.lv-col [data-adv]{display:none!important}
+body.lv-adv [data-col]{display:none!important}
+.dif.dif-off{display:none!important}
+#lv-seg button{padding:5px 9px}
+#lv-seg.locked{opacity:.6;pointer-events:none}
 #sits .sit-home{font-size:.85em;opacity:.85}
 #sits .sit-save{font-size:.85em;border-style:dashed}
 #edbar{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:55;display:flex;gap:10px;align-items:center;background:var(--fg);color:var(--bg);padding:8px 12px;max-width:calc(100vw - 20px);flex-wrap:wrap;box-shadow:0 6px 24px rgba(0,0,0,.35)}
@@ -481,6 +486,7 @@ body{background-image:var(--paper)}
     <h1>Carte Tectonique<small>4e · SVT</small></h1>
     <span class="chip" id="chip-bin">Binôme n° <b id="bin-n">—</b></span>
     <span class="sp"></span>
+    <div class="seg" id="lv-seg" title="Niveau d'affichage : collège (simplifié) ou avancé"><button data-lv="col" class="on">Collège</button><button data-lv="adv">Avancé</button></div>
     <span class="chip hide-s" id="chip-proto">Prototype</span>
     <button class="ibtn sq" id="btn-snd" aria-pressed="true"></button>
     <button class="ibtn sq" id="btn-th"></button>
@@ -507,16 +513,6 @@ body{background-image:var(--paper)}
         </div>
       </div>
       <div class="sec">
-        <h2>Frontières de plaques</h2>
-        <div class="row" data-mi="bound"><input type="checkbox" id="L-bound" data-layer="bound"><label for="L-bound">Afficher les frontières</label></div>
-        <div class="sub" id="bound-types" data-ctx="bound" data-mi="btypes">
-          <div class="row"><input type="checkbox" id="B-subduction" data-btype="subduction" checked><span class="sw ln" style="background:var(--conv)"></span><label for="B-subduction">Subduction</label></div>
-          <div class="row"><input type="checkbox" id="B-collision" data-btype="collision" checked><span class="sw ln" style="background:var(--coll)"></span><label for="B-collision">Collision</label></div>
-          <div class="row"><input type="checkbox" id="B-accretion" data-btype="accretion" checked><span class="sw ln" style="background:var(--div)"></span><label for="B-accretion">Accrétion (dorsale, rift)</label></div>
-          <div class="row"><input type="checkbox" id="B-coulissant" data-btype="coulissant" checked><span class="sw ln" style="background:var(--trans)"></span><label for="B-coulissant">Coulissant (faille)</label></div>
-        </div>
-      </div>
-      <div class="sec">
         <h2>Archives · enregistrées</h2>
         <div class="row" data-mi="quakes"><input type="checkbox" id="L-quakes" data-layer="quakes"><label for="L-quakes">Séismes archivés</label></div>
         <div class="sub" data-ctx="quakes">
@@ -525,27 +521,39 @@ body{background-image:var(--paper)}
           <div data-mi="amag"><select id="amag" aria-label="Magnitude minimale de l'archive"><option value="5" id="amag5">M ≥ 5</option><option value="6" selected>M ≥ 6</option><option value="7">M ≥ 7</option></select></div>
           <div data-mi="minmag" style="display:grid;gap:6px"><label class="note" for="minmag">Magnitude minimale affichée : <span class="mono" id="minmag-v">0</span></label>
           <input type="range" id="minmag" min="0" max="8" step="0.5" value="0"></div>
-          <div data-mi="qtypes" style="display:grid;gap:4px"><div class="note">Type de séisme (selon la frontière)</div>
+          <div class="row" data-mi="colormode"><input type="checkbox" id="Q-diff"><label for="Q-diff">Différencier les séismes</label></div>
+          <div id="q-dif" class="dif" data-mi="qtypes" style="display:grid;gap:4px"><div class="note">Type de séisme (selon la frontière)</div>
             <div class="row"><input type="checkbox" id="Q-conv" data-qtype="conv" checked><span class="sw dot" style="background:var(--conv)"></span><label for="Q-conv">Compression</label></div>
             <div class="row"><input type="checkbox" id="Q-div" data-qtype="div" checked><span class="sw dot" style="background:var(--div)"></span><label for="Q-div">Extension</label></div>
-            <div class="row"><input type="checkbox" id="Q-trans" data-qtype="trans" checked><span class="sw dot" style="background:var(--trans)"></span><label for="Q-trans">Cisaillement</label></div>
+            <div class="row" data-adv><input type="checkbox" id="Q-trans" data-qtype="trans" checked><span class="sw dot" style="background:var(--trans)"></span><label for="Q-trans">Cisaillement</label></div>
             <div class="row"><input type="checkbox" id="Q-intra" data-qtype="intra" checked><span class="sw dot" style="background:var(--intra)"></span><label for="Q-intra">Intraplaque / autre</label></div></div>
-          <div data-mi="colormode" style="display:grid;gap:6px"><div class="note">Couleur des points</div>
-          <div class="seg" id="col-seg"><button data-col="depth" class="on">Profondeur</button><button data-col="ctx">Type</button></div></div>
         </div>
       </div>
       <div class="sec">
         <h2>Volcans · archives</h2>
         <div class="row" data-mi="volc"><input type="checkbox" id="L-volc" data-layer="volc"><label for="L-volc">Volcans (Holocène)</label></div>
         <div class="sub" data-ctx="volc">
-          <div data-mi="vy" style="display:grid;gap:6px"><div class="yr"><label for="vy1">De</label><input type="number" id="vy1" min="-10000" max="2026" value="1900"><label for="vy2">à</label><input type="number" id="vy2" min="-10000" max="2026" value="2026"></div>
-          <button class="mini" id="v-all" style="justify-self:start">Tout (an 0 – 2026)</button></div>
-          <div id="vcats" data-mi="vcats"></div>
-          <div data-mi="vmodes" style="display:grid;gap:4px"><div class="note">Dynamisme éruptif</div>
-            <div class="row"><input type="checkbox" id="VM-expl" data-vmode="expl" checked><span class="mono" style="width:18px;text-align:center">▲</span><label for="VM-expl">Explosif (subduction)</label></div>
-            <div class="row"><input type="checkbox" id="VM-eff" data-vmode="eff" checked><span class="mono" style="width:18px;text-align:center">◠</span><label for="VM-eff">Effusif (dorsale, rift, point chaud)</label></div></div>
+          <div data-mi="vy" style="display:grid;gap:6px"><div class="yr"><label for="vy1">De</label><input type="number" id="vy1" min="-10000" max="2026" value=""><label for="vy2">à</label><input type="number" id="vy2" min="-10000" max="2026" value="2026"></div>
+          <button class="mini" id="v-all" style="justify-self:start">Tout (Holocène)</button></div>
+          <div class="row" data-mi="vdiff"><input type="checkbox" id="V-diff"><label for="V-diff">Différencier les volcans</label></div>
+          <div id="v-dif" class="dif" style="display:grid;gap:4px">
+            <div id="vcats" data-mi="vcats" data-adv></div>
+            <div data-mi="vmodes" data-col style="display:grid;gap:4px"><div class="note">Dynamisme éruptif</div>
+              <div class="row"><input type="checkbox" id="VM-expl" data-vmode="expl" checked><span class="sw tri" style="background:var(--v-sub)"></span><label for="VM-expl">Explosif</label></div>
+              <div class="row"><input type="checkbox" id="VM-eff" data-vmode="eff" checked><span class="sw tri" style="background:var(--v-hot)"></span><label for="VM-eff">Effusif</label></div></div>
+          </div>
         </div>
         
+      </div>
+      <div class="sec">
+        <h2>Frontières de plaques</h2>
+        <div class="row" data-mi="bound"><input type="checkbox" id="L-bound" data-layer="bound"><label for="L-bound">Afficher les frontières</label></div>
+        <div class="sub" id="bound-types" data-ctx="bound" data-mi="btypes">
+          <div class="row"><input type="checkbox" id="B-subduction" data-btype="subduction" checked><span class="sw ln" style="background:var(--conv)"></span><label for="B-subduction">Subduction</label></div>
+          <div class="row"><input type="checkbox" id="B-collision" data-btype="collision" checked><span class="sw ln" style="background:var(--coll)"></span><label for="B-collision">Collision</label></div>
+          <div class="row"><input type="checkbox" id="B-accretion" data-btype="accretion" checked><span class="sw ln" style="background:var(--div)"></span><label for="B-accretion">Accrétion (dorsale, rift)</label></div>
+          <div class="row" data-adv><input type="checkbox" id="B-coulissant" data-btype="coulissant" checked><span class="sw ln" style="background:var(--trans)"></span><label for="B-coulissant">Coulissant (faille)</label></div>
+        </div>
       </div>
       <div class="sec">
         <h2>GPS · déplacements</h2>
@@ -635,7 +643,7 @@ function save(){try{localStorage.setItem(KEY,JSON.stringify(store))}catch(e){}}
 
 /* ---------- état ---------- */
 var S={mode:'flat',rot:[-170,-15],pan:0,k:1,layers:{coast:true,grat:true,plates:false,bound:false,quakes:true,volc:false,hans:false,markers:true,gps:false,gpsv:false},gps:[],qtypes:{conv:true,div:true,trans:true,intra:true},vmodes:{expl:true,eff:true},cons:{qy:null,vy:null,amag:null,minmag:null},markers:[],volcBase:[],ready:false,archSig:'',
-  btypes:{subduction:true,collision:true,accretion:true,coulissant:true},colorMode:'depth',vcat:{subduction:true,ridge:true,rift:true,hotspot:true,unknown:true},vmin:1900,vmax:2026,
+  btypes:{subduction:true,collision:true,accretion:true,coulissant:true},colorMode:'depth',diffV:false,level:'col',vcat:{subduction:true,ridge:true,rift:true,hotspot:true,unknown:true},vmin:null,vmax:null,
   live:{on:false,span:3,q:true,v:true,now:Date.now(),qs:[],vs:[]},lq:[],lvv:[],minmag:0,win:9999,cut:0,tmin:0,tmax:1,quakes:[],volc:[],hans:{},land:null,plates:null,bound:null,sel:null,playing:false,dirty:true};
 var COL={};
 var cv=$('#cv'),ctx=cv.getContext('2d'),cv2=$('#cv2'),ctx2=cv2.getContext('2d'),W=0,H=0,DPR=1;
@@ -710,7 +718,7 @@ function drawBase(){
   if(S.layers.plates&&S.plates){ctx.beginPath();path(S.plates);ctx.strokeStyle=COL.plate;ctx.lineWidth=.8;ctx.setLineDash([4,3]);ctx.stroke();ctx.setLineDash([])}
   if(S.layers.bound&&S.bound){
     var wk=Math.max(1.4,1.2*Math.sqrt(S.k)),ps=store.set.ps/100;
-    S.bound.features.forEach(function(f){var sb=f.properties.sub;if(!S.btypes[sb])return;ctx.beginPath();path(f);ctx.strokeStyle=COL[BCOL[sb]];ctx.lineWidth=wk*(sb==='coulissant'?1:1.15);ctx.globalAlpha=.95;ctx.setLineDash(sb==='collision'?[8,4]:sb==='coulissant'?[2,3]:[]);ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1});
+    S.bound.features.forEach(function(f){var sb=f.properties.sub;if(!S.btypes[sb]||(S.level==='col'&&sb==='coulissant'))return;ctx.beginPath();path(f);ctx.strokeStyle=COL[BCOL[sb]];ctx.lineWidth=wk*(sb==='coulissant'?1:1.15);ctx.globalAlpha=.95;ctx.setLineDash(sb==='collision'?[8,4]:sb==='coulissant'?[2,3]:[]);ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1});
   }
   var ps2=store.set.ps/100,z=Math.min(1.6,.75+.25*Math.sqrt(S.k));
   drawGPS(z);
@@ -729,10 +737,10 @@ function drawBase(){
   if(S.layers.volc){
     var vs=visibleVolc();S.vv=vs;
     for(var j=0;j<vs.length;j++){var v=vs[j];if(!visible(v.lon,v.lat))continue;var pp=proj([v.lon,v.lat]);if(!pp)continue;var s=4.6*z*ps2;
-      var effu=vMode(v)!=='expl';ctx.beginPath();
+      var effu=S.diffV&&vMode(v)!=='expl';ctx.beginPath();
       if(effu){ctx.moveTo(pp[0]-s*1.35,pp[1]+s*.75);ctx.quadraticCurveTo(pp[0],pp[1]-s*1.15,pp[0]+s*1.35,pp[1]+s*.75);ctx.closePath()}
       else{ctx.moveTo(pp[0],pp[1]-s);ctx.lineTo(pp[0]+s*.95,pp[1]+s*.75);ctx.lineTo(pp[0]-s*.95,pp[1]+s*.75);ctx.closePath()}
-      ctx.fillStyle=vColor(v.cat);ctx.globalAlpha=.92;ctx.fill();ctx.lineWidth=.8;ctx.strokeStyle=COL.fg;ctx.globalAlpha=.8;ctx.stroke();
+      ctx.fillStyle=vcol(v);ctx.globalAlpha=.92;ctx.fill();ctx.lineWidth=.8;ctx.strokeStyle=COL.fg;ctx.globalAlpha=.8;ctx.stroke();
       if(!effu){ctx.globalAlpha=.9;ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(pp[0],pp[1]-s-1.5);ctx.lineTo(pp[0],pp[1]-s-4.5);ctx.moveTo(pp[0]-2.5,pp[1]-s-1);ctx.lineTo(pp[0]-4.5,pp[1]-s-3);ctx.moveTo(pp[0]+2.5,pp[1]-s-1);ctx.lineTo(pp[0]+4.5,pp[1]-s-3);ctx.stroke()}
       ctx.globalAlpha=1}
   }
@@ -794,10 +802,12 @@ function qColor(q){
   if(S.colorMode==='ctx')return q.cls==='intra'?COL.intra:COL[q.cls];
   return q.depth<=70?COL.d1:q.depth<=300?COL.d2:COL.d3;
 }
+function vcol(v){if(!S.diffV)return COL['v-sub'];if(S.level==='col')return vMode(v)==='expl'?COL['v-sub']:COL['v-hot'];return vColor(v.cat)}
 function vColor(c){return c==='subduction'?COL['v-sub']:c==='ridge'?COL['v-ridge']:c==='rift'?COL['v-rift']:c==='hotspot'?COL['v-hot']:COL.mute}
-function visibleQuakes(){var lo=S.win>=9999?-Infinity:S.cut-S.win*864e5,hi=S.cut,m=S.minmag;return S.quakes.filter(function(q){return q.t<=hi&&q.t>lo&&q.mag>=m&&S.qtypes[q.cls]!==false})}
+function visibleQuakes(){var lo=S.win>=9999?-Infinity:S.cut-S.win*864e5,hi=S.cut,m=S.minmag;return S.quakes.filter(function(q){return q.t<=hi&&q.t>lo&&q.mag>=m&&!(S.level==='col'&&q.cls==='trans')&&(S.colorMode!=='ctx'||S.qtypes[q.cls]!==false)})}
 function erIn(v){var lo=S.vmin===null?-1e9:S.vmin,hi=S.vmax===null?1e9:S.vmax,l=S.er&&S.er[v.num]||[];return l.filter(function(r){return r[1]>=lo&&r[1]<=hi})}
-function visibleVolc(){var lo=S.vmin,hi=S.vmax;return S.volc.filter(function(v){if(!S.vcat[v.cat])return false;var vm=vMode(v);if(vm==='unk'?!(S.vmodes.expl&&S.vmodes.eff):!S.vmodes[vm])return false;if(lo===null&&hi===null)return true;
+function visibleVolc(){var lo=S.vmin,hi=S.vmax;return S.volc.filter(function(v){if(S.diffV){if(S.level==='adv'){if(!S.vcat[v.cat])return false}else{var vm=vMode(v);if(vm==='unk'?!(S.vmodes.expl&&S.vmodes.eff):!S.vmodes[vm])return false}}if(lo===null&&hi===null)return true;
+  if((v.last===null||v.last===undefined)&&!(S.er&&S.er[v.num])&&lo<=0&&(hi===null||hi>=2026))return true;
   if(erIn(v).length)return true;
   return v.last!==null&&v.last!==undefined&&(lo===null||v.last>=lo)&&(hi===null||v.last<=hi)})}
 
@@ -810,7 +820,7 @@ cv.addEventListener('pointermove',function(e){
   requestAnimationFrame(function(){btWait=false;
     if(drag0||!S.layers.bound||!S.bound||!proj){btip.hidden=true;return}
     var r=cv.getBoundingClientRect(),x=cx-r.left,y=cy-r.top,best=null,bd=7;
-    S.bound.features.forEach(function(f){var sb=f.properties.sub;if(!S.btypes[sb])return;
+    S.bound.features.forEach(function(f){var sb=f.properties.sub;if(!S.btypes[sb]||(S.level==='col'&&sb==='coulissant'))return;
       f.geometry.coordinates.forEach(function(line){for(var i=0;i<line.length;i+=2){var pt=line[i];if(!visible(pt[0],pt[1]))continue;var q=proj(pt);if(!q)continue;var d=Math.abs(q[0]-x)+Math.abs(q[1]-y);if(d<bd*1.5){var dd=Math.hypot(q[0]-x,q[1]-y);if(dd<bd){bd=dd;best=sb}}}})});
     if(!best){btip.hidden=true;return}
     btip.innerHTML='<b>Frontière : '+BNAME[best].toLowerCase()+'</b><br>'+BDESC[best];btip.hidden=false;
@@ -980,16 +990,23 @@ function syncUI(){
   $$('[data-btype]').forEach(function(c){c.checked=!!S.btypes[c.dataset.btype]});
   $$('[data-qtype]').forEach(function(c){c.checked=S.qtypes[c.dataset.qtype]!==false});
   $$('[data-vmode]').forEach(function(c){c.checked=!!S.vmodes[c.dataset.vmode]});
-  $$('#col-seg button').forEach(function(b){b.classList.toggle('on',b.dataset.col===S.colorMode)});
+  $('#Q-diff').checked=S.colorMode==='ctx';$('#q-dif').classList.toggle('dif-off',S.colorMode!=='ctx');
+  $('#V-diff').checked=!!S.diffV;$('#v-dif').classList.toggle('dif-off',!S.diffV);
+  document.body.classList.toggle('lv-col',S.level==='col');document.body.classList.toggle('lv-adv',S.level==='adv');
+  $$('#lv-seg button').forEach(function(b){b.classList.toggle('on',b.dataset.lv===S.level)});
   renderLegend();applyCtx();refreshNext();
 }
 $$('[data-layer]').forEach(function(c){c.onchange=function(){S.layers[c.dataset.layer]=c.checked;renderLegend();applyCtx();refreshNext();dirty()}});
 $$('[data-btype]').forEach(function(c){c.onchange=function(){S.btypes[c.dataset.btype]=c.checked;dirty()}});
-$$('[data-qtype]').forEach(function(c){c.onchange=function(){S.qtypes[c.dataset.qtype]=c.checked;S.colorMode='ctx';syncUI();updTL();dirty()}});
+$$('[data-qtype]').forEach(function(c){c.onchange=function(){S.qtypes[c.dataset.qtype]=c.checked;syncUI();updTL();dirty()}});
 $$('[data-vmode]').forEach(function(c){c.onchange=function(){S.vmodes[c.dataset.vmode]=c.checked;dirty()}});
-$$('#col-seg button').forEach(function(b){b.onclick=function(){S.colorMode=b.dataset.col;syncUI();dirty()}});
+$('#Q-diff').onchange=function(){S.colorMode=this.checked?'ctx':'depth';syncUI();updTL();dirty()};
+$('#V-diff').onchange=function(){S.diffV=this.checked;syncUI();dirty()};
+function setLevel(l,lock){S.level=l==='adv'?'adv':'col';if(!lock){try{localStorage.setItem('tecto-level',S.level)}catch(e){}}$('#lv-seg').classList.toggle('locked',!!lock);syncUI();updTL();dirty()}
+$$('#lv-seg button').forEach(function(b){b.onclick=function(){setLevel(b.dataset.lv,false)}});
+try{var _lv=localStorage.getItem('tecto-level');if(_lv)S.level=_lv==='adv'?'adv':'col'}catch(e){}
 $('#y-all').onclick=function(){var qy=(S.cons&&S.cons.qy)||[1960,2026];$('#y1').value=qy[0];$('#y2').value=qy[1];if($('#amag').value==='5')$('#amag').value='6';loadArch()};
-$('#v-all').onclick=function(){var vy=(S.cons&&S.cons.vy)||[0,2026];$('#vy1').value=Math.max(0,vy[0]);$('#vy2').value=vy[1];readVY()};
+$('#v-all').onclick=function(){var vy=(S.cons&&S.cons.vy)||[-10000,2026];$('#vy1').value=vy[0];$('#vy2').value=vy[1];readVY()};
 $('#y1').onchange=loadArch;$('#y2').onchange=loadArch;$('#amag').onchange=loadArch;
 $('#minmag').oninput=function(){S.minmag=Math.max(parseFloat(this.value),(S.cons&&S.cons.minmag)||0);$('#minmag-v').textContent=this.value;updTL();dirty()};
 $('#live-btn').onclick=function(){S.live.on=!S.live.on;this.classList.toggle('on',S.live.on);this.setAttribute('aria-pressed',String(S.live.on));renderLegend();applyCtx();dirty()};
@@ -1016,10 +1033,10 @@ function renderLegend(){
   var h='';
   if(S.layers.quakes){
     if(S.colorMode==='depth')h+=row('dot','var(--d1)','Séisme 0–70 km')+row('dot','var(--d2)','Séisme 70–300 km')+row('dot','var(--d3)','Séisme 300–700 km');
-    else h+=(S.qtypes.conv?row('dot','var(--conv)','Séisme en compression'):'')+(S.qtypes.div?row('dot','var(--div)','Séisme en extension'):'')+(S.qtypes.trans?row('dot','var(--trans)','Séisme en cisaillement'):'')+(S.qtypes.intra?row('dot','var(--intra)','Intraplaque / autre'):'')+'<div class="note">Type estimé d\'après la frontière la plus proche, pas mesuré.</div>';
+    else h+=(S.qtypes.conv?row('dot','var(--conv)','Séisme en compression'):'')+(S.qtypes.div?row('dot','var(--div)','Séisme en extension'):'')+(S.qtypes.trans&&S.level==='adv'?row('dot','var(--trans)','Séisme en cisaillement'):'')+(S.qtypes.intra?row('dot','var(--intra)','Intraplaque / autre'):'')+'<div class="note">Type estimé d\'après la frontière la plus proche, pas mesuré.</div>';
   }
-  if(S.layers.volc)h+=VC.map(function(c){return row('tri','var(--'+c[2]+')',c[1])}).join('')+'<div class="note">▲ explosif · ◠ effusif</div>';
-  if(S.layers.bound)h+=Object.keys(BNAME).filter(function(k){return S.btypes[k]}).map(function(k){return row('ln','var(--'+BCOL[k]+')','Frontière : '+BNAME[k].toLowerCase())}).join('');
+  if(S.layers.volc){if(!S.diffV)h+=row('tri','var(--v-sub)','Volcan (Holocène)');else if(S.level==='col')h+=row('tri','var(--v-sub)','Volcan explosif ▲')+row('tri','var(--v-hot)','Volcan effusif ◠');else h+=VC.map(function(c){return row('tri','var(--'+c[2]+')',c[1])}).join('')+'<div class="note">▲ explosif · ◠ effusif</div>'}
+  if(S.layers.bound)h+=Object.keys(BNAME).filter(function(k){return S.btypes[k]&&!(S.level==='col'&&k==='coulissant')}).map(function(k){return row('ln','var(--'+BCOL[k]+')','Frontière : '+BNAME[k].toLowerCase())}).join('');
   if(S.layers.gpsv)h+='<div class="note">Flèches GPS : sens et vitesse du déplacement (cm/an).</div>';
   if(S.live.on){if(S.live.q)h+=row('dot','var(--live)','Séisme récent (écho)');if(S.live.v)h+=row('tri','var(--livev)','Volcan actif (écho)')}
   $('#legend').innerHTML=h||'<span class="note">Active une couche.</span>';
@@ -1122,6 +1139,7 @@ function applyView(v){
   if(v.vmodes)Object.assign(S.vmodes,v.vmodes);
   if(v.vcat)Object.assign(S.vcat,v.vcat);
   if(v.colorMode)S.colorMode=v.colorMode;
+  if(v.diffv!=null)S.diffV=!!v.diffv;
   if(v.minmag!=null){S.minmag=v.minmag}
   if(v.y){$('#y1').value=v.y[0];$('#y2').value=v.y[1]}
   if(v.amag!=null)$('#amag').value=String(v.amag);
@@ -1132,7 +1150,7 @@ function applyView(v){
 function captureView(){
   var y=readYears();
   return {mode:S.mode,rot:[Math.round(S.rot[0]),Math.round(S.rot[1])],k:Math.round(S.k*100)/100,pan:Math.round(S.pan),
-    layers:Object.assign({},S.layers),btypes:Object.assign({},S.btypes),qtypes:Object.assign({},S.qtypes),vmodes:Object.assign({},S.vmodes),vcat:Object.assign({},S.vcat),colorMode:S.colorMode,minmag:S.minmag,
+    layers:Object.assign({},S.layers),btypes:Object.assign({},S.btypes),qtypes:Object.assign({},S.qtypes),vmodes:Object.assign({},S.vmodes),vcat:Object.assign({},S.vcat),colorMode:S.colorMode,diffv:S.diffV,minmag:S.minmag,
     y:[y[0],y[1]],amag:+$('#amag').value,vy:[S.vmin,S.vmax],live:{on:S.live.on,span:S.live.span}};
 }
 
@@ -1292,7 +1310,7 @@ function finish(){
 function resetState(){
   S.layers={coast:true,grat:true,plates:false,bound:false,quakes:true,volc:false,hans:false,markers:true,gps:false,gpsv:false};
   S.btypes={subduction:true,collision:true,accretion:true,coulissant:true};S.qtypes={conv:true,div:true,trans:true,intra:true};S.vmodes={expl:true,eff:true};S.vcat={subduction:true,ridge:true,rift:true,hotspot:true,unknown:true};
-  S.colorMode='depth';S.minmag=0;S.vmin=1900;S.vmax=2026;
+  S.colorMode='depth';S.diffV=false;S.minmag=0;S.vmin=null;S.vmax=null;
   S.live.on=false;S.live.span=3;
   $('#y1').value=2011;$('#y2').value=2011;$('#amag').value='6';
   $('#live-btn').classList.remove('on');$('#live-btn').setAttribute('aria-pressed','false');
@@ -1370,7 +1388,13 @@ function forceHidden(m){
 function applyFree(){LASTK=null;SNAPS={};resetState();S.layers.markers=false;S.layers.quakes=false;
   S.mode='flat';S.rot=[-170,-15];S.k=1;S.pan=0;$$('#proj-seg button').forEach(function(x){x.classList.toggle('on',x.dataset.p==='flat')});
   applyCons({});applyMenu({});syncUI();loadArch();dirty()}
+function scenLevel(){
+  var sc=store.set.libre?null:curScen(),lv=sc&&sc.level;
+  if(lv==='col'||lv==='adv'){if(S.level!==lv||!$('#lv-seg').classList.contains('locked'))setLevel(lv,true)}
+  else if($('#lv-seg').classList.contains('locked')){var l='col';try{l=localStorage.getItem('tecto-level')||'col'}catch(e){}setLevel(l,false)}
+}
 function applyStep(st,fresh){
+  scenLevel();
   if(store.set.libre){applyFree();return}
   if(!st)return;
   if(LASTK&&S.ready)SNAPS[LASTK]=snapState();
@@ -1609,9 +1633,9 @@ function scenListHtml(){
 }
 var MI=[
  ['Fond',[['coast','Continents'],['grat','Quadrillage'],['plates','Plaques (contours)']]],
- ['Frontières de plaques',[['bound','Afficher les frontières'],['btypes','Types de frontières']]],
  ['Séismes archivés',[['quakes','Couche séismes'],['qy','Intervalle d\'années'],['amag','Magnitude de l\'archive'],['minmag','Magnitude minimale affichée'],['colormode','Couleur des points']]],
  ['Volcans',[['volc','Couche volcans'],['vy','Intervalle d\'éruptions'],['vcats','Types de volcans']]],
+ ['Frontières de plaques',[['bound','Afficher les frontières'],['btypes','Types de frontières']]],
  ['Marqueurs',[['markers','Marqueurs de l\'enseignant']]],
  ['Live',[['live','Section Live']]],
  ['Carte',[['proj','Plane / Globe'],['zoom','Zoom + / −'],['timeline','Frise temporelle'],['legend','Légende']]]

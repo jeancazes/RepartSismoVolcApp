@@ -6,7 +6,7 @@ require __DIR__ . '/lib/http.php';
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Espace enseignant</title><link rel="icon" href="favicon.ico" sizes="any"><link rel="icon" type="image/svg+xml" href="icon.svg"><link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png"><link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#0e1b36">
+<title>Espace enseignant</title><link rel="icon" href="favicon.ico" sizes="any"><link rel="icon" type="image/svg+xml" href="icon.svg"><link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png"><link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="manifest" href="manifest.webmanifest"><link rel="stylesheet" href="admin-checks.css"><meta name="theme-color" content="#0e1b36">
 <style>
   :root { --bg:#f6f1e6; --ink:#2b2b2b; --line:#cfc6b2; --accent:#1f6f8b; --bad:#b03a2e; }
   @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#15191f; --ink:#e6e6e6; --line:#384150; --accent:#3cc4d9; --bad:#ff7b6b; } }
@@ -24,7 +24,7 @@ require __DIR__ . '/lib/http.php';
   [hidden] { display:none !important; }
 </style>
 </head>
-<body>
+<body class="adm-page">
 <main>
   <h1>Espace enseignant</h1>
 

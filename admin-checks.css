@@ -1,0 +1,12 @@
+/* Cases à cocher lisibles (espace enseignant et éditeur) : carrées, contour net, vert foncé + coche blanche */
+:root{--cb-line:#4b5563;--cb-on:#166534;--cb-tick:#fff;--cb-bg:#fff}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--cb-line:#9ca3af;--cb-on:#4ade80;--cb-tick:#052e16;--cb-bg:transparent}}
+:root[data-theme="dark"]{--cb-line:#9ca3af;--cb-on:#4ade80;--cb-tick:#052e16;--cb-bg:transparent}
+body.adm-page input[type=checkbox],.ed-block input[type=checkbox],.ck input[type=checkbox],.mtab input[type=checkbox]{
+  -webkit-appearance:none;appearance:none;width:22px;height:22px;min-width:22px;margin:0;border:2px solid var(--cb-line);border-radius:5px;background:var(--cb-bg);cursor:pointer;display:inline-grid;place-content:center;vertical-align:middle;flex:none;transition:background .12s,border-color .12s}
+body.adm-page input[type=checkbox]:hover,.ed-block input[type=checkbox]:hover,.ck input[type=checkbox]:hover,.mtab input[type=checkbox]:hover{border-color:var(--cb-on)}
+body.adm-page input[type=checkbox]:checked,.ed-block input[type=checkbox]:checked,.ck input[type=checkbox]:checked,.mtab input[type=checkbox]:checked{background:var(--cb-on);border-color:var(--cb-on)}
+body.adm-page input[type=checkbox]::after,.ed-block input[type=checkbox]::after,.ck input[type=checkbox]::after,.mtab input[type=checkbox]::after{content:"";width:6px;height:11px;border:solid var(--cb-tick);border-width:0 3px 3px 0;transform:rotate(45deg) translate(-1px,-1px) scale(0);transition:transform .1s}
+body.adm-page input[type=checkbox]:checked::after,.ed-block input[type=checkbox]:checked::after,.ck input[type=checkbox]:checked::after,.mtab input[type=checkbox]:checked::after{transform:rotate(45deg) translate(-1px,-1px) scale(1)}
+body.adm-page input[type=checkbox]:focus-visible,.ed-block input[type=checkbox]:focus-visible,.ck input[type=checkbox]:focus-visible,.mtab input[type=checkbox]:focus-visible{outline:3px solid var(--cb-on);outline-offset:2px}
+body.adm-page input[type=checkbox]:disabled,.ed-block input[type=checkbox]:disabled,.ck input[type=checkbox]:disabled,.mtab input[type=checkbox]:disabled{opacity:.45;cursor:not-allowed}

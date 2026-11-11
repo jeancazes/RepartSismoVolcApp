@@ -686,8 +686,9 @@ function drawBoundLabels(){
 function drawGPS(z){
   if(!S.gps||!S.gps.length||!(S.layers.gps||S.layers.gpsv))return;
   var sc=1.9*Math.pow(S.k,.45)*store.set.ps/100+1.1,r=Math.max(1.3,1.5*z*store.set.ps/100);
-  ctx.save();ctx.lineCap='round';
+  ctx.save();ctx.lineCap='round';var occ={},cell=Math.max(24,30*store.set.ps/100);
   S.gps.forEach(function(g){if(!visible(g.lon,g.lat))return;var p=proj([g.lon,g.lat]);if(!p||p[0]<-30||p[0]>W+30||p[1]<-30||p[1]>H+30)return;
+    var ok=Math.floor(p[0]/cell)+'_'+Math.floor(p[1]/cell);if(occ[ok])return;occ[ok]=1;
     if(S.layers.gps||S.layers.gpsv){ctx.beginPath();ctx.arc(p[0],p[1],r,0,6.2832);ctx.fillStyle=COL.fg;ctx.globalAlpha=.9;ctx.fill();ctx.lineWidth=.8;ctx.strokeStyle=COL.panel;ctx.stroke()}
     if(S.layers.gpsv){var dx,dy;
       if(S.mode==='flat'){dx=g.ve/g.sp;dy=-g.vn/g.sp}
@@ -917,7 +918,7 @@ function loadArch(force){
 }
 Promise.all(['data/land.json','data/plates.json','data/boundaries3.json','data/volcans.json','data/eruptions.json'].map(function(u){return fetch(u).then(function(r){return r.json()})})).then(function(a){
   S.land=a[0];S.plates=platesLines(a[1]);S.bound=a[2];S.bound.features.forEach(function(f){f.properties.sub=BKIND[f.properties.kind]||({conv:'subduction',div:'accretion',trans:'coulissant'}[f.properties.type])});
-  getJSON('data/gps.json').then(function(d){S.gps=d.stations.map(function(r){return {lon:r[0],lat:r[1],ve:r[2],vn:r[3],code:r[4],sp:Math.max(.001,Math.hypot(r[2],r[3]))}});dirty()}).catch(function(){});
+  getJSON('data/gps.json').then(function(d){S.gps=d.stations.map(function(r,i){return {lon:r[0],lat:r[1],ve:r[2],vn:r[3],code:r[4],sp:Math.max(.001,Math.hypot(r[2],r[3])),pr:((i*2654435761)>>>0)%100003}}).sort(function(a,b){return a.pr-b.pr});dirty()}).catch(function(){});
   S.volcBase=a[3].map(function(r){return {num:r[0],name:r[1],lat:r[2],lon:r[3],lon_:r[3],type:r[4],last:r[5],country:r[6],cat:r[7],setting:r[8]}});rebuildVolc();rebuildMarkers();
   S.er={};a[4].forEach(function(r){if(r[5]!==1)return;(S.er[r[0]]=S.er[r[0]]||[]).push(r)});
   buildGrid();S.ready=true;syncUI();dirty();loadLiveData();return Promise.resolve().then(function(){var sc=curScen();applyStep(sc.steps[curIdx()]||null);return loadArch(true)});
@@ -943,14 +944,23 @@ function applyCtx(){
   $$('[data-ctx]').forEach(function(el){
     var act=!!on[el.dataset.ctx];
     el.classList.toggle('off',!act);
-    el.querySelectorAll('input,select,button').forEach(function(c){
-      if(c.id==='amag5'||c.id==='play'&&false)return;
-      c.disabled=!act;
-    });
+    if(el.id!=='timeline')return;
+    el.querySelectorAll('input,select,button').forEach(function(c){c.disabled=!act});
   });
   var o5=$('#amag5');if(o5){var n=readYears();o5.disabled=(n[1]-n[0]+1>10)}
   $$('.mi-g').forEach(function(el){el.querySelectorAll('input,select,button').forEach(function(c){c.disabled=true});if(/^(INPUT|SELECT|BUTTON)$/.test(el.tagName))el.disabled=true});
 }
+/* toucher un sous-menu active automatiquement sa couche */
+(function(){
+  function auto(e){
+    var t=e.target;if(!t.closest)return;var sub=t.closest('[data-ctx]');if(!sub||sub.id==='timeline')return;
+    var k=sub.dataset.ctx;if(k==='live'||!(k in S.layers)||S.layers[k])return;
+    if(e.type==='click'&&!/^(INPUT|SELECT|BUTTON|LABEL)$/.test(t.tagName))return;
+    S.layers[k]=true;syncUI();dirty();
+  }
+  var box=document.getElementById('layers');if(!box)return;
+  box.addEventListener('change',auto);box.addEventListener('click',auto);
+})();
 /* ---------- panneau couches ---------- */
 function syncUI(){
   $$('[data-layer]').forEach(function(c){c.checked=!!S.layers[c.dataset.layer]});

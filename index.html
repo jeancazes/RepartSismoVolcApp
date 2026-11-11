@@ -988,6 +988,13 @@ function readVY(){var a=parseInt($('#vy1').value,10),b=parseInt($('#vy2').value,
   if(S.vmin!==null&&S.vmax!==null&&S.vmin>S.vmax){var t=S.vmin;S.vmin=S.vmax;S.vmax=t;$('#vy1').value=S.vmin;$('#vy2').value=S.vmax}
   dirty()}
 $('#vy1').onchange=readVY;$('#vy2').onchange=readVY;
+/* application aussi pendant la saisie (pause de 0,8 s) et sur Entrée */
+(function(){
+  [['#y1',loadArch],['#y2',loadArch],['#vy1',readVY],['#vy2',readVY]].forEach(function(x){var el=$(x[0]),t=null;
+    el.addEventListener('input',function(){clearTimeout(t);t=setTimeout(function(){if(el.value.length>=4||x[0].indexOf('vy')===1&&el.value==='')x[1]()},800)});
+    el.addEventListener('keydown',function(e){if(e.key==='Enter'){clearTimeout(t);x[1]()}});
+  });
+})();
 
 var VC=[['subduction','Subduction','v-sub'],['ridge','Dorsale océanique','v-ridge'],['rift','Rift continental','v-rift'],['hotspot','Point chaud / intraplaque','v-hot']];
 $('#vcats').innerHTML=VC.map(function(c){return '<div class="row"><input type="checkbox" id="V-'+c[0]+'" data-vcat="'+c[0]+'" checked><span class="sw tri" style="background:var(--'+c[2]+')"></span><label for="V-'+c[0]+'">'+c[1]+'</label></div>'}).join('');

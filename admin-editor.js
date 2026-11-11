@@ -4,7 +4,7 @@
   'use strict';
 
   var MI = [
-    ['Fond', [['coast', 'Continents'], ['grat', 'Quadrillage'], ['plates', 'Plaques (contours)']]],
+    ['Fond', [['coast', 'Continents'], ['grat', 'Quadrillage'], ['plates', 'Plaques (contours)'], ['pnames', 'Noms des plaques']]],
     ['Live', [['live', 'Section Live']]],
     ['Séismes archivés', [['quakes', 'Couche séismes'], ['qy', "Intervalle d'années"], ['amag', "Magnitude de l'archive"], ['minmag', 'Magnitude minimale affichée'], ['qtypes', 'Types : compression / extension / cisaillement'], ['colormode', 'Couleur des points']]],
     ['Volcans', [['volc', 'Couche volcans'], ['vy', "Intervalle d'éruptions"], ['vcats', 'Contextes de volcans'], ['vdiff', 'Switch « Différencier les volcans »'], ['vmodes', 'Explosif / effusif (collège)']]],
@@ -13,8 +13,8 @@
     ['Marqueurs', [['markers', "Marqueurs de l'enseignant"]]],
     ['Carte', [['proj', 'Plane / Globe'], ['zoom', 'Zoom + / −'], ['timeline', 'Frise temporelle'], ['legend', 'Légende']]]
   ];
-  var LAYERS = [['coast', 'Continents'], ['grat', 'Quadrillage'], ['plates', 'Plaques (contours)'], ['bound', 'Frontières'], ['quakes', 'Séismes'], ['volc', 'Volcans'], ['gps', 'Mouvements des plaques (GPS)'], ['markers', 'Marqueurs']];
-  var TYPE_LABEL = { qcm: 'Au choix', cloze: 'À compléter', text: 'Rédigée' };
+  var LAYERS = [['coast', 'Continents'], ['grat', 'Quadrillage'], ['plates', 'Plaques (contours)'], ['pnames', 'Noms des plaques'], ['bound', 'Frontières'], ['quakes', 'Séismes'], ['volc', 'Volcans'], ['gps', 'Mouvements des plaques (GPS)'], ['markers', 'Marqueurs']];
+  var TYPE_LABEL = { qcm: 'Au choix', cloze: 'À compléter', text: 'Rédigée', sheet: 'Fiche papier' };
   var TABS = [['content', 'Contenu'], ['answer', 'Réponse'], ['menu', 'Menu'], ['data', 'Données'], ['view', 'Affichage'], ['btns', 'Boutons'], ['pass', 'Passage']];
 
   var ctx = null;
@@ -46,13 +46,17 @@
     if (s.ai == null) s.ai = false;
     if (s.minlen == null) s.minlen = 15;
     if (s.diag == null) s.diag = false;
-    if (s.points == null || isNaN(+s.points)) s.points = s.diag ? 0 : 1;
+    if (s.points == null || isNaN(+s.points)) s.points = (s.diag || s.type === 'sheet') ? 0 : 1;
+    if (!Array.isArray(s.marks)) s.marks = [];
+    if (!s.bg || typeof s.bg !== 'object') s.bg = { coast: true, grat: false, plates: false };
+    if (s.lines == null || isNaN(+s.lines)) s.lines = 2;
     if (!Array.isArray(s.buttons)) s.buttons = [];
     if (!s.menu || typeof s.menu !== 'object') s.menu = {};
     if (!s.cons || typeof s.cons !== 'object') s.cons = { qy: null, vy: null, amag: null, minmag: null };
     if (s.view === undefined) s.view = null;
     if (!s.pass || typeof s.pass !== 'object') s.pass = { answer: 'correct', score: 0, tries: 0, layers: [] };
     if (!Array.isArray(s.pass.layers)) s.pass.layers = [];
+    if (s.type === 'sheet') { s.pass.answer = 'none'; s.points = 0; }
     return s;
   }
   function defaultView() {
@@ -100,7 +104,7 @@
     h += '<label>Texte d\'introduction<textarea data-b="st.intro" placeholder="Contexte donné à l\'élève">' + esc(st.intro) + '</textarea></label>';
     h += '<label>Proposition (ce que l\'élève doit faire)<textarea data-b="st.proposal" placeholder="Ex. Active la couche Séismes et observe.">' + esc(st.proposal) + '</textarea></label>';
     h += '<label>Question<textarea data-b="st.question">' + esc(st.question) + '</textarea></label>';
-    h += '<label>Type de réponse<select data-b="st.type" data-re="1">' + [['qcm', 'Au choix parmi 3'], ['cloze', 'Compléter des phrases'], ['text', 'Rédiger des phrases']].map(function (o) {
+    h += '<label>Type de réponse<select data-b="st.type" data-re="1">' + [['qcm', 'Au choix parmi 3'], ['cloze', 'Compléter des phrases'], ['text', 'Rédiger des phrases'], ['sheet', 'Fiche papier (carte à compléter, sans réponse)']].map(function (o) {
       return '<option value="' + o[0] + '"' + (st.type === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
     }).join('') + '</select></label>';
     h += '<div class="lbl">Indices (jusqu\'à 3, du plus discret au plus direct)</div>' + [0, 1, 2].map(function (i) {
@@ -147,7 +151,48 @@
       .then(function () { ctx.libLoading = false; render(); });
   }
 
+  function landPath(W, H) {
+    if (!ctx.land) return '';
+    var d = '';
+    function ring(r) { return 'M' + r.map(function (q) { return ((q[0] + 180) / 360 * W).toFixed(1) + ' ' + ((90 - q[1]) / 180 * H).toFixed(1); }).join('L') + 'Z'; }
+    (ctx.land.features || []).forEach(function (f) {
+      var g = f.geometry;
+      if (g.type === 'Polygon') g.coordinates.forEach(function (r) { d += ring(r); });
+      else if (g.type === 'MultiPolygon') g.coordinates.forEach(function (pg) { pg.forEach(function (r) { d += ring(r); }); });
+    });
+    return d;
+  }
+  function loadLand() {
+    if (ctx.land || ctx.landLoading) return;
+    ctx.landLoading = true;
+    fetch('data/land.json').then(function (r) { return r.json(); }).then(function (j) { ctx.land = j; })
+      .catch(function () { ctx.land = { features: [] }; say('Fond de carte introuvable (data/land.json).'); })
+      .then(function () { ctx.landLoading = false; render(); });
+  }
+  function tSheet(st) {
+    loadLand();
+    var W = 720, H = 360, h = '<div class="msg-n">Question sans réponse à l\'écran : l\'élève complète une fiche papier. Clique sur la carte pour poser des repères numérotés, puis écris la consigne de chacun. Le bouton « Imprimer la fiche » côté élève génère une carte du monde vierge en noir et blanc, avec les repères et des lignes pour répondre.</div>';
+    h += '<svg viewBox="0 0 ' + W + ' ' + H + '" data-act="sheet-map" style="width:100%;height:auto;border:1px solid var(--line);border-radius:8px;background:#fff;cursor:crosshair;display:block"><path d="' + landPath(W, H) + '" fill="#e5e5e5" stroke="#555" stroke-width=".8"/>';
+    (st.marks || []).forEach(function (m, k) {
+      var x = (m.lon + 180) / 360 * W, y = (90 - m.lat) / 180 * H;
+      h += '<circle data-mk="1" cx="' + x + '" cy="' + y + '" r="9" fill="#8C2F1F" stroke="#fff" stroke-width="1.5"/><text data-mk="1" x="' + x + '" y="' + (y + 4) + '" text-anchor="middle" font-size="11" font-weight="700" fill="#fff" font-family="Arial,sans-serif">' + (k + 1) + '</text>';
+    });
+    h += '</svg>';
+    (st.marks || []).forEach(function (m, k) {
+      h += '<div class="opt3"><b style="margin-top:26px;min-width:22px">' + (k + 1) + '.</b><div style="flex:1"><label>Consigne du repère ' + (k + 1) + ' <small>(' + m.lat.toFixed(1) + '°, ' + m.lon.toFixed(1) + '°)</small>' +
+        '<input type="text" data-b="st.marks.' + k + '.label" value="' + esc(m.label || '') + '" placeholder="Ex. Nomme la plaque et le type de frontière"></label></div>' +
+        '<button class="danger" data-act="sheet-del" data-i="' + k + '" style="margin-top:22px">×</button></div>';
+    });
+    if (!(st.marks || []).length) h += '<div class="msg">Aucun repère : clique sur la carte pour en ajouter.</div>';
+    h += '<div class="row2"><label>Lignes de rédaction par repère<input type="number" min="1" max="6" data-b="st.lines" data-t="n" value="' + (st.lines == null ? 2 : st.lines) + '"></label></div>' +
+      '<div class="lbl">Fond de carte imprimé</div>' +
+      '<label class="ck"><input type="checkbox" data-b="st.bg.grat"' + (st.bg.grat ? ' checked' : '') + '> Quadrillage (tous les 30°)</label>' +
+      '<label class="ck"><input type="checkbox" data-b="st.bg.plates"' + (st.bg.plates ? ' checked' : '') + '> Contours des plaques (traits fins)</label>';
+    return h;
+  }
+
   function tAnswer(st) {
+    if (st.type === 'sheet') return tSheet(st);
     var h = '<label>Points pour cette question<input type="number" min="0" step="0.5" data-b="st.points" data-t="n" value="' + (st.points == null ? 1 : st.points) + '"></label>' +
       '<div class="msg-n">' + (st.type === 'text' ? 'La note /20 de la rédaction est ramenée sur ces points.' : 'Les points sont attribués si la réponse est juste.') + '</div>';
     if (st.type === 'qcm') {
@@ -369,6 +414,14 @@
     e.stopPropagation();
     switch (a) {
       case 'cancel': ctx.onCancel(); break;
+      case 'sheet-map': {
+        if (e.target.closest('[data-mk]')) break;
+        var sv = e.target.closest('svg'), rc = sv.getBoundingClientRect();
+        var lon = (e.clientX - rc.left) / rc.width * 360 - 180, lat = 90 - (e.clientY - rc.top) / rc.height * 180;
+        st.marks.push({ lat: Math.max(-90, Math.min(90, lat)), lon: Math.max(-180, Math.min(180, lon)), label: '' });
+        render(); break;
+      }
+      case 'sheet-del': st.marks.splice(i, 1); render(); break;
       case 'save': save(); break;
       case 'preview': openPreview(null); break;
       case 'st-add': sc.steps.push(newStep()); ctx.si = sc.steps.length - 1; ctx.sub = 'content'; render(); break;
@@ -442,6 +495,7 @@
       var s = sc.steps[i];
       if (s.type === 'qcm' && !String(s.opts[s.ok] || '').trim()) { say('Question ' + (i + 1) + ' : la bonne réponse est vide.'); return; }
       for (var bi = 0; bi < s.buttons.length; bi++) { if (!s.buttons[bi].view) { say('Question ' + (i + 1) + ' : le bouton « ' + (s.buttons[bi].label || '') + ' » n\'a pas de situation enregistrée.'); return; } }
+      if (s.type === 'sheet' && !(s.marks || []).length) { say('Question ' + (i + 1) + ' : pose au moins un repère sur la carte (onglet Réponse).'); return; }
       if (s.type === 'cloze' && String(s.ctext || '').indexOf('___') < 0) { say('Question ' + (i + 1) + ' : la phrase n\'a aucun trou (___).'); return; }
     }
     var content = clone(sc);

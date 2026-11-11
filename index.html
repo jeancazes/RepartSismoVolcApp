@@ -240,6 +240,7 @@ body.lv-adv [data-col]{display:none!important}
 .dif.dif-off{display:none!important}
 #lv-seg button{padding:5px 9px}
 #lv-seg.locked{opacity:.6;pointer-events:none}
+.smarks{margin:8px 0 4px;padding-left:22px;font-size:.95em}.smarks li{margin:2px 0}
 #sits .sit-home{font-size:.85em;opacity:.85}
 #sits .sit-save{font-size:.85em;border-style:dashed}
 #edbar{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:55;display:flex;gap:10px;align-items:center;background:var(--fg);color:var(--bg);padding:8px 12px;max-width:calc(100vw - 20px);flex-wrap:wrap;box-shadow:0 6px 24px rgba(0,0,0,.35)}
@@ -501,6 +502,7 @@ body{background-image:var(--paper)}
         <div class="row" data-mi="coast"><input type="checkbox" id="L-coast" data-layer="coast"><label for="L-coast">Continents</label></div>
         <div class="row" data-mi="grat"><input type="checkbox" id="L-grat" data-layer="grat"><label for="L-grat">Quadrillage</label></div>
         <div class="row" data-mi="plates"><input type="checkbox" id="L-plates" data-layer="plates"><label for="L-plates">Plaques (contours)</label></div>
+        <div class="row" data-mi="pnames"><input type="checkbox" id="L-pnames" data-layer="pnames"><label for="L-pnames">Noms des plaques</label></div>
       </div>
       <div class="sec" id="live-sec" data-mi="live">
         <h2>Live</h2>
@@ -641,7 +643,7 @@ try{var raw=localStorage.getItem(KEY); if(raw){var o=JSON.parse(raw); if(o&&type
 function save(){try{localStorage.setItem(KEY,JSON.stringify(store))}catch(e){}}
 
 /* ---------- état ---------- */
-var S={mode:'flat',rot:[-170,-15],pan:0,k:1,layers:{coast:true,grat:true,plates:false,bound:false,quakes:true,volc:false,hans:false,markers:true,gps:false,gpsv:false},gps:[],qtypes:{conv:true,div:true,trans:true,intra:true},vmodes:{expl:true,eff:true},cons:{qy:null,vy:null,amag:null,minmag:null},markers:[],volcBase:[],ready:false,archSig:'',
+var S={mode:'flat',rot:[-170,-15],pan:0,k:1,layers:{coast:true,grat:true,plates:false,bound:false,quakes:true,volc:false,hans:false,markers:true,gps:false,gpsv:false,pnames:false},gps:[],qtypes:{conv:true,div:true,trans:true,intra:true},vmodes:{expl:true,eff:true},cons:{qy:null,vy:null,amag:null,minmag:null},markers:[],volcBase:[],ready:false,archSig:'',
   btypes:{subduction:true,collision:true,accretion:true,coulissant:true},colorMode:'depth',diffV:false,level:'col',vcat:{subduction:true,ridge:true,rift:true,hotspot:true,unknown:true},vmin:null,vmax:null,
   live:{on:false,span:3,q:true,v:true,now:Date.now(),qs:[],vs:[]},lq:[],lvv:[],minmag:0,win:9999,cut:0,tmin:0,tmax:1,quakes:[],volc:[],hans:{},land:null,plates:null,bound:null,sel:null,playing:false,dirty:true};
 var COL={};
@@ -704,6 +706,7 @@ function drawGPS(z){
     ctx.globalAlpha=1;ctx.strokeStyle=COL.panel;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
     ctx.strokeStyle=COL.accent;ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.moveTo(x2,y2);ctx.lineTo(x2-h*Math.cos(a-.45),y2-h*Math.sin(a-.45));ctx.moveTo(x2,y2);ctx.lineTo(x2-h*Math.cos(a+.45),y2-h*Math.sin(a+.45));ctx.stroke()}
 }
+var PNAMES=[['Pacifique',-8,-150],['Eurasie',55,85],['Afrique',5,20],['Amérique du Nord',48,-100],['Amérique du Sud',-15,-60],['Antarctique',-80,40],['Australie',-25,135],['Nazca',-20,-90]];
 function drawBase(){
   setupProj();readColors();
   ctx.setTransform(DPR,0,0,DPR,0,0);ctx.clearRect(0,0,W,H);
@@ -715,6 +718,8 @@ function drawBase(){
   if(S.layers.coast&&S.land){ctx.beginPath();path(S.land);ctx.fillStyle=COL.land;ctx.fill();if(COL.coast&&COL.coast!=='none'){ctx.strokeStyle=COL.coast;ctx.lineWidth=.8;ctx.stroke()}}
   if(S.layers.grat){ctx.beginPath();path(d3.geoGraticule10());ctx.strokeStyle=COL.grat;ctx.lineWidth=.6;ctx.stroke()}
   if(S.layers.plates&&S.plates){ctx.beginPath();path(S.plates);ctx.strokeStyle=COL.plate;ctx.lineWidth=.8;ctx.setLineDash([4,3]);ctx.stroke();ctx.setLineDash([])}
+  if(S.layers.pnames){var pk=store.set.ps/100,fs=Math.min(19,11+2*Math.sqrt(S.k))*pk;ctx.font='700 '+fs+'px '+getComputedStyle(document.body).fontFamily;ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineJoin='round';
+    PNAMES.forEach(function(n){if(!visible(n[2],n[1]))return;var q=proj([n[2],n[1]]);if(!q)return;ctx.lineWidth=4;ctx.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--panel')||'#fff';ctx.strokeText(n[0],q[0],q[1]);ctx.fillStyle=COL.fg||'#000';ctx.fillText(n[0],q[0],q[1])});ctx.textAlign='start';ctx.textBaseline='alphabetic'}
   if(S.layers.bound&&S.bound){
     var wk=Math.max(1.4,1.2*Math.sqrt(S.k)),ps=store.set.ps/100;
     S.bound.features.forEach(function(f){var sb=f.properties.sub;if(!S.btypes[sb]||(S.level==='col'&&sb==='coulissant'))return;ctx.beginPath();path(f);ctx.strokeStyle=COL[BCOL[sb]];ctx.lineWidth=wk*(sb==='coulissant'?1:1.15);ctx.globalAlpha=.95;ctx.setLineDash(sb==='collision'?[8,4]:sb==='coulissant'?[2,3]:[]);ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1});
@@ -788,6 +793,7 @@ function drawOverlay(now){
         echo(p[0],p[1]-s*1.2,s*.5,s*.5+12*ps2,ph,COL.mute,1.4);echo(p[0],p[1]-s*1.2,s*.5,s*.5+12*ps2,(ph+.5)%1,COL.mute,1)});
     }
   }
+  if(S.sheetMarks&&S.sheetMarks.length){S.sheetMarks.forEach(function(m,k){if(!visible(m.lon,m.lat))return;var p=proj([m.lon,m.lat]);if(!p)return;var r=9*ps2;ctx2.beginPath();ctx2.arc(p[0],p[1],r,0,6.2832);ctx2.fillStyle=COL.accent;ctx2.fill();ctx2.lineWidth=1.5;ctx2.strokeStyle='#fff';ctx2.stroke();ctx2.fillStyle='#fff';ctx2.font='700 '+(11*ps2)+'px sans-serif';ctx2.textAlign='center';ctx2.textBaseline='middle';ctx2.fillText(String(k+1),p[0],p[1]+.5);ctx2.textAlign='start';ctx2.textBaseline='alphabetic'})}
   S.lq=lq;S.lvv=lv;
   if(S.sel){var sp=proj([S.sel.lon,S.sel.lat]);if(sp&&visible(S.sel.lon,S.sel.lat)){ctx2.beginPath();ctx2.arc(sp[0],sp[1],14,0,6.2832);ctx2.lineWidth=1.6;ctx2.strokeStyle=COL.accent;ctx2.setLineDash([3,3]);ctx2.stroke();ctx2.setLineDash([])}}
 }
@@ -1168,7 +1174,7 @@ function gradeStep(text,st){
   return {tot:tot,max:max,s20:max?Math.round(tot/max*20*2)/2:0,det:det};
 }
 var G={hint:0,tries:0,done:false,res:null,st:null};
-var TYPE_LABEL={qcm:'Au choix (3)',cloze:'Phrase à compléter',text:'Rédaction'};
+var TYPE_LABEL={qcm:'Au choix (3)',cloze:'Phrase à compléter',text:'Rédaction',sheet:'Fiche papier'};
 function renderProg(sc,i){$('#g-prog').innerHTML=sc.steps.map(function(s,k){return '<i class="'+(k<i?'done':k===i?'cur':'')+'"></i>'}).join('');$('#g-step').textContent=sc.steps.length?((i+1)+' / '+sc.steps.length):'—'}
 function renderStep(){
   var sc=curScen(),b=$('#g-body');
@@ -1182,6 +1188,7 @@ function renderStep(){
   h+='<div id="g-q">'+esc(st.question)+'</div><div id="sits" hidden></div>';
   if(st.type==='qcm'){h+=(st.opts||[]).map(function(o,k){return o?'<button class="opt" data-i="'+k+'">'+esc(o)+'</button>':''}).join('')}
   if(st.type==='cloze')h+=clozeHtml(st);
+  if(st.type==='sheet'){var mk=st.marks||[];h+='<div class="note">Complète la fiche papier. Les repères sont numérotés sur la carte.</div>'+(mk.length?'<ol class="smarks">'+mk.map(function(m,k){return '<li value="'+(k+1)+'">'+esc(m.label||'')+'</li>'}).join('')+'</ol>':'')}
   if(st.type==='text'){h+='<textarea id="ans" aria-label="Ta réponse" placeholder="Écris ta réponse ici."></textarea><div class="note" style="margin-top:4px">N\'écris ni ton nom ni aucune information personnelle.</div>'}
   h+='<div id="fb"></div><div id="pmsg" class="note"></div><div class="actions" id="act"></div>';
   b.innerHTML=h;b.scrollTop=0;renderSits();
@@ -1190,6 +1197,7 @@ function renderStep(){
   var act='';
   if(st.type==='cloze')act+='<button class="btn" id="chk">Vérifier</button>';
   if(st.type==='text')act+='<button class="btn" id="chk">Envoyer ma réponse</button>';
+  if(st.type==='sheet')act+='<button class="btn" id="sheet-print" type="button">🖨 Imprimer la fiche</button><button class="btn ghost" id="sheet-done" type="button">J\'ai terminé la fiche</button>';
   if((st.hints||[]).some(Boolean))act+='<button class="btn ghost" id="hint">Indice</button>';
   var last=i>=sc.steps.length-1;
   if(i>0)act='<button class="btn ghost" id="prevq" type="button">← Question précédente</button>'+act;
@@ -1200,6 +1208,12 @@ function renderStep(){
   if(st.type==='qcm')$$('.opt').forEach(function(btn){btn.onclick=function(){answerQcm(sc,st,btn)}});
   if(st.type==='cloze')$('#chk').onclick=function(){checkCloze(sc,st)};
   if(st.type==='text')$('#chk').onclick=function(){sendText(sc,st)};
+  S.sheetMarks=st.type==='sheet'?(st.marks||[]):null;dirty();
+  if(st.type==='sheet'){
+    $('#sheet-print').onclick=function(){printSheet(sc,st)};
+    var sd=$('#sheet-done');sd.onclick=function(){ansBox()[akey(sc,st)]={done:true,sent:true};persist();G.res={sent:true,correct:true};showFb('good','Fiche enregistrée comme terminée.');sd.disabled=true;refreshNext()};
+    if(prev&&prev.done){sd.disabled=true;showFb('good','Fiche enregistrée comme terminée.')}
+  }
   refreshNext();
 }
 function clozeHtml(st){
@@ -1209,9 +1223,9 @@ function clozeHtml(st){
     return s}).join('')+'</span>';
 }
 function showFb(cls,html){var f=$('#fb');if(f)f.innerHTML='<div class="fb '+cls+'">'+html+'</div>'}
-var LAYER_LABEL={gps:'Stations GPS',gpsv:'Flèches GPS',coast:'Continents',grat:'Quadrillage',plates:'Plaques (contours)',bound:'Frontières de plaques',quakes:'Séismes',volc:'Volcans',markers:'Marqueurs',hans:'Alertes'};
+var LAYER_LABEL={pnames:'Noms des plaques',gps:'Stations GPS',gpsv:'Flèches GPS',coast:'Continents',grat:'Quadrillage',plates:'Plaques (contours)',bound:'Frontières de plaques',quakes:'Séismes',volc:'Volcans',markers:'Marqueurs',hans:'Alertes'};
 function passState(st){
-  var p=st.pass||{},r=G.res||{},miss=[],mode=p.answer||'correct',ok=true;
+  var p=st.pass||{},r=G.res||{},miss=[],mode=st.type==='sheet'?'none':(p.answer||'correct'),ok=true;
   var ansOK=true;
   if(mode==='sent'){ansOK=!!r.sent}
   else if(mode==='correct'){
@@ -1276,8 +1290,26 @@ function sendText(sc,st){
       else done(r.s20,'',o.st===429?'trop de demandes, réessaie plus tard':o.st===503?'IA désactivée':'erreur '+o.st)})
     .catch(function(){if(sb)sb.disabled=false;done(r.s20,'','réseau')});
 }
+function printSheet(sc,st){
+  var W=1000,H=500,X=function(l){return (l+180)/360*W},Y=function(a){return (90-a)/180*H},bg=st.bg||{coast:true};
+  function ring(r){return 'M'+r.map(function(q){return X(q[0]).toFixed(1)+' '+Y(q[1]).toFixed(1)}).join('L')+'Z'}
+  var d='';((S.land&&S.land.features)||[]).forEach(function(f){var g=f.geometry;if(g.type==='Polygon')g.coordinates.forEach(function(r){d+=ring(r)});else if(g.type==='MultiPolygon')g.coordinates.forEach(function(pg){pg.forEach(function(r){d+=ring(r)})})});
+  var svg='<svg viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg"><rect width="'+W+'" height="'+H+'" fill="#fff" stroke="#000" stroke-width="1.5"/>';
+  if(bg.grat){for(var lo=-150;lo<=180;lo+=30)svg+='<line x1="'+X(lo)+'" y1="0" x2="'+X(lo)+'" y2="'+H+'" stroke="#bbb" stroke-width=".6"/>';for(var la=-60;la<=60;la+=30)svg+='<line x1="0" y1="'+Y(la)+'" x2="'+W+'" y2="'+Y(la)+'" stroke="#bbb" stroke-width=".6"/>'}
+  svg+='<path d="'+d+'" fill="#f4f4f4" stroke="#000" stroke-width="1" stroke-linejoin="round"/>';
+  if(bg.plates&&S.plates){var pd='';S.plates.coordinates.forEach(function(l){for(var i=0;i<l.length;i++){if(i===0||Math.abs(l[i][0]-l[i-1][0])>180)pd+='M';else pd+='L';pd+=X(l[i][0]).toFixed(1)+' '+Y(l[i][1]).toFixed(1)}});svg+='<path d="'+pd+'" fill="none" stroke="#000" stroke-width=".7" stroke-dasharray="5 3"/>'}
+  var mk=st.marks||[];
+  mk.forEach(function(m,k){var x=X(m.lon),y=Y(m.lat);svg+='<circle cx="'+x+'" cy="'+y+'" r="3" fill="#000"/><text x="'+(x+6)+'" y="'+(y-6)+'" font-size="22" font-weight="700" font-family="Arial,sans-serif" stroke="#fff" stroke-width="5" paint-order="stroke" fill="#000">'+(k+1)+'</text>'});
+  svg+='</svg>';
+  var n=Math.max(1,Math.min(6,+st.lines||2)),items=mk.map(function(m,k){var l='';for(var i=0;i<n;i++)l+='<div class="ln"></div>';return '<div class="it"><b>'+(k+1)+'.</b> '+esc(m.label||'')+l+'</div>'}).join('');
+  var html='<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Fiche — '+esc(st.title||sc.title)+'</title><style>@page{size:A4 landscape;margin:10mm}*{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;color:#000;margin:0}h1{font-size:15pt;margin:0 0 2mm}.top{display:flex;justify-content:space-between;gap:10mm;font-size:10pt;margin-bottom:3mm}.top span{flex:1;border-bottom:1px solid #000;padding-bottom:1mm}svg{width:100%;height:auto;display:block}.q{font-size:10.5pt;margin:3mm 0}.list{columns:2;column-gap:10mm;font-size:10pt}.it{break-inside:avoid;margin-bottom:3mm}.ln{border-bottom:1px solid #555;height:6.5mm}</style></head><body>'
+    +'<h1>'+esc(sc.title)+' — '+esc(st.title||'Fiche')+'</h1><div class="top"><span>Nom :</span><span>Classe :</span><span>Date :</span></div>'+svg
+    +(st.question?'<div class="q"><b>'+esc(st.question)+'</b></div>':'')+'<div class="list">'+items+'</div></body></html>';
+  var w=window.open('','_blank');if(!w){alert('Autorise les fenêtres pop-up pour imprimer la fiche.');return}
+  w.document.open();w.document.write(html);w.document.close();w.focus();setTimeout(function(){try{w.print()}catch(e){}},400);
+}
 function giveHint(){var st=G.st,hs=(st.hints||[]).filter(Boolean);if(!hs.length)return;var h=hs[Math.min(G.hint,hs.length-1)];G.hint++;showFb('hint','<b>Indice '+Math.min(G.hint,hs.length)+' / '+hs.length+'</b><br>'+esc(h))}
-function pts(st){return st.points==null?(st.diag?0:1):(+st.points||0)}
+function pts(st){if(st.type==='sheet')return 0;return st.points==null?(st.diag?0:1):(+st.points||0)}
 function fmt(n){return String(Math.round(n*100)/100).replace('.',',')}
 function bilanOf(sc){
   var AN=ansBox(),rows=[],ok=0,tot=0,ep=0,tp=0;
@@ -1286,6 +1318,7 @@ function bilanOf(sc){
     tp+=max;
     if(st.type==='qcm'){tot++;if(r){if(r.choice===st.ok){mark='Réussie';cls='ok';ok++;got=max}else{mark='Manquée';cls='ko'}}}
     else if(st.type==='cloze'){tot++;if(r&&r.vals){var all=true;(st.ans||[]).forEach(function(a,k){var g=String(a).split('|').map(norm);if(g.indexOf(norm(String(r.vals[k]||'')))<0)all=false});if(all){mark='Réussie';cls='ok';ok++;got=max}else{mark='Manquée';cls='ko'}}}
+    else if(st.type==='sheet'){if(r&&r.done){mark='Fiche faite';cls='ok'}}
     else if(r&&r.text){mark='Rédigée';cls='ok';got=Math.round((+r.score||0)/20*max*100)/100}
     ep+=got;
     rows.push({n:i+1,label:label,mark:mark,cls:cls,pts:got,max:max});
@@ -1315,7 +1348,7 @@ function finish(){
   $('#restart').onclick=function(){if(!PV){Object.keys(store.answers).forEach(function(k){if(k.indexOf(sc.id+'/')===0)delete store.answers[k]})}else PV.answers={};setIdx(0);persist();renderStep();applyStep(curScen().steps[0],true)};
 }
 function resetState(){
-  S.layers={coast:true,grat:true,plates:false,bound:false,quakes:true,volc:false,hans:false,markers:true,gps:false,gpsv:false};
+  S.layers={coast:true,grat:true,plates:false,bound:false,quakes:true,volc:false,hans:false,markers:true,gps:false,gpsv:false,pnames:false};
   S.btypes={subduction:true,collision:true,accretion:true,coulissant:true};S.qtypes={conv:true,div:true,trans:true,intra:true};S.vmodes={expl:true,eff:true};S.vcat={subduction:true,ridge:true,rift:true,hotspot:true,unknown:true};
   S.colorMode='depth';S.diffV=false;S.minmag=0;S.vmin=null;S.vmax=null;
   S.live.on=false;S.live.span=3;
@@ -1389,10 +1422,10 @@ var SNAPS={},LASTK=null;
 function stepKey(st){return (curScen().id||'')+'/'+st.id}
 function snapState(){var v=captureView();delete v.mode;delete v.rot;delete v.k;delete v.pan;return v}
 function forceHidden(m){
-  m=m||{};['coast','grat','plates','bound','quakes','volc','markers','gps','gpsv'].forEach(function(k){if(m[k]==='hide')S.layers[k]=false});if(m.gpsv==='hide'||m.gps==='hide')S.layers.gps=S.layers.gpsv=false;
+  m=m||{};['coast','grat','plates','pnames','bound','quakes','volc','markers','gps','gpsv'].forEach(function(k){if(m[k]==='hide')S.layers[k]=false});if(m.gpsv==='hide'||m.gps==='hide')S.layers.gps=S.layers.gpsv=false;
   if(m.live==='hide'){S.live.on=false;$('#live-btn').classList.remove('on');$('#live-btn').setAttribute('aria-pressed','false')}
 }
-function applyFree(){LASTK=null;SNAPS={};resetState();S.layers.markers=false;S.layers.quakes=false;
+function applyFree(){S.sheetMarks=null;LASTK=null;SNAPS={};resetState();S.layers.markers=false;S.layers.quakes=false;
   S.mode='flat';S.rot=[-170,-15];S.k=1;S.pan=0;$$('#proj-seg button').forEach(function(x){x.classList.toggle('on',x.dataset.p==='flat')});
   applyCons({});applyMenu({});syncUI();loadArch();dirty()}
 function scenLevel(){

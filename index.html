@@ -1188,8 +1188,18 @@ function finish(){
   };
   $('#restart').onclick=function(){if(!PV){Object.keys(store.answers).forEach(function(k){if(k.indexOf(sc.id+'/')===0)delete store.answers[k]})}else PV.answers={};setIdx(0);persist();renderStep();applyStep(curScen().steps[0])};
 }
+function resetState(){
+  S.layers={coast:true,grat:true,plates:false,bound:false,quakes:true,volc:false,hans:false,markers:true};
+  S.btypes={conv:true,div:true,trans:true};S.vcat={subduction:true,ridge:true,rift:true,hotspot:true,unknown:true};
+  S.colorMode='depth';S.minmag=0;S.vmin=1900;S.vmax=2026;
+  S.live.on=false;S.live.span=3;
+  $('#y1').value=2011;$('#y2').value=2011;$('#amag').value='6';
+  $('#live-btn').classList.remove('on');$('#live-btn').setAttribute('aria-pressed','false');
+  $$('#live-span button').forEach(function(x){x.classList.toggle('on',+x.dataset.d===3)});
+}
 function applyStep(st){
   if(!st)return;
+  resetState();
   applyCons(st.cons);applyView(st.view);syncUI();applyMenu(st.menu);loadArch();dirty();
 }
 function scenChanged(){rebuildVolc();rebuildMarkers();S.archSig='';loadArch(true);renderStep();var sc=curScen();applyStep(sc.steps[curIdx()]||null);if(!sc.steps.length){applyMenu({});applyCons({})}}

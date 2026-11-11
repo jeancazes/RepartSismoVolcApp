@@ -557,9 +557,8 @@ body{background-image:var(--paper)}
         </div>
       </div>
       <div class="sec">
-        <h2>GPS · déplacements</h2>
-        <div class="row" data-mi="gps"><input type="checkbox" id="L-gps" data-layer="gps"><label for="L-gps">Stations GPS</label></div>
-        <div class="row" data-mi="gpsv"><input type="checkbox" id="L-gpsv" data-layer="gpsv"><label for="L-gpsv">Flèches de déplacement (cm/an)</label></div>
+        <h2>GPS</h2>
+        <div class="row" data-mi="gps"><input type="checkbox" id="L-gps" data-layer="gps"><label for="L-gps">Mouvements des plaques (GPS)</label></div>
       </div>
       <div class="sec" id="mk-sec" hidden><h2>Marqueurs</h2><div class="row" data-mi="markers"><input type="checkbox" id="L-markers" data-layer="markers"><label for="L-markers">Marqueurs de l'enseignant</label></div></div>
       <div class="sec" data-mi="legend"><h2>Légende</h2><div class="legend" id="legend"></div></div>
@@ -992,7 +991,7 @@ function syncUI(){
   $$('#lv-seg button').forEach(function(b){b.classList.toggle('on',b.dataset.lv===S.level)});
   renderLegend();applyCtx();refreshNext();
 }
-$$('[data-layer]').forEach(function(c){c.onchange=function(){S.layers[c.dataset.layer]=c.checked;renderLegend();applyCtx();refreshNext();dirty()}});
+$$('[data-layer]').forEach(function(c){c.onchange=function(){S.layers[c.dataset.layer]=c.checked;if(c.dataset.layer==='gps')S.layers.gpsv=c.checked;renderLegend();applyCtx();refreshNext();dirty()}});
 $$('[data-btype]').forEach(function(c){c.onchange=function(){S.btypes[c.dataset.btype]=c.checked;dirty()}});
 $$('[data-qtype]').forEach(function(c){c.onchange=function(){S.qtypes[c.dataset.qtype]=c.checked;syncUI();updTL();dirty()}});
 $$('[data-vmode]').forEach(function(c){c.onchange=function(){S.vmodes[c.dataset.vmode]=c.checked;dirty()}});
@@ -1128,6 +1127,7 @@ function applyView(v){
   if(v.k!=null)S.k=v.k;
   if(v.pan!=null)S.pan=v.pan;else if(v.mode||v.rot)S.pan=0;
   if(v.layers)Object.keys(v.layers).forEach(function(k){S.layers[k]=v.layers[k]});
+  if(v.layers&&(v.layers.gps!=null||v.layers.gpsv!=null))S.layers.gps=!!(v.layers.gps||v.layers.gpsv);S.layers.gpsv=S.layers.gps;
   if(v.btypes){var bt=v.btypes;
     ['subduction','collision','accretion','coulissant'].forEach(function(k){if(bt[k]!=null)S.btypes[k]=!!bt[k]});
     if(bt.conv!=null){S.btypes.subduction=!!bt.conv;S.btypes.collision=!!bt.conv}
@@ -1380,7 +1380,7 @@ var SNAPS={},LASTK=null;
 function stepKey(st){return (curScen().id||'')+'/'+st.id}
 function snapState(){var v=captureView();delete v.mode;delete v.rot;delete v.k;delete v.pan;return v}
 function forceHidden(m){
-  m=m||{};['coast','grat','plates','bound','quakes','volc','markers','gps','gpsv'].forEach(function(k){if(m[k]==='hide')S.layers[k]=false});
+  m=m||{};['coast','grat','plates','bound','quakes','volc','markers','gps','gpsv'].forEach(function(k){if(m[k]==='hide')S.layers[k]=false});if(m.gpsv==='hide'||m.gps==='hide')S.layers.gps=S.layers.gpsv=false;
   if(m.live==='hide'){S.live.on=false;$('#live-btn').classList.remove('on');$('#live-btn').setAttribute('aria-pressed','false')}
 }
 function applyFree(){LASTK=null;SNAPS={};resetState();S.layers.markers=false;S.layers.quakes=false;

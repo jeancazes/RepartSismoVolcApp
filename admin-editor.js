@@ -9,11 +9,11 @@
     ['Séismes archivés', [['quakes', 'Couche séismes'], ['qy', "Intervalle d'années"], ['amag', "Magnitude de l'archive"], ['minmag', 'Magnitude minimale affichée'], ['qtypes', 'Types : compression / extension / cisaillement'], ['colormode', 'Couleur des points']]],
     ['Volcans', [['volc', 'Couche volcans'], ['vy', "Intervalle d'éruptions"], ['vcats', 'Contextes de volcans'], ['vsub', 'Volcans sous-marins'], ['vdiff', 'Switch « Différencier les volcans »'], ['vmodes', 'Explosif / effusif (collège)']]],
     ['Frontières de plaques', [['bound', 'Afficher les frontières'], ['btypes', 'Types : subduction / collision / accrétion / coulissant']]],
-    ['GPS · déplacements', [['gps', 'Stations GPS'], ['gpsv', 'Flèches de déplacement (cm/an)']]],
+    ['GPS', [['gps', 'Mouvements des plaques (GPS)']]],
     ['Marqueurs', [['markers', "Marqueurs de l'enseignant"]]],
     ['Carte', [['proj', 'Plane / Globe'], ['zoom', 'Zoom + / −'], ['timeline', 'Frise temporelle'], ['legend', 'Légende']]]
   ];
-  var LAYERS = [['coast', 'Continents'], ['grat', 'Quadrillage'], ['plates', 'Plaques (contours)'], ['bound', 'Frontières'], ['quakes', 'Séismes'], ['volc', 'Volcans'], ['gps', 'Stations GPS'], ['gpsv', 'Flèches GPS (cm/an)'], ['markers', 'Marqueurs']];
+  var LAYERS = [['coast', 'Continents'], ['grat', 'Quadrillage'], ['plates', 'Plaques (contours)'], ['bound', 'Frontières'], ['quakes', 'Séismes'], ['volc', 'Volcans'], ['gps', 'Mouvements des plaques (GPS)'], ['markers', 'Marqueurs']];
   var TYPE_LABEL = { qcm: 'Au choix', cloze: 'À compléter', text: 'Rédigée' };
   var TABS = [['content', 'Contenu'], ['answer', 'Réponse'], ['menu', 'Menu'], ['data', 'Données'], ['view', 'Affichage'], ['btns', 'Boutons'], ['pass', 'Passage']];
 

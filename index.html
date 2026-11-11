@@ -1292,7 +1292,9 @@ function forceHidden(m){
   m=m||{};['coast','grat','plates','bound','quakes','volc','markers','gps','gpsv'].forEach(function(k){if(m[k]==='hide')S.layers[k]=false});
   if(m.live==='hide'){S.live.on=false;$('#live-btn').classList.remove('on');$('#live-btn').setAttribute('aria-pressed','false')}
 }
+function applyFree(){LASTK=null;resetState();applyCons({});applyMenu({});syncUI();loadArch();dirty()}
 function applyStep(st,fresh){
+  if(store.set.libre){applyFree();return}
   if(!st)return;
   if(LASTK&&S.ready)SNAPS[LASTK]=snapState();
   if(fresh)SNAPS={};
@@ -1357,7 +1359,7 @@ loop();
 /*ADMIN_GLUE*/
 window.APP={S:S,adm:adm,store:store,admSave:admSave,save:save,getJSON:getJSON,esc:esc,fmtDate:fmtDate,CLS:CLS,norm:norm,gradeStep:gradeStep,kwRe:kwRe,
   qKey:qKey,loadArch:loadArch,rebuildVolc:rebuildVolc,rebuildMarkers:rebuildMarkers,captureView:captureView,preview:previewStep,endPreview:endPreview,
-  clearSnaps:function(){SNAPS={};LASTK=null},resetMap:resetMap,scenChanged:scenChanged,DEFAULT_SCEN:DEFAULT_SCEN,emptyOv:emptyOv,curScen:curScen,PVget:function(){return PV},resize:resize,dirty:dirty,readYears:readYears,TYPE_LABEL:TYPE_LABEL,LAYER_LABEL:LAYER_LABEL,rowsToQuakes:rowsToQuakes,classify:classify,applyCtx:applyCtx,finish:finish};
+  clearSnaps:function(){SNAPS={};LASTK=null},applyFree:applyFree,resetMap:resetMap,scenChanged:scenChanged,DEFAULT_SCEN:DEFAULT_SCEN,emptyOv:emptyOv,curScen:curScen,PVget:function(){return PV},resize:resize,dirty:dirty,readYears:readYears,TYPE_LABEL:TYPE_LABEL,LAYER_LABEL:LAYER_LABEL,rowsToQuakes:rowsToQuakes,classify:classify,applyCtx:applyCtx,finish:finish};
 })();
 </script>
 <script>
@@ -2193,7 +2195,7 @@ function openPicker(){
 }
 function closePicker(){pk.hidden=true}
 function finishPick(id){A.store.scen=id;A.store.set.libre=false;A.save();applyMode();closePicker();A.scenChanged();play('next')}
-function libre(){A.store.set.libre=true;A.save();applyMode();closePicker();play('tick')}
+function libre(){A.store.set.libre=true;A.save();applyMode();closePicker();A.applyFree();play('tick')}
 function listScens(){
   var h='';A.adm.scens.forEach(function(s){
     h+='<button class="scen-item" type="button" data-id="'+s.id+'"><b>'+A.esc(s.title||'(sans titre)')+'</b><small>'+s.steps.length+' question'+(s.steps.length>1?'s':'')+(s.code?' · code requis':'')+'</small>'+(s.intro?'<span class="si">'+A.esc(String(s.intro).slice(0,120))+'</span>':'')+'</button>';

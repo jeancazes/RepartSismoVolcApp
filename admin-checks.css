@@ -10,3 +10,6 @@ body.adm-page input[type=checkbox]::after,.ed-block input[type=checkbox]::after,
 body.adm-page input[type=checkbox]:checked::after,.ed-block input[type=checkbox]:checked::after,.ck input[type=checkbox]:checked::after,.mtab input[type=checkbox]:checked::after{transform:rotate(45deg) translate(-1px,-1px) scale(1)}
 body.adm-page input[type=checkbox]:focus-visible,.ed-block input[type=checkbox]:focus-visible,.ck input[type=checkbox]:focus-visible,.mtab input[type=checkbox]:focus-visible{outline:3px solid var(--cb-on);outline-offset:2px}
 body.adm-page input[type=checkbox]:disabled,.ed-block input[type=checkbox]:disabled,.ck input[type=checkbox]:disabled,.mtab input[type=checkbox]:disabled{opacity:.45;cursor:not-allowed}
+/* Dans l'app (panneau Admin) : suit le thème de l'app, clair ou sombre */
+#adm{--cb-line:color-mix(in srgb,var(--fg) 70%,transparent);--cb-on:var(--ok);--cb-tick:var(--panel);--cb-bg:transparent}
+#adm input[type=checkbox]:focus-visible{outline:3px solid var(--cb-on);outline-offset:2px;box-shadow:none}

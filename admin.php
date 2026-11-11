@@ -6,8 +6,8 @@ require __DIR__ . '/lib/http.php';
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Espace enseignant</title><link rel="icon" href="favicon.ico" sizes="any"><link rel="icon" type="image/svg+xml" href="icon.svg"><link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png"><link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="manifest" href="manifest.webmanifest"><link rel="stylesheet" href="admin-checks.css"><meta name="theme-color" content="#0e1b36">
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@600;700&family=IM+Fell+English&family=IBM+Plex+Mono:wght@400&display=swap"><link rel="stylesheet" href="admin-theme.css">
+<title>Espace enseignant</title><link rel="icon" href="favicon.ico" sizes="any"><link rel="icon" type="image/svg+xml" href="icon.svg"><link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png"><link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="manifest" href="manifest.webmanifest"><link rel="stylesheet" href="admin-checks.css?v=<?= @filemtime(__DIR__ . '/admin-checks.css') ?>"><meta name="theme-color" content="#0e1b36">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@600;700&family=IM+Fell+English&family=IBM+Plex+Mono:wght@400&display=swap"><link rel="stylesheet" href="admin-theme.css?v=<?= @filemtime(__DIR__ . '/admin-theme.css') ?>">
 <script>try{var _s=JSON.parse(localStorage.getItem("tecto.proto.v1")||"{}");var _t=_s.set&&_s.set.th;if(_t==="light"||_t==="dark")document.documentElement.setAttribute("data-theme",_t)}catch(e){}</script>
 </head>
 <body class="adm-page">
@@ -77,7 +77,7 @@ require __DIR__ . '/lib/http.php';
   paint();
 })();
 </script>
-<script src="admin-editor.js"></script>
+<script src="admin-editor.js?v=<?= @filemtime(__DIR__ . '/admin-editor.js') ?>"></script>
 <script>
 (function () {
   'use strict';

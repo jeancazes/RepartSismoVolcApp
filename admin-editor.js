@@ -5,14 +5,15 @@
 
   var MI = [
     ['Fond', [['coast', 'Continents'], ['grat', 'Quadrillage'], ['plates', 'Plaques (contours)']]],
-    ['Frontières de plaques', [['bound', 'Afficher les frontières'], ['btypes', 'Types de frontières']]],
-    ['Séismes archivés', [['quakes', 'Couche séismes'], ['qy', "Intervalle d'années"], ['amag', "Magnitude de l'archive"], ['minmag', 'Magnitude minimale affichée'], ['colormode', 'Couleur des points']]],
-    ['Volcans', [['volc', 'Couche volcans'], ['vy', "Intervalle d'éruptions"], ['vcats', 'Types de volcans']]],
+    ['Frontières de plaques', [['bound', 'Afficher les frontières'], ['btypes', 'Types : subduction / collision / accrétion / coulissant']]],
+    ['Séismes archivés', [['quakes', 'Couche séismes'], ['qy', "Intervalle d'années"], ['amag', "Magnitude de l'archive"], ['minmag', 'Magnitude minimale affichée'], ['qtypes', 'Types : compression / extension / cisaillement'], ['colormode', 'Couleur des points']]],
+    ['Volcans', [['volc', 'Couche volcans'], ['vy', "Intervalle d'éruptions"], ['vcats', 'Contextes de volcans'], ['vmodes', 'Explosif / effusif']]],
+    ['GPS · déplacements', [['gps', 'Stations GPS'], ['gpsv', 'Flèches de déplacement (cm/an)']]],
     ['Marqueurs', [['markers', "Marqueurs de l'enseignant"]]],
     ['Live', [['live', 'Section Live']]],
     ['Carte', [['proj', 'Plane / Globe'], ['zoom', 'Zoom + / −'], ['timeline', 'Frise temporelle'], ['legend', 'Légende']]]
   ];
-  var LAYERS = [['coast', 'Continents'], ['grat', 'Quadrillage'], ['plates', 'Plaques (contours)'], ['bound', 'Frontières'], ['quakes', 'Séismes'], ['volc', 'Volcans'], ['markers', 'Marqueurs']];
+  var LAYERS = [['coast', 'Continents'], ['grat', 'Quadrillage'], ['plates', 'Plaques (contours)'], ['bound', 'Frontières'], ['quakes', 'Séismes'], ['volc', 'Volcans'], ['gps', 'Stations GPS'], ['gpsv', 'Flèches GPS (cm/an)'], ['markers', 'Marqueurs']];
   var TYPE_LABEL = { qcm: 'Au choix', cloze: 'À compléter', text: 'Rédigée' };
   var TABS = [['content', 'Contenu'], ['answer', 'Réponse'], ['menu', 'Menu'], ['data', 'Données'], ['view', 'Affichage'], ['pass', 'Passage']];
 
@@ -196,7 +197,7 @@
       }).join('') + '</select></label></div>';
     h += '<div class="row3"><label>Volcans : de<input type="number" min="-10000" max="2026" data-c="vy0v" value="' + (v.vy && v.vy[0] != null ? v.vy[0] : '') + '" placeholder="∞"></label>' +
       '<label>à<input type="number" min="-10000" max="2026" data-c="vy1v" value="' + (v.vy && v.vy[1] != null ? v.vy[1] : '') + '" placeholder="∞"></label>' +
-      '<label>Couleur des séismes<select data-b="v.colorMode"><option value="depth"' + (v.colorMode === 'depth' ? ' selected' : '') + '>Profondeur</option><option value="ctx"' + (v.colorMode === 'ctx' ? ' selected' : '') + '>Contexte</option></select></label></div>';
+      '<label>Couleur des séismes<select data-b="v.colorMode"><option value="depth"' + (v.colorMode === 'depth' ? ' selected' : '') + '>Profondeur</option><option value="ctx"' + (v.colorMode === 'ctx' ? ' selected' : '') + '>Type (compression/extension/cisaillement)</option></select></label></div>';
     h += '<label class="ck"><input type="checkbox" data-c="live"' + ((v.live && v.live.on) ? ' checked' : '') + '> Activer le Live au départ</label>';
     return h;
   }

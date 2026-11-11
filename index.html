@@ -738,11 +738,8 @@ function drawBase(){
   if(S.layers.volc){
     var vs=visibleVolc();S.vv=vs;
     for(var j=0;j<vs.length;j++){var v=vs[j];if(!visible(v.lon,v.lat))continue;var pp=proj([v.lon,v.lat]);if(!pp)continue;var s=4.6*z*ps2;
-      var effu=S.diffV&&vMode(v)!=='expl';ctx.beginPath();
-      if(effu){ctx.moveTo(pp[0]-s*1.35,pp[1]+s*.75);ctx.quadraticCurveTo(pp[0],pp[1]-s*1.15,pp[0]+s*1.35,pp[1]+s*.75);ctx.closePath()}
-      else{ctx.moveTo(pp[0],pp[1]-s);ctx.lineTo(pp[0]+s*.95,pp[1]+s*.75);ctx.lineTo(pp[0]-s*.95,pp[1]+s*.75);ctx.closePath()}
+      ctx.beginPath();ctx.moveTo(pp[0],pp[1]-s);ctx.lineTo(pp[0]+s*.95,pp[1]+s*.75);ctx.lineTo(pp[0]-s*.95,pp[1]+s*.75);ctx.closePath();
       ctx.fillStyle=vcol(v);ctx.globalAlpha=.92;ctx.fill();ctx.lineWidth=.8;ctx.strokeStyle=COL.fg;ctx.globalAlpha=.8;ctx.stroke();
-      if(!effu){ctx.globalAlpha=.9;ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(pp[0],pp[1]-s-1.5);ctx.lineTo(pp[0],pp[1]-s-4.5);ctx.moveTo(pp[0]-2.5,pp[1]-s-1);ctx.lineTo(pp[0]-4.5,pp[1]-s-3);ctx.moveTo(pp[0]+2.5,pp[1]-s-1);ctx.lineTo(pp[0]+4.5,pp[1]-s-3);ctx.stroke()}
       ctx.globalAlpha=1}
   }
   if(S.layers.markers&&S.markers&&S.markers.length){
@@ -785,14 +782,12 @@ function drawOverlay(now){
         var ph=((now+i*431)%2800)/2800,r=Math.max(2,1.2+(q.mag-4)*1.1)*z*ps2;
         echo(p[0],p[1],r,r+(10+q.mag*2.6)*ps2,ph,qColor(q),1.4)});
     }
-    if(S.layers.volc&&S.vv&&S.vv.length){
-      if(S._av!==S.vv){S._av=S.vv;S._avs=S.vv.filter(function(v){return v.last!=null&&v.last>=1990}).slice(0,40)}
+    if(S.layers.volc&&S.vv&&S.vv.length&&!(S.live.on&&S.live.v)){
+      var lvn=S.live.vs?S.live.vs.length:0;
+      if(S._av!==S.vv||S._avn!==lvn){S._av=S.vv;S._avn=lvn;var cur={};(S.live.vs||[]).forEach(function(x){cur[x.num]=1});S._avs=S.vv.filter(function(v){return cur[v.num]});if(S._avs.length>60)S._avs=[]}
       S._avs.forEach(function(v,i){if(!visible(v.lon,v.lat))return;var p=proj([v.lon,v.lat]);if(!p)return;
-        var s=6*z*ps2,pulse=.5+.5*Math.sin((now+i*300)/450),g=ctx2.createRadialGradient(p[0],p[1],0,p[0],p[1],s*3.2);
-        g.addColorStop(0,'rgba(255,120,40,'+(.28+.25*pulse)+')');g.addColorStop(1,'rgba(255,120,40,0)');
-        ctx2.fillStyle=g;ctx2.beginPath();ctx2.arc(p[0],p[1],s*3.2,0,6.2832);ctx2.fill();
-        for(var k=0;k<3;k++){var ph=((now+i*311+k*900)%2700)/2700;ctx2.beginPath();ctx2.arc(p[0]+Math.sin(ph*6+i)*2*ps2,p[1]-s-ph*18*ps2,(1.5+ph*5)*ps2,0,6.2832);ctx2.globalAlpha=(1-ph)*.32;ctx2.fillStyle=COL.mute;ctx2.fill();ctx2.globalAlpha=1}
-      });
+        var s=4.6*z*ps2,ph=((now+i*523)%2600)/2600;
+        echo(p[0],p[1]-s*1.2,s*.5,s*.5+12*ps2,ph,COL.mute,1.4);echo(p[0],p[1]-s*1.2,s*.5,s*.5+12*ps2,(ph+.5)%1,COL.mute,1)});
     }
   }
   S.lq=lq;S.lvv=lv;
@@ -1037,7 +1032,7 @@ function renderLegend(){
     if(S.colorMode==='depth')h+=row('dot','var(--d1)','Séisme 0–70 km')+row('dot','var(--d2)','Séisme 70–300 km')+row('dot','var(--d3)','Séisme 300–700 km');
     else h+=(S.qtypes.conv?row('dot','var(--conv)','Séisme en compression'):'')+(S.qtypes.div?row('dot','var(--div)','Séisme en extension'):'')+(S.qtypes.trans&&S.level==='adv'?row('dot','var(--trans)','Séisme en cisaillement'):'')+(S.qtypes.intra?row('dot','var(--intra)','Intraplaque / autre'):'')+'<div class="note">Type estimé d\'après la frontière la plus proche, pas mesuré.</div>';
   }
-  if(S.layers.volc){if(!S.diffV)h+=row('tri','var(--v-sub)','Volcan (Holocène)');else if(S.level==='col')h+=row('tri','var(--v-sub)','Volcan explosif ▲')+row('tri','var(--v-hot)','Volcan effusif ◠');else h+=VC.map(function(c){return row('tri','var(--'+c[2]+')',c[1])}).join('')+'<div class="note">▲ explosif · ◠ effusif</div>'}
+  if(S.layers.volc){if(!S.diffV)h+=row('tri','var(--v-sub)','Volcan (Holocène)');else if(S.level==='col')h+=row('tri','var(--v-sub)','Volcan explosif')+row('tri','var(--v-hot)','Volcan effusif');else h+=VC.map(function(c){return row('tri','var(--'+c[2]+')',c[1])}).join('')+''}
   if(S.layers.bound)h+=Object.keys(BNAME).filter(function(k){return S.btypes[k]&&!(S.level==='col'&&k==='coulissant')}).map(function(k){return row('ln','var(--'+BCOL[k]+')','Frontière : '+BNAME[k].toLowerCase())}).join('');
   if(S.layers.gpsv)h+='<div class="note">Flèches GPS : sens et vitesse du déplacement (cm/an).</div>';
   if(S.live.on){if(S.live.q)h+=row('dot','var(--live)','Séisme récent (écho)');if(S.live.v)h+=row('tri','var(--livev)','Volcan actif (écho)')}

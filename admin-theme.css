@@ -13,14 +13,14 @@ body.adm-page main{max-width:1100px;margin:0 auto;padding:16px}
 .adm-bar a{color:var(--mute);font-size:.9rem;text-decoration:none;border:1px solid var(--line);padding:5px 10px;border-radius:var(--r-s)}
 #adm-th{background:transparent;color:var(--fg);border:1px solid var(--line);padding:5px 10px;margin:0;font-size:.9rem}
 .card{border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:14px;background:var(--panel)}
-body.adm-page input,body.adm-page textarea,body.adm-page select{width:100%;box-sizing:border-box;padding:8px;margin:4px 0 10px;font:inherit;color:var(--fg);background:transparent;border:1px solid var(--line);border-radius:var(--r-s)}
-body.adm-page input:focus,body.adm-page textarea:focus,body.adm-page select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 25%,transparent)}
+body.adm-page :where(input,textarea,select){width:100%;box-sizing:border-box;padding:8px;margin:4px 0 10px;font:inherit;color:var(--fg);background:transparent;border:1px solid var(--line);border-radius:var(--r-s)}
+body.adm-page :where(input,textarea,select):focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 25%,transparent)}
 body.adm-page select option{background:var(--panel);color:var(--fg)}
-body.adm-page textarea{min-height:220px;font-family:var(--mono);font-size:.85rem}
-body.adm-page button{padding:8px 14px;border-radius:var(--r-s);border:1px solid var(--accent);background:var(--accent);color:var(--accent-fg);cursor:pointer;margin:4px 4px 4px 0;font:inherit;font-weight:500}
-body.adm-page button:hover{filter:brightness(1.08)}
-body.adm-page button.ghost{background:transparent;color:var(--accent)}
-body.adm-page button.danger{background:transparent;color:var(--bad);border-color:var(--bad)}
+body.adm-page :where(textarea){min-height:120px;font-family:var(--mono);font-size:.85rem}
+body.adm-page :where(button){padding:8px 14px;border-radius:var(--r-s);border:1px solid var(--accent);background:var(--accent);color:var(--accent-fg);cursor:pointer;margin:4px 4px 4px 0;font:inherit;font-weight:500}
+body.adm-page :where(button):hover{filter:brightness(1.08)}
+body.adm-page :where(button).ghost{background:transparent;color:var(--accent)}
+body.adm-page :where(button).danger{background:transparent;color:var(--bad);border-color:var(--bad)}
 body.adm-page .msg{min-height:1.2em;color:var(--bad);font-size:.9rem}
 body.adm-page .row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);flex-wrap:wrap}
 body.adm-page .msg-n,body.adm-page small{color:var(--mute)}
@@ -30,3 +30,5 @@ body.adm-page .subtabs button{background:transparent;color:var(--fg);border:1px 
 body.adm-page .subtabs button.on{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
 body.adm-page [hidden]{display:none!important}
 body.adm-page input[type=radio],#adm input[type=radio]{accent-color:var(--accent)}
+
+body.adm-page :where(input[type=radio],input[type=checkbox]){width:auto}

@@ -183,7 +183,7 @@
         '<input type="text" data-b="st.marks.' + k + '.label" value="' + esc(m.label || '') + '" placeholder="Ex. Nomme la plaque et le type de frontière"></label></div>' +
         '<button class="danger" data-act="sheet-del" data-i="' + k + '" style="margin-top:22px">×</button></div>';
     });
-    if (!(st.marks || []).length) h += '<div class="msg">Aucun repère : clique sur la carte pour en ajouter.</div>';
+    if (!(st.marks || []).length) h += '<div class="msg">Aucun repère (facultatif) : la fiche aura une carte vierge et des lignes de rédaction. Clique sur la carte pour ajouter des repères.</div>';
     h += '<div class="row2"><label>Lignes de rédaction par repère<input type="number" min="1" max="6" data-b="st.lines" data-t="n" value="' + (st.lines == null ? 2 : st.lines) + '"></label></div>' +
       '<div class="lbl">Fond de carte imprimé</div>' +
       '<label class="ck"><input type="checkbox" data-b="st.bg.grat"' + (st.bg.grat ? ' checked' : '') + '> Quadrillage (tous les 30°)</label>' +
@@ -495,7 +495,6 @@
       var s = sc.steps[i];
       if (s.type === 'qcm' && !String(s.opts[s.ok] || '').trim()) { say('Question ' + (i + 1) + ' : la bonne réponse est vide.'); return; }
       for (var bi = 0; bi < s.buttons.length; bi++) { if (!s.buttons[bi].view) { say('Question ' + (i + 1) + ' : le bouton « ' + (s.buttons[bi].label || '') + ' » n\'a pas de situation enregistrée.'); return; } }
-      if (s.type === 'sheet' && !(s.marks || []).length) { say('Question ' + (i + 1) + ' : pose au moins un repère sur la carte (onglet Réponse).'); return; }
       if (s.type === 'cloze' && String(s.ctext || '').indexOf('___') < 0) { say('Question ' + (i + 1) + ' : la phrase n\'a aucun trou (___).'); return; }
     }
     var content = clone(sc);

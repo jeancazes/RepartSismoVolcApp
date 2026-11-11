@@ -332,8 +332,22 @@
     return v;
   }
 
+  /* Champs « data-c » dont la valeur est lue en direct (sans re-rendu) : indispensable quand l'événement change
+     n'arrive pas avant un clic (Safari ne retire pas le focus au clic sur un bouton ou un onglet). */
+  var LIVE_C = { ctext: 1, lon: 1, lat: 1, y0: 1, y1: 1, vy0v: 1, vy1v: 1, minmag: 1 };
+  /* Valide le champ en cours de saisie avant toute action (onglet, question, enregistrer, aperçu). */
+  function flush() {
+    var a = document.activeElement;
+    if (!a || !ctx || !ctx.root || !ctx.root.contains(a) || !a.dataset || !(a.dataset.b || a.dataset.c)) return;
+    if (a.tagName === 'SELECT' || a.type === 'checkbox' || a.type === 'radio') return;
+    if (a.dataset.c === 'ctext') { cur().ctext = a.value; return; }
+    onInput({ target: a });
+    if (a.dataset.c) cons(a);
+  }
   function onInput(e) {
     var t = e.target;
+    if (t.dataset && t.dataset.c === 'ctext') { cur().ctext = t.value; return; }
+    if (t.dataset && t.dataset.c && LIVE_C[t.dataset.c] && t.type !== 'checkbox') { cons(t); return; }
     if (t.dataset && t.dataset.b && t.type !== 'checkbox' && t.tagName !== 'SELECT' && !t.dataset.re && !t.dataset.c) {
       setPath(t.dataset.b, coerce(t));
     }
@@ -401,10 +415,11 @@
 
   function say(text, ok) {
     var m = ctx.root.querySelector('#ed-msg');
-    if (m) { m.textContent = text; m.style.color = ok ? 'var(--accent)' : 'var(--bad)'; }
+    if (m) { m.textContent = text; m.style.color = ok ? 'var(--accent)' : 'var(--bad)'; m.style.fontWeight = '700'; try { m.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) {} }
   }
 
   function onClick(e) {
+    flush();
     var sub = e.target.closest('[data-sub]');
     if (sub) { ctx.sub = sub.dataset.sub; if (ctx.sub === 'btns') loadLib(); render(); return; }
     var b = e.target.closest('[data-act]');
@@ -488,6 +503,7 @@
   });
 
   function save() {
+    flush();
     var sc = ctx.sc;
     if (!String(sc.title || '').trim()) { say('Le scénario a besoin d\'un titre.'); return; }
     if (!sc.steps.length) { say('Ajoute au moins une question.'); return; }

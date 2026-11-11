@@ -686,7 +686,7 @@ var CLS={conv:'Compression (subduction ou collision)',div:'Extension (accrétion
 var BNAME={subduction:'Subduction',collision:'Collision',accretion:'Accrétion',coulissant:'Coulissant'};
 var BCOL={subduction:'conv',collision:'coll',accretion:'div',coulissant:'trans'};
 var BKIND={SUB:'subduction',OCB:'subduction',CCB:'collision',OSR:'accretion',CRB:'accretion',OTF:'coulissant',CTF:'coulissant'};
-function vMode(v){return v.cat==='subduction'?'expl':v.cat==='unknown'?'unk':'eff'}
+function vMode(v){if(v.sub)return 'eff';return v.cat==='subduction'?'expl':v.cat==='unknown'?'unk':'eff'}
 
 /* ---------- dessin ---------- */
 function drawGPS(z){

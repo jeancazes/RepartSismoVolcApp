@@ -23,6 +23,7 @@
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
     });
   }
+  function fmt(n) { return String(Math.round(n * 100) / 100).replace('.', ','); }
   function uid(p) { return p + Math.random().toString(36).slice(2, 8); }
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
 
@@ -44,6 +45,7 @@
     if (s.ai == null) s.ai = false;
     if (s.minlen == null) s.minlen = 15;
     if (s.diag == null) s.diag = false;
+    if (s.points == null || isNaN(+s.points)) s.points = s.diag ? 0 : 1;
     if (!s.menu || typeof s.menu !== 'object') s.menu = {};
     if (!s.cons || typeof s.cons !== 'object') s.cons = { qy: null, vy: null, amag: null, minmag: null };
     if (s.view === undefined) s.view = null;
@@ -68,10 +70,10 @@
       '<label>Code de séance (vide = scénario proposé directement)<input type="text" maxlength="20" data-b="ctx.code" value="' + esc(ctx.code || '') + '" placeholder="ex. SISMO24"></label>' +
       '<label class="ck"><input type="checkbox" data-b="ctx.active"' + (ctx.active ? ' checked' : '') + '> Visible pour les élèves</label></div>';
 
-    h += '<div class="ed-cols"><div><div class="ed-row"><b>Questions</b><button data-act="st-add">+ Ajouter</button></div><div class="ed-steps">';
+    h += '<div class="ed-cols"><div><div class="ed-row"><b>Questions</b><button data-act="st-add">+ Ajouter</button></div><div class="msg-n">Total : ' + fmt(sc.steps.reduce(function (a, q) { return a + (+q.points || 0); }, 0)) + ' point(s)</div><div class="ed-steps">';
     sc.steps.forEach(function (s, i) {
       h += '<div class="it' + (i === ctx.si ? ' on' : '') + '" data-act="st-sel" data-i="' + i + '"><div class="tt">' + esc(s.title || '(sans titre)') +
-        '<small>' + (i + 1) + ' · ' + esc(TYPE_LABEL[s.type] || s.type) + (s.ai ? ' · IA' : '') + '</small></div>' +
+        '<small>' + (i + 1) + ' · ' + esc(TYPE_LABEL[s.type] || s.type) + (s.ai ? ' · IA' : '') + ' · ' + fmt(+s.points || 0) + ' pt</small></div>' +
         '<div class="mv"><button data-act="st-up" data-i="' + i + '" title="Monter" aria-label="Monter">↑</button>' +
         '<button data-act="st-down" data-i="' + i + '" title="Descendre" aria-label="Descendre">↓</button>' +
         '<button data-act="st-dup" data-i="' + i + '" title="Dupliquer" aria-label="Dupliquer">⧉</button>' +
@@ -106,7 +108,8 @@
   }
 
   function tAnswer(st) {
-    var h = '';
+    var h = '<label>Points pour cette question<input type="number" min="0" step="0.5" data-b="st.points" data-t="n" value="' + (st.points == null ? 1 : st.points) + '"></label>' +
+      '<div class="msg-n">' + (st.type === 'text' ? 'La note /20 de la rédaction est ramenée sur ces points.' : 'Les points sont attribués si la réponse est juste.') + '</div>';
     if (st.type === 'qcm') {
       h += [0, 1, 2].map(function (i) {
         return '<div class="opt3"><input type="radio" name="okopt" data-c="ok" data-i="' + i + '"' + (st.ok === i ? ' checked' : '') + ' aria-label="Bonne réponse ' + (i + 1) + '">' +
@@ -146,8 +149,12 @@
     var h = '<div class="msg-n">Choisis ce que l\'élève voit dans le menu de la carte pour cette question.</div>' +
       '<div class="ed-row"><button class="ghost" data-act="mi-all" data-v="show">Tout afficher</button><button class="ghost" data-act="mi-all" data-v="grey">Tout griser</button><button class="ghost" data-act="mi-all" data-v="hide">Tout masquer</button></div>' +
       '<table class="mtab"><tr><th>Élément</th><th>Afficher</th><th>Griser</th><th>Masquer</th></tr>';
-    MI.forEach(function (g) {
-      h += '<tr><td class="g" colspan="4">' + esc(g[0]) + '</td></tr>';
+    MI.forEach(function (g, gi) {
+      var gv = g[1].map(function (it) { return st.menu[it[0]] || 'show'; });
+      var gcur = gv.every(function (v) { return v === gv[0]; }) ? gv[0] : '';
+      h += '<tr><td class="g">' + esc(g[0]) + '</td>' + ['show', 'grey', 'hide'].map(function (v) {
+        return '<td class="g"><input type="radio" name="mg-' + gi + '" data-act="mg" data-g="' + gi + '" data-v="' + v + '"' + (gcur === v ? ' checked' : '') + ' aria-label="' + esc(g[0]) + ' (tout le groupe) : ' + v + '"></td>';
+      }).join('') + '</tr>';
       g[1].forEach(function (it) {
         var c = st.menu[it[0]] || 'show';
         h += '<tr><td>' + esc(it[1]) + '</td>' + ['show', 'grey', 'hide'].map(function (v) {
@@ -257,6 +264,11 @@
       return;
     }
     if (t.dataset.c) cons(t);
+    if (t.dataset.act === 'mg') {
+      var grp = MI[+t.dataset.g], stg = cur();
+      grp[1].forEach(function (it) { if (t.dataset.v === 'show') delete stg.menu[it[0]]; else stg.menu[it[0]] = t.dataset.v; });
+      render(); return;
+    }
     if (t.dataset.act === 'mi') { var st = cur(); if (t.dataset.v === 'show') delete st.menu[t.dataset.k]; else st.menu[t.dataset.k] = t.dataset.v; }
   }
   function cons(t) {
@@ -377,7 +389,7 @@
     '.opt3{display:flex;gap:8px;align-items:flex-start;margin-bottom:8px}.opt3>input{width:auto;margin-top:26px}' +
     '.crit{border:1px solid var(--line);border-radius:8px;padding:10px;margin:8px 0}.lbl{font-size:.9rem;margin:8px 0 4px}' +
     '.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}' +
-    '.mtab{width:100%;border-collapse:collapse}.mtab td,.mtab th{padding:4px 6px;border-bottom:1px solid var(--line);text-align:center}.mtab td:first-child,.mtab th:first-child{text-align:left}.mtab td.g{font-weight:600;text-align:left;background:rgba(127,127,127,.12)}' +
+    '.mtab{width:100%;border-collapse:collapse}.mtab td,.mtab th{padding:4px 6px;border-bottom:1px solid var(--line);text-align:center}.mtab td:first-child,.mtab th:first-child{text-align:left}.mtab td.g{font-weight:600;text-align:left;background:rgba(127,127,127,.12)}.mtab td.g:not(:first-child){text-align:center}' +
     '.mtab input{width:auto;margin:0}.msg-n{font-size:.9rem;opacity:.8;margin-bottom:8px}';
 
   window.ScEditor = {

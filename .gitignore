@@ -1,4 +1,25 @@
+# --- Fichiers sensibles : ne jamais versionner ---
 config.php
+config.local.php
+config.*.php
+!config.example.php
+.env
+.env.*
+*.env
+*.pem
+*.key
+*.ppk
+id_rsa*
+id_ed25519*
+deploy_ex2*
+*.sqlite
+*.sqlite3
+*.dump
+*.bak
+secrets/
+credentials*
+
+# --- Divers ---
 *.log
 .DS_Store
 Thumbs.db

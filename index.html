@@ -1,5 +1,5 @@
 <meta charset="utf-8">
-<title>Carte Tectonique 4e</title>
+<title>Carte Tectonique 4e</title><link rel="icon" type="image/svg+xml" href="icon.svg"><link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png"><link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="manifest" href="manifest.webmanifest"><meta name="theme-color" content="#1b2a49">
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1151,26 +1151,32 @@ function sendText(sc,st){
   refreshNext();
 }
 function giveHint(){var st=G.st,hs=(st.hints||[]).filter(Boolean);if(!hs.length)return;var h=hs[Math.min(G.hint,hs.length-1)];G.hint++;showFb('hint','<b>Indice '+Math.min(G.hint,hs.length)+' / '+hs.length+'</b><br>'+esc(h))}
+function pts(st){return st.points==null?(st.diag?0:1):(+st.points||0)}
+function fmt(n){return String(Math.round(n*100)/100).replace('.',',')}
 function bilanOf(sc){
-  var AN=ansBox(),rows=[],ok=0,tot=0;
+  var AN=ansBox(),rows=[],ok=0,tot=0,ep=0,tp=0;
   sc.steps.forEach(function(st,i){
-    var r=AN[akey(sc,st)],mark='—',cls='na',label=st.title||('Question '+(i+1));
-    if(st.type==='qcm'){tot++;if(r){if(r.choice===st.ok){mark='Réussie';cls='ok';ok++}else{mark='Manquée';cls='ko'}}}
-    else if(st.type==='cloze'){tot++;if(r&&r.vals){var all=true;(st.ans||[]).forEach(function(a,k){var g=String(a).split('|').map(norm);if(g.indexOf(norm(String(r.vals[k]||'')))<0)all=false});if(all){mark='Réussie';cls='ok';ok++}else{mark='Manquée';cls='ko'}}}
-    else if(r&&r.text){mark='Rédigée';cls='ok'}
-    rows.push({n:i+1,label:label,mark:mark,cls:cls});
+    var r=AN[akey(sc,st)],mark='—',cls='na',label=st.title||('Question '+(i+1)),max=pts(st),got=0;
+    tp+=max;
+    if(st.type==='qcm'){tot++;if(r){if(r.choice===st.ok){mark='Réussie';cls='ok';ok++;got=max}else{mark='Manquée';cls='ko'}}}
+    else if(st.type==='cloze'){tot++;if(r&&r.vals){var all=true;(st.ans||[]).forEach(function(a,k){var g=String(a).split('|').map(norm);if(g.indexOf(norm(String(r.vals[k]||'')))<0)all=false});if(all){mark='Réussie';cls='ok';ok++;got=max}else{mark='Manquée';cls='ko'}}}
+    else if(r&&r.text){mark='Rédigée';cls='ok';got=Math.round((+r.score||0)/20*max*100)/100}
+    ep+=got;
+    rows.push({n:i+1,label:label,mark:mark,cls:cls,pts:got,max:max});
   });
-  return {ok:ok,tot:tot,rows:rows};
+  return {ok:ok,tot:tot,rows:rows,ep:ep,tp:tp};
 }
 function bilanText(sc,b){
   var bin=store.bin?'Binôme n° '+('0'+store.bin).slice(-2)+' · ':'';
-  return 'Bilan : '+sc.title+'\n'+bin+(PV?'(aperçu)':new Date().toLocaleDateString('fr-FR'))+'\nQuestions réussies : '+b.ok+' / '+b.tot+'\n'+b.rows.map(function(r){return r.n+'. '+r.label+' : '+r.mark}).join('\n');
+  return 'Bilan : '+sc.title+'\n'+bin+(PV?'(aperçu)':new Date().toLocaleDateString('fr-FR'))+'\nQuestions réussies : '+b.ok+' / '+b.tot
+    +(b.tp>0?'\nPoints : '+fmt(b.ep)+' / '+fmt(b.tp)+' (soit '+fmt(Math.round(b.ep/b.tp*200)/10)+' / 20)':'')
+    +'\n'+b.rows.map(function(r){return r.n+'. '+r.label+' : '+r.mark+(r.max?' ('+fmt(r.pts)+'/'+fmt(r.max)+' pt)':'')}).join('\n');
 }
 function finish(){
   var sc=curScen(),b=bilanOf(sc),txt=bilanText(sc,b);
   if($('#app').dataset.r!=='open'){$('#hr').click()}
   $('#g-body').innerHTML='<div id="g-q">Bravo, tu as terminé « '+esc(sc.title)+' ».</div>'
-    +'<div class="bilan"><div class="bn"><b>'+b.ok+'</b> / '+b.tot+' questions réussies</div><ol class="bl">'+b.rows.map(function(r){return '<li><span class="bm '+r.cls+'">'+esc(r.mark)+'</span>'+esc(r.label)+'</li>'}).join('')+'</ol></div>'
+    +'<div class="bilan"><div class="bn"><b>'+b.ok+'</b> / '+b.tot+' questions réussies'+(b.tp>0?' · <b>'+fmt(b.ep)+'</b> / '+fmt(b.tp)+' points':'')+'</div><ol class="bl">'+b.rows.map(function(r){return '<li><span class="bm '+r.cls+'">'+esc(r.mark)+'</span>'+esc(r.label)+(r.max?' <small>'+fmt(r.pts)+'/'+fmt(r.max)+' pt</small>':'')+'</li>'}).join('')+'</ol></div>'
     +'<label class="note" for="bilan-txt">'+(PV?'Aperçu : rien n\'est enregistré.':'Copie ton bilan et envoie-le à ton enseignant.')+'</label>'
     +'<textarea id="bilan-txt" readonly rows="6">'+esc(txt)+'</textarea>'
     +'<div class="actions"><button class="btn" id="bilan-copy" type="button">Copier mon bilan</button><button class="btn ghost" id="restart" type="button">Recommencer</button></div><div class="note" id="bilan-msg" role="status"></div>';

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+<defs><linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1b2a49"/><stop offset="1" stop-color="#0d1426"/></linearGradient>
+<linearGradient id="lava" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffd23f"/><stop offset="1" stop-color="#ff5a1f"/></linearGradient>
+<clipPath id="c"><rect width="512" height="512" rx="112"/></clipPath></defs>
+<g clip-path="url(#c)">
+<rect width="512" height="512" fill="url(#bg)"/>
+<circle cx="256" cy="300" r="190" fill="#1f6fb2"/>
+<path d="M120 250c40-30 70-10 95-35s20-50 60-45 40 40 80 35 40-20 60-5c-10 90-70 175-160 175-60 0-110-40-135-125z" fill="#3a9d5d" opacity=".9"/>
+<path d="M60 330 L210 330 L240 300 L275 345 L310 310 L330 330 L452 330" fill="none" stroke="#fff" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" opacity=".9"/>
+<path d="M150 440 L235 190 L277 190 L362 440 Z" fill="#3b2a26"/>
+<path d="M235 190 L277 190 L286 222 Q256 238 226 222 Z" fill="url(#lava)"/>
+<circle cx="256" cy="150" r="20" fill="#ff7a2f"/><circle cx="222" cy="112" r="13" fill="#ffb347"/><circle cx="294" cy="100" r="10" fill="#ffd23f"/>
+</g></svg>

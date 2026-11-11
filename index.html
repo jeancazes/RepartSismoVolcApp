@@ -66,8 +66,11 @@ aside{background:var(--panel);overflow:auto;min-height:0;min-width:0}
 .sw.dot{border-radius:50%}
 .sw.ln{height:3px}
 .sub{margin:4px 0 6px 24px;display:grid;gap:6px;font-size:.92em}
-.sub.off,#timeline.off{opacity:.4}
-.sub.off *{cursor:default}
+#timeline.off{opacity:.4}
+.sub.off{display:none}
+.sub:not(.off){animation:accIn .18s ease}
+@keyframes accIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.sub:not(.off){animation:none}}
 .yr{display:grid;grid-template-columns:auto 1fr auto 1fr;gap:6px;align-items:center}
 .sub select,.sub input[type=number]{background:var(--bg);border:1px solid var(--line);padding:4px 6px;min-width:0;width:100%}
 .sub input[type=range]{width:100%;accent-color:var(--accent)}
@@ -486,6 +489,16 @@ body{background-image:var(--paper)}
         <div class="row" data-mi="grat"><input type="checkbox" id="L-grat" data-layer="grat"><label for="L-grat">Quadrillage</label></div>
         <div class="row" data-mi="plates"><input type="checkbox" id="L-plates" data-layer="plates"><label for="L-plates">Plaques (contours)</label></div>
       </div>
+      <div class="sec" id="live-sec" data-mi="live">
+        <h2>Live</h2>
+        <button class="livebtn" id="live-btn" aria-pressed="false"><i></i>LIVE</button>
+        <div class="sub" style="margin-left:0" data-ctx="live">
+          <div class="seg" id="live-span"><button data-d="3" class="on">Jours</button><button data-d="14">Semaines</button><button data-d="30">Mois</button></div>
+          <div class="row"><input type="checkbox" id="LV-q" checked><label for="LV-q">Séismes récents (M ≥ 4,5)</label></div>
+          <div class="row"><input type="checkbox" id="LV-v" checked><label for="LV-v">Volcans actifs</label></div>
+          <div class="note" id="live-note">Superpose les événements récents à l'archive affichée.</div>
+        </div>
+      </div>
       <div class="sec">
         <h2>Frontières de plaques</h2>
         <div class="row" data-mi="bound"><input type="checkbox" id="L-bound" data-layer="bound"><label for="L-bound">Afficher les frontières</label></div>
@@ -531,16 +544,6 @@ body{background-image:var(--paper)}
         <h2>GPS · déplacements</h2>
         <div class="row" data-mi="gps"><input type="checkbox" id="L-gps" data-layer="gps"><label for="L-gps">Stations GPS</label></div>
         <div class="row" data-mi="gpsv"><input type="checkbox" id="L-gpsv" data-layer="gpsv"><label for="L-gpsv">Flèches de déplacement (cm/an)</label></div>
-      </div>
-      <div class="sec" id="live-sec" data-mi="live">
-        <h2>Live</h2>
-        <button class="livebtn" id="live-btn" aria-pressed="false"><i></i>LIVE</button>
-        <div class="sub" style="margin-left:0" data-ctx="live">
-          <div class="seg" id="live-span"><button data-d="3" class="on">Jours</button><button data-d="14">Semaines</button><button data-d="30">Mois</button></div>
-          <div class="row"><input type="checkbox" id="LV-q" checked><label for="LV-q">Séismes récents (M ≥ 4,5)</label></div>
-          <div class="row"><input type="checkbox" id="LV-v" checked><label for="LV-v">Volcans actifs</label></div>
-          <div class="note" id="live-note">Superpose les événements récents à l'archive affichée.</div>
-        </div>
       </div>
       <div class="sec" id="mk-sec" hidden><h2>Marqueurs</h2><div class="row" data-mi="markers"><input type="checkbox" id="L-markers" data-layer="markers"><label for="L-markers">Marqueurs de l'enseignant</label></div></div>
       <div class="sec" data-mi="legend"><h2>Légende</h2><div class="legend" id="legend"></div></div>
@@ -1293,7 +1296,7 @@ function forceHidden(m){
   m=m||{};['coast','grat','plates','bound','quakes','volc','markers','gps','gpsv'].forEach(function(k){if(m[k]==='hide')S.layers[k]=false});
   if(m.live==='hide'){S.live.on=false;$('#live-btn').classList.remove('on');$('#live-btn').setAttribute('aria-pressed','false')}
 }
-function applyFree(){LASTK=null;SNAPS={};resetState();S.layers.markers=false;
+function applyFree(){LASTK=null;SNAPS={};resetState();S.layers.markers=false;S.layers.quakes=false;
   S.mode='flat';S.rot=[-170,-15];S.k=1;S.pan=0;$$('#proj-seg button').forEach(function(x){x.classList.toggle('on',x.dataset.p==='flat')});
   applyCons({});applyMenu({});syncUI();loadArch();dirty()}
 function applyStep(st,fresh){

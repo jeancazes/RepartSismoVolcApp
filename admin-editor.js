@@ -5,12 +5,12 @@
 
   var MI = [
     ['Fond', [['coast', 'Continents'], ['grat', 'Quadrillage'], ['plates', 'Plaques (contours)']]],
+    ['Live', [['live', 'Section Live']]],
     ['Frontières de plaques', [['bound', 'Afficher les frontières'], ['btypes', 'Types : subduction / collision / accrétion / coulissant']]],
     ['Séismes archivés', [['quakes', 'Couche séismes'], ['qy', "Intervalle d'années"], ['amag', "Magnitude de l'archive"], ['minmag', 'Magnitude minimale affichée'], ['qtypes', 'Types : compression / extension / cisaillement'], ['colormode', 'Couleur des points']]],
     ['Volcans', [['volc', 'Couche volcans'], ['vy', "Intervalle d'éruptions"], ['vcats', 'Contextes de volcans'], ['vmodes', 'Explosif / effusif']]],
     ['GPS · déplacements', [['gps', 'Stations GPS'], ['gpsv', 'Flèches de déplacement (cm/an)']]],
     ['Marqueurs', [['markers', "Marqueurs de l'enseignant"]]],
-    ['Live', [['live', 'Section Live']]],
     ['Carte', [['proj', 'Plane / Globe'], ['zoom', 'Zoom + / −'], ['timeline', 'Frise temporelle'], ['legend', 'Légende']]]
   ];
   var LAYERS = [['coast', 'Continents'], ['grat', 'Quadrillage'], ['plates', 'Plaques (contours)'], ['bound', 'Frontières'], ['quakes', 'Séismes'], ['volc', 'Volcans'], ['gps', 'Stations GPS'], ['gpsv', 'Flèches GPS (cm/an)'], ['markers', 'Marqueurs']];

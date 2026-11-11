@@ -535,7 +535,6 @@ body{background-image:var(--paper)}
         <div class="sub" data-ctx="volc">
           <div data-mi="vy" style="display:grid;gap:6px"><div class="yr"><label for="vy1">De</label><input type="number" id="vy1" min="-10000" max="2026" value=""><label for="vy2">à</label><input type="number" id="vy2" min="-10000" max="2026" value="2026"></div>
           <button class="mini" id="v-all" style="justify-self:start">Tout (Holocène)</button></div>
-          <div class="row" data-mi="vsub"><input type="checkbox" id="V-sub" checked><label for="V-sub">Volcans sous-marins</label></div>
           <div class="row" data-mi="vdiff"><input type="checkbox" id="V-diff"><label for="V-diff">Différencier les volcans</label></div>
           <div id="v-dif" class="dif" style="display:grid;gap:4px">
             <div id="vcats" data-mi="vcats" data-adv></div>
@@ -643,7 +642,7 @@ function save(){try{localStorage.setItem(KEY,JSON.stringify(store))}catch(e){}}
 
 /* ---------- état ---------- */
 var S={mode:'flat',rot:[-170,-15],pan:0,k:1,layers:{coast:true,grat:true,plates:false,bound:false,quakes:true,volc:false,hans:false,markers:true,gps:false,gpsv:false},gps:[],qtypes:{conv:true,div:true,trans:true,intra:true},vmodes:{expl:true,eff:true},cons:{qy:null,vy:null,amag:null,minmag:null},markers:[],volcBase:[],ready:false,archSig:'',
-  btypes:{subduction:true,collision:true,accretion:true,coulissant:true},colorMode:'depth',diffV:false,vsub:true,level:'col',vcat:{subduction:true,ridge:true,rift:true,hotspot:true,unknown:true},vmin:null,vmax:null,
+  btypes:{subduction:true,collision:true,accretion:true,coulissant:true},colorMode:'depth',diffV:false,level:'col',vcat:{subduction:true,ridge:true,rift:true,hotspot:true,unknown:true},vmin:null,vmax:null,
   live:{on:false,span:3,q:true,v:true,now:Date.now(),qs:[],vs:[]},lq:[],lvv:[],minmag:0,win:9999,cut:0,tmin:0,tmax:1,quakes:[],volc:[],hans:{},land:null,plates:null,bound:null,sel:null,playing:false,dirty:true};
 var COL={};
 var cv=$('#cv'),ctx=cv.getContext('2d'),cv2=$('#cv2'),ctx2=cv2.getContext('2d'),W=0,H=0,DPR=1;
@@ -801,7 +800,7 @@ function vcol(v){if(!S.diffV)return COL['v-sub'];if(S.level==='col')return vMode
 function vColor(c){return c==='subduction'?COL['v-sub']:c==='ridge'?COL['v-ridge']:c==='rift'?COL['v-rift']:c==='hotspot'?COL['v-hot']:COL.mute}
 function visibleQuakes(){var lo=S.win>=9999?-Infinity:S.cut-S.win*864e5,hi=S.cut,m=S.minmag;return S.quakes.filter(function(q){return q.t<=hi&&q.t>lo&&q.mag>=m&&!(S.level==='col'&&q.cls==='trans')&&(S.colorMode!=='ctx'||S.qtypes[q.cls]!==false)})}
 function erIn(v){var lo=S.vmin===null?-1e9:S.vmin,hi=S.vmax===null?1e9:S.vmax,l=S.er&&S.er[v.num]||[];return l.filter(function(r){return r[1]>=lo&&r[1]<=hi})}
-function visibleVolc(){var lo=S.vmin,hi=S.vmax;return S.volc.filter(function(v){if(v.sub&&!S.vsub)return false;if(S.diffV){if(S.level==='adv'){if(!S.vcat[v.cat])return false}else{var vm=vMode(v);if(vm==='unk'?!(S.vmodes.expl&&S.vmodes.eff):!S.vmodes[vm])return false}}if(lo===null&&hi===null)return true;
+function visibleVolc(){var lo=S.vmin,hi=S.vmax;return S.volc.filter(function(v){if(S.diffV){if(S.level==='adv'){if(!S.vcat[v.cat])return false}else{var vm=vMode(v);if(vm==='unk'?!(S.vmodes.expl&&S.vmodes.eff):!S.vmodes[vm])return false}}if(lo===null&&hi===null)return true;
   if((v.last===null||v.last===undefined)&&!(S.er&&S.er[v.num])&&lo<=0&&(hi===null||hi>=2026))return true;
   if(erIn(v).length)return true;
   return v.last!==null&&v.last!==undefined&&(lo===null||v.last>=lo)&&(hi===null||v.last<=hi)})}
@@ -986,7 +985,7 @@ function syncUI(){
   $$('[data-qtype]').forEach(function(c){c.checked=S.qtypes[c.dataset.qtype]!==false});
   $$('[data-vmode]').forEach(function(c){c.checked=!!S.vmodes[c.dataset.vmode]});
   $('#Q-diff').checked=S.colorMode==='ctx';$('#q-dif').classList.toggle('dif-off',S.colorMode!=='ctx');
-  $('#V-sub').checked=S.vsub!==false;$('#V-diff').checked=!!S.diffV;$('#v-dif').classList.toggle('dif-off',!S.diffV);
+  $('#V-diff').checked=!!S.diffV;$('#v-dif').classList.toggle('dif-off',!S.diffV);
   document.body.classList.toggle('lv-col',S.level==='col');document.body.classList.toggle('lv-adv',S.level==='adv');
   $$('#lv-seg button').forEach(function(b){b.classList.toggle('on',b.dataset.lv===S.level)});
   renderLegend();applyCtx();refreshNext();
@@ -996,7 +995,6 @@ $$('[data-btype]').forEach(function(c){c.onchange=function(){S.btypes[c.dataset.
 $$('[data-qtype]').forEach(function(c){c.onchange=function(){S.qtypes[c.dataset.qtype]=c.checked;syncUI();updTL();dirty()}});
 $$('[data-vmode]').forEach(function(c){c.onchange=function(){S.vmodes[c.dataset.vmode]=c.checked;dirty()}});
 $('#Q-diff').onchange=function(){S.colorMode=this.checked?'ctx':'depth';syncUI();updTL();dirty()};
-$('#V-sub').onchange=function(){S.vsub=this.checked;dirty()};
 $('#V-diff').onchange=function(){S.diffV=this.checked;syncUI();dirty()};
 function setLevel(l,lock){S.level=l==='adv'?'adv':'col';if(!lock){try{localStorage.setItem('tecto-level',S.level)}catch(e){}}$('#lv-seg').classList.toggle('locked',!!lock);syncUI();updTL();dirty()}
 $$('#lv-seg button').forEach(function(b){b.onclick=function(){setLevel(b.dataset.lv,false)}});
@@ -1137,7 +1135,6 @@ function applyView(v){
   if(v.vcat)Object.assign(S.vcat,v.vcat);
   if(v.colorMode)S.colorMode=v.colorMode;
   if(v.diffv!=null)S.diffV=!!v.diffv;
-  if(v.vsub!=null)S.vsub=!!v.vsub;
   if(v.minmag!=null){S.minmag=v.minmag}
   if(v.y){$('#y1').value=v.y[0];$('#y2').value=v.y[1]}
   if(v.amag!=null)$('#amag').value=String(v.amag);
@@ -1148,7 +1145,7 @@ function applyView(v){
 function captureView(){
   var y=readYears();
   return {mode:S.mode,rot:[Math.round(S.rot[0]),Math.round(S.rot[1])],k:Math.round(S.k*100)/100,pan:Math.round(S.pan),
-    layers:Object.assign({},S.layers),btypes:Object.assign({},S.btypes),qtypes:Object.assign({},S.qtypes),vmodes:Object.assign({},S.vmodes),vcat:Object.assign({},S.vcat),colorMode:S.colorMode,diffv:S.diffV,vsub:S.vsub,minmag:S.minmag,
+    layers:Object.assign({},S.layers),btypes:Object.assign({},S.btypes),qtypes:Object.assign({},S.qtypes),vmodes:Object.assign({},S.vmodes),vcat:Object.assign({},S.vcat),colorMode:S.colorMode,diffv:S.diffV,minmag:S.minmag,
     y:[y[0],y[1]],amag:+$('#amag').value,vy:[S.vmin,S.vmax],live:{on:S.live.on,span:S.live.span}};
 }
 
@@ -1308,7 +1305,7 @@ function finish(){
 function resetState(){
   S.layers={coast:true,grat:true,plates:false,bound:false,quakes:true,volc:false,hans:false,markers:true,gps:false,gpsv:false};
   S.btypes={subduction:true,collision:true,accretion:true,coulissant:true};S.qtypes={conv:true,div:true,trans:true,intra:true};S.vmodes={expl:true,eff:true};S.vcat={subduction:true,ridge:true,rift:true,hotspot:true,unknown:true};
-  S.colorMode='depth';S.diffV=false;S.vsub=true;S.minmag=0;S.vmin=null;S.vmax=null;
+  S.colorMode='depth';S.diffV=false;S.minmag=0;S.vmin=null;S.vmax=null;
   S.live.on=false;S.live.span=3;
   $('#y1').value=2011;$('#y2').value=2011;$('#amag').value='6';
   $('#live-btn').classList.remove('on');$('#live-btn').setAttribute('aria-pressed','false');

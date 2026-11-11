@@ -7,26 +7,12 @@ require __DIR__ . '/lib/http.php';
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Espace enseignant</title><link rel="icon" href="favicon.ico" sizes="any"><link rel="icon" type="image/svg+xml" href="icon.svg"><link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png"><link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="manifest" href="manifest.webmanifest"><link rel="stylesheet" href="admin-checks.css"><meta name="theme-color" content="#0e1b36">
-<style>
-  :root { --bg:#f6f1e6; --ink:#2b2b2b; --line:#cfc6b2; --accent:#1f6f8b; --bad:#b03a2e; }
-  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#15191f; --ink:#e6e6e6; --line:#384150; --accent:#3cc4d9; --bad:#ff7b6b; } }
-  body { margin:0; font-family: system-ui, sans-serif; background:var(--bg); color:var(--ink); padding:16px; }
-  main { max-width: 760px; margin: 0 auto; }
-  h1 { font-size: 1.4rem; }
-  .card { border:1px solid var(--line); border-radius:10px; padding:14px; margin-bottom:14px; }
-  input, textarea, select { width:100%; box-sizing:border-box; padding:8px; margin:4px 0 10px; font:inherit; color:inherit; background:transparent; border:1px solid var(--line); border-radius:6px; }
-  textarea { min-height: 220px; font-family: ui-monospace, monospace; font-size:.85rem; }
-  button { padding:8px 14px; border-radius:6px; border:1px solid var(--accent); background:var(--accent); color:#fff; cursor:pointer; margin:4px 4px 4px 0; }
-  button.ghost { background:transparent; color:var(--accent); }
-  button.danger { background:transparent; color:var(--bad); border-color:var(--bad); }
-  .msg { min-height:1.2em; color:var(--bad); font-size:.9rem; }
-  .row { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:6px 0; border-bottom:1px solid var(--line); flex-wrap:wrap; }
-  [hidden] { display:none !important; }
-</style>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@600;700&family=IM+Fell+English&family=IBM+Plex+Mono:wght@400&display=swap"><link rel="stylesheet" href="admin-theme.css">
+<script>try{var _s=JSON.parse(localStorage.getItem("tecto.proto.v1")||"{}");var _t=_s.set&&_s.set.th;if(_t==="light"||_t==="dark")document.documentElement.setAttribute("data-theme",_t)}catch(e){}</script>
 </head>
 <body class="adm-page">
+<header class="adm-bar"><img src="icon.svg" alt=""><h1>Espace enseignant<small>Carte tectonique</small></h1><button id="adm-th" type="button" aria-label="Changer de thème"></button><a href="index.html">← Retour à l'app</a></header>
 <main>
-  <h1>Espace enseignant</h1>
 
   <section id="login" class="card" <?= empty($_SESSION['teacher']) ? '' : 'hidden' ?>>
     <label>Identifiant<input id="l-login" autocomplete="username"></label>
@@ -82,6 +68,15 @@ require __DIR__ . '/lib/http.php';
   </section>
 </main>
 
+<script>
+(function(){
+  var K="tecto.proto.v1",r=document.documentElement,b=document.getElementById("adm-th");
+  function dark(){var t=r.getAttribute("data-theme");return t?t==="dark":matchMedia("(prefers-color-scheme: dark)").matches}
+  function paint(){b.textContent=dark()?"☀ Clair":"☾ Sombre"}
+  b.onclick=function(){var w=dark()?"light":"dark";r.setAttribute("data-theme",w);try{var o=JSON.parse(localStorage.getItem(K)||"{}");o.set=o.set||{};o.set.th=w;localStorage.setItem(K,JSON.stringify(o))}catch(e){}paint()};
+  paint();
+})();
+</script>
 <script src="admin-editor.js"></script>
 <script>
 (function () {

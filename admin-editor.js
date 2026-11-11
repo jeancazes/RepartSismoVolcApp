@@ -109,19 +109,41 @@
     return h;
   }
 
-  function viewSummary(v) {
+  function viewSummary(b) {
+    var v = b.view;
     if (!v) return 'Pas encore de situation enregistrée.';
     var on = LAYERS.filter(function (l) { return (v.layers || {})[l[0]]; }).map(function (l) { return l[1].toLowerCase(); });
-    return 'Projection ' + (v.mode === 'globe' ? 'globe' : 'plane') + ' · zoom ' + (v.k == null ? 1 : v.k) + (v.y ? ' · séismes ' + v.y[0] + (v.y[1] !== v.y[0] ? '–' + v.y[1] : '') : '') + ' · couches : ' + (on.join(', ') || 'aucune');
+    return 'Projection ' + (v.mode === 'globe' ? 'globe' : 'plane') + ' · zoom ' + (v.k == null ? 1 : v.k) + (v.y ? ' · séismes ' + v.y[0] + (v.y[1] !== v.y[0] ? '–' + v.y[1] : '') : '') + ' · couches : ' + (on.join(', ') || 'aucune') +
+      (b.target ? ' · fiche ouverte : ' + b.target.label : '');
   }
   function tBtns(st) {
-    var h = '<div class="msg-n">Chaque bouton s\'affiche sous la question. Quand l\'élève clique, la carte prend la position, le zoom et les réglages enregistrés. Tu peux aussi en créer depuis l\'app, connecté en enseignant (« Enregistrer la situation »).</div>';
+    var h = '<div class="msg-n">Chaque bouton s\'affiche sous la question. Au clic, la carte prend la position, le zoom et les réglages enregistrés (et ouvre la fiche d\'un volcan ou d\'un séisme si tu l\'as sélectionné avant d\'enregistrer). Un bouton « ↺ Carte de départ » est ajouté automatiquement. Tu peux aussi créer des boutons depuis l\'app, connecté en enseignant.</div>';
     (st.buttons || []).forEach(function (b, i) {
       h += '<div class="crit"><label>Texte du bouton<input type="text" data-b="st.buttons.' + i + '.label" value="' + esc(b.label || '') + '"></label>' +
-        '<div class="msg-n">' + esc(viewSummary(b.view)) + '</div>' +
-        '<div class="adm-h"><button class="pri" data-act="sit-cap" data-i="' + i + '">' + (b.view ? 'Refaire la capture' : 'Capturer la situation') + '</button><button data-act="sit-del" data-i="' + i + '">Supprimer</button></div></div>';
+        '<label class="ck"><input type="checkbox" data-b="st.buttons.' + i + '.lock"' + (b.lock ? ' checked' : '') + '> Verrouiller les menus après le clic</label>' +
+        '<div class="msg-n">' + esc(viewSummary(b)) + '</div>' +
+        '<div class="adm-h"><button class="pri" data-act="sit-cap" data-i="' + i + '">' + (b.view ? 'Refaire la capture' : 'Capturer la situation') + '</button>' +
+        (ctx.api && b.view ? '<button data-act="sit-tolib" data-i="' + i + '">Mettre en bibliothèque</button>' : '') +
+        '<button data-act="sit-del" data-i="' + i + '">Supprimer</button></div></div>';
     });
-    return h + '<button data-act="sit-add">＋ Ajouter un bouton</button>';
+    h += '<button data-act="sit-add">＋ Ajouter un bouton</button>';
+    if (ctx.api) {
+      h += '<div class="lbl" style="margin-top:12px">Bibliothèque de situations (réutilisables dans tes scénarios)</div>';
+      if (ctx.lib == null) h += '<div class="msg-n">Chargement…</div>';
+      else if (!ctx.lib.length) h += '<div class="msg-n">Vide. Utilise « Mettre en bibliothèque » sur un bouton.</div>';
+      else {
+        h += '<select data-c="lib-sel">' + ctx.lib.map(function (l) { return '<option value="' + esc(l.id) + '"' + (ctx.libSel === l.id ? ' selected' : '') + '>' + esc(l.label) + '</option>'; }).join('') + '</select>' +
+          '<div class="adm-h"><button class="pri" data-act="lib-use">Ajouter ce bouton à la question</button><button data-act="lib-del">Retirer de la bibliothèque</button></div>';
+      }
+    }
+    return h;
+  }
+  function loadLib() {
+    if (!ctx.api || ctx.lib != null || ctx.libLoading) return;
+    ctx.libLoading = true;
+    ctx.api('api/situations.php').then(function (j) { ctx.lib = j.situations || []; ctx.libSel = ctx.lib[0] && ctx.lib[0].id; })
+      .catch(function (err) { ctx.lib = []; say('Bibliothèque : ' + err.message); })
+      .then(function () { ctx.libLoading = false; render(); });
   }
 
   function tAnswer(st) {
@@ -280,6 +302,7 @@
       }
       return;
     }
+    if (t.dataset.c === 'lib-sel') { ctx.libSel = t.value; return; }
     if (t.dataset.c) cons(t);
     if (t.dataset.act === 'mg') {
       var grp = MI[+t.dataset.g], stg = cur();
@@ -336,7 +359,7 @@
 
   function onClick(e) {
     var sub = e.target.closest('[data-sub]');
-    if (sub) { ctx.sub = sub.dataset.sub; render(); return; }
+    if (sub) { ctx.sub = sub.dataset.sub; if (ctx.sub === 'btns') loadLib(); render(); return; }
     var b = e.target.closest('[data-act]');
     if (!b || b.tagName === 'INPUT') return;
     var a = b.dataset.act, i = +b.dataset.i, sc = ctx.sc, st = cur();
@@ -353,9 +376,28 @@
       case 'st-del':
         if (confirm('Supprimer cette question ?')) { sc.steps.splice(i, 1); ctx.si = Math.max(0, Math.min(ctx.si, sc.steps.length - 1)); render(); }
         break;
-      case 'sit-add': st.buttons.push({ id: uid('b'), label: 'Nouveau bouton', view: null }); render(); break;
+      case 'sit-add': st.buttons.push({ id: uid('b'), label: 'Nouveau bouton', view: null, target: null, lock: false }); render(); break;
+      case 'sit-tolib': {
+        var sb = st.buttons[i];
+        ctx.api('api/situations.php', { method: 'POST', body: JSON.stringify({ label: sb.label || 'Situation', data: { view: sb.view, target: sb.target || null, lock: !!sb.lock } }) })
+          .then(function () { ctx.lib = null; loadLib(); say('« ' + (sb.label || '') + ' » ajouté à la bibliothèque.', true); })
+          .catch(function (err) { say('Bibliothèque : ' + err.message); });
+        break;
+      }
+      case 'lib-use': {
+        var li = (ctx.lib || []).filter(function (l) { return l.id === ctx.libSel; })[0];
+        if (li) { st.buttons.push({ id: uid('b'), label: li.label, view: clone(li.data.view), target: li.data.target || null, lock: !!li.data.lock }); render(); }
+        break;
+      }
+      case 'lib-del':
+        if (ctx.libSel && confirm('Retirer cette situation de la bibliothèque ?')) {
+          ctx.api('api/situations.php?id=' + encodeURIComponent(ctx.libSel), { method: 'DELETE' })
+            .then(function () { ctx.lib = null; loadLib(); })
+            .catch(function (err) { say('Bibliothèque : ' + err.message); });
+        }
+        break;
       case 'sit-del': st.buttons.splice(i, 1); render(); break;
-      case 'sit-cap': openPreview({ id: st.buttons[i].id, label: st.buttons[i].label, view: st.buttons[i].view }); break;
+      case 'sit-cap': openPreview({ id: st.buttons[i].id, label: st.buttons[i].label, view: st.buttons[i].view, target: st.buttons[i].target || null }); break;
       case 'crit-add': st.crit.push({ label: 'Nouveau critère', pts: 5, need: 1, kw: [], hint: '' }); render(); break;
       case 'crit-del': st.crit.splice(i, 1); render(); break;
       case 'mi-all':
@@ -383,7 +425,7 @@
   window.addEventListener('message', function (e) {
     if (e.origin === location.origin && e.data && e.data.type === 'tecto-capture' && ctx && pw && e.source === pw) {
       var bt = (cur().buttons || []).filter(function (x) { return x.id === e.data.id; })[0];
-      if (bt) { bt.view = e.data.view; if (pendingCap && pendingCap.id === bt.id) pendingCap.view = bt.view; render(); say('Situation enregistrée dans le bouton « ' + (bt.label || '') + ' ».'); }
+      if (bt) { bt.view = e.data.view; bt.target = e.data.target || null; if (pendingCap && pendingCap.id === bt.id) pendingCap.view = bt.view; render(); say('Situation enregistrée dans le bouton « ' + (bt.label || '') + ' ».'); }
       return;
     }
     if (e.origin !== location.origin || !e.data || e.data.type !== 'tecto-ready') return;
@@ -421,7 +463,7 @@
     '.mtab input{width:auto;margin:0}.msg-n{font-size:.9rem;opacity:.8;margin-bottom:8px}';
 
   window.ScEditor = {
-    open: function (root, rec, onSave, onCancel) {
+    open: function (root, rec, onSave, onCancel, apiFn) {
       if (!document.getElementById('ed-css')) {
         var s = document.createElement('style'); s.id = 'ed-css'; s.textContent = CSS; document.head.appendChild(s);
       }
@@ -431,7 +473,7 @@
       sc.steps.forEach(normStep);
       if (!sc.steps.length) sc.steps.push(newStep());
       if (ctx && ctx.root) { ctx.root.removeEventListener('click', onClick); ctx.root.removeEventListener('input', onInput); ctx.root.removeEventListener('change', onChange); }
-      ctx = { root: root, rec: rec, sc: sc, si: 0, sub: 'content', code: rec.session_code || '', active: !!rec.is_active, onSave: onSave, onCancel: onCancel };
+      ctx = { root: root, rec: rec, sc: sc, si: 0, sub: 'content', code: rec.session_code || '', active: !!rec.is_active, onSave: onSave, onCancel: onCancel, api: apiFn || null, lib: null };
       root.addEventListener('click', onClick); root.addEventListener('input', onInput); root.addEventListener('change', onChange);
       root.hidden = false;
       render();

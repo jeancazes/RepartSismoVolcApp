@@ -142,7 +142,7 @@ require __DIR__ . '/lib/http.php';
       api('api/scenarios.php', { method: 'POST', body: JSON.stringify(out) })
         .then(function () { ScEditor.close(); load(); })
         .catch(function (e) { ScEditor.say('Erreur : ' + e.message); });
-    }, function () { ScEditor.close(); });
+    }, function () { ScEditor.close(); }, api);
     $('vis').scrollIntoView({ behavior: 'smooth' });
   }
   $('btn-cancel').onclick = function () { $('editor').hidden = true; };

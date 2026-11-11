@@ -135,7 +135,7 @@ require __DIR__ . '/lib/http.php';
     $('editor').hidden = true;
     ScEditor.open($('vis'), rec, function (out) {
       api('api/scenarios.php', { method: 'POST', body: JSON.stringify(out) })
-        .then(function () { ScEditor.close(); load(); })
+        .then(function () { ScEditor.close(); load(); ScEditor.toast && ScEditor.toast('Scénario enregistré ✓'); })
         .catch(function (e) { ScEditor.say('Erreur : ' + e.message); });
     }, function () { ScEditor.close(); }, api);
     $('vis').scrollIntoView({ behavior: 'smooth' });

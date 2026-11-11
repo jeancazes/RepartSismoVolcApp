@@ -415,7 +415,17 @@
 
   function say(text, ok) {
     var m = ctx.root.querySelector('#ed-msg');
-    if (m) { m.textContent = text; m.style.color = ok ? 'var(--accent)' : 'var(--bad)'; m.style.fontWeight = '700'; try { m.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) {} }
+    if (m) { m.textContent = text; m.style.color = ok ? 'var(--accent)' : 'var(--bad)'; m.style.fontWeight = '700'; }
+    /* bandeau fixe, toujours visible quel que soit le défilement de la page */
+    var t = document.getElementById('ed-toast');
+    if (!t) {
+      t = document.createElement('div'); t.id = 'ed-toast'; t.setAttribute('role', 'status');
+      t.style.cssText = 'position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:99999;max-width:min(92vw,620px);padding:10px 16px;border-radius:10px;font:600 .95rem/1.3 system-ui,sans-serif;box-shadow:0 6px 24px rgba(0,0,0,.35);color:#fff;cursor:pointer';
+      t.onclick = function () { t.style.display = 'none'; };
+      document.body.appendChild(t);
+    }
+    t.textContent = text; t.style.background = ok ? '#2f6b3a' : '#a3281f'; t.style.display = 'block';
+    clearTimeout(t._h); t._h = setTimeout(function () { t.style.display = 'none'; }, ok ? 3500 : 12000);
   }
 
   function onClick(e) {
@@ -550,6 +560,7 @@
       render();
     },
     close: function () { if (ctx && ctx.root) { ctx.root.hidden = true; ctx.root.innerHTML = ''; } },
-    say: say
+    say: say,
+    toast: function (t) { if (ctx) say(t, true); }
   };
 })();

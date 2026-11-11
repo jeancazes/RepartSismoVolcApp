@@ -7,7 +7,7 @@
     ['Fond', [['coast', 'Continents'], ['grat', 'Quadrillage'], ['plates', 'Plaques (contours)']]],
     ['Live', [['live', 'Section Live']]],
     ['Séismes archivés', [['quakes', 'Couche séismes'], ['qy', "Intervalle d'années"], ['amag', "Magnitude de l'archive"], ['minmag', 'Magnitude minimale affichée'], ['qtypes', 'Types : compression / extension / cisaillement'], ['colormode', 'Couleur des points']]],
-    ['Volcans', [['volc', 'Couche volcans'], ['vy', "Intervalle d'éruptions"], ['vcats', 'Contextes de volcans'], ['vdiff', 'Switch « Différencier les volcans »'], ['vmodes', 'Explosif / effusif (collège)']]],
+    ['Volcans', [['volc', 'Couche volcans'], ['vy', "Intervalle d'éruptions"], ['vcats', 'Contextes de volcans'], ['vsub', 'Volcans sous-marins'], ['vdiff', 'Switch « Différencier les volcans »'], ['vmodes', 'Explosif / effusif (collège)']]],
     ['Frontières de plaques', [['bound', 'Afficher les frontières'], ['btypes', 'Types : subduction / collision / accrétion / coulissant']]],
     ['GPS · déplacements', [['gps', 'Stations GPS'], ['gpsv', 'Flèches de déplacement (cm/an)']]],
     ['Marqueurs', [['markers', "Marqueurs de l'enseignant"]]],

@@ -475,6 +475,7 @@ body{background-image:var(--paper)}
     <button class="ibtn sq" id="btn-snd" aria-pressed="true"></button>
     <button class="ibtn sq" id="btn-th"></button>
     <button class="ibtn" id="btn-set" aria-haspopup="dialog">Affichage</button>
+    <button class="ibtn" id="btn-back" type="button" hidden title="Reprendre le scénario">← Scénario</button>
     <button class="ibtn" id="btn-adm" aria-haspopup="dialog">Admin</button>
   </header>
   <main>
@@ -1292,7 +1293,9 @@ function forceHidden(m){
   m=m||{};['coast','grat','plates','bound','quakes','volc','markers','gps','gpsv'].forEach(function(k){if(m[k]==='hide')S.layers[k]=false});
   if(m.live==='hide'){S.live.on=false;$('#live-btn').classList.remove('on');$('#live-btn').setAttribute('aria-pressed','false')}
 }
-function applyFree(){LASTK=null;resetState();applyCons({});applyMenu({});syncUI();loadArch();dirty()}
+function applyFree(){LASTK=null;SNAPS={};resetState();S.layers.markers=false;
+  S.mode='flat';S.rot=[-170,-15];S.k=1;S.pan=0;$$('#proj-seg button').forEach(function(x){x.classList.toggle('on',x.dataset.p==='flat')});
+  applyCons({});applyMenu({});syncUI();loadArch();dirty()}
 function applyStep(st,fresh){
   if(store.set.libre){applyFree();return}
   if(!st)return;
@@ -2188,14 +2191,16 @@ if(sp){
 /* ---------- ouverture : parcours libre ou scénario (+ code de séance) ---------- */
 var pk=$('#ov-scen');
 function show(step){['#scen-s1','#scen-s2','#scen-s3'].forEach(function(s,i){$(s).hidden=(i!==step)})}
-function applyMode(){var a=$('#app');if(!a)return;var lib=!!A.store.set.libre;a.dataset.r=lib?'closed':'open';A.store.set.cr=!lib;A.save()}
+function applyMode(){var a=$('#app');if(!a)return;var lib=!!A.store.set.libre;var bb=$('#btn-back');if(bb)bb.hidden=!lib;a.dataset.r=lib?'closed':'open';A.store.set.cr=!lib;A.save()}
 function openPicker(){
   if(!pk)return;show(0);pk.hidden=false;
   setTimeout(function(){try{$('#scen-libre').focus({preventScroll:true})}catch(e){}},60);
 }
 function closePicker(){pk.hidden=true}
 function finishPick(id){A.store.scen=id;A.store.set.libre=false;A.save();applyMode();closePicker();A.scenChanged();play('next')}
-function libre(){A.store.set.libre=true;A.save();applyMode();closePicker();A.applyFree();play('tick')}
+function libre(){
+  var sc=A.curScen();if(sc&&sc.id){Object.keys(A.store.answers).forEach(function(k){if(k.indexOf(sc.id+'/')===0)delete A.store.answers[k]});A.store.pos[sc.id]=0}
+  A.store.set.libre=true;A.save();applyMode();closePicker();A.clearSnaps();A.applyFree();play('tick')}
 function listScens(){
   var h='';A.adm.scens.forEach(function(s){
     h+='<button class="scen-item" type="button" data-id="'+s.id+'"><b>'+A.esc(s.title||'(sans titre)')+'</b><small>'+s.steps.length+' question'+(s.steps.length>1?'s':'')+(s.code?' · code requis':'')+'</small>'+(s.intro?'<span class="si">'+A.esc(String(s.intro).slice(0,120))+'</span>':'')+'</button>';
@@ -2252,6 +2257,7 @@ if(isPv){
 }
 if(pk){
   $('#scen-libre').onclick=libre;
+  var bk=$('#btn-back');if(bk)bk.onclick=function(){var id=A.store.scen,ok=id&&A.adm.scens.some(function(x){return x.id===id});if(ok)finishPick(id);else openPicker()};
   $('#scen-scens').onclick=function(){listScens();show(1)};
   $('#scen-list').addEventListener('click',function(e){var b=e.target.closest('.scen-item');if(!b)return;var s=A.adm.scens.filter(function(x){return x.id===b.dataset.id})[0];if(s)pickScen(s)});
   $('#scen-ok').onclick=tryCode;

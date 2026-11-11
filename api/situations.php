@@ -11,7 +11,7 @@ try {
         $st = $pdo->prepare('SELECT id, label, data FROM situations WHERE teacher_id = ? ORDER BY label');
         $st->execute([$t['id']]);
         $rows = array_map(static function (array $r): array {
-            return ['id' => $r['id'], 'label' => $r['label'], 'data' => json_decode($r['data'], true)];
+            return ['id' => $r['id'], 'label' => $r['label'], 'data' => json_decode($r['data'])];
         }, $st->fetchAll());
         json_out(['situations' => $rows]);
     }
@@ -27,8 +27,9 @@ try {
     if ($method === 'POST') {
         $d = body();
         $label = mb_substr(trim((string)($d['label'] ?? '')), 0, 120);
-        $data = $d['data'] ?? null;
-        if ($label === '' || !is_array($data) || !isset($data['view']) || !is_array($data['view'])) {
+        $raw = body_obj();
+        $data = $raw->data ?? null; // objets conservés
+        if ($label === '' || !is_object($data) || !isset($data->view) || !is_object($data->view)) {
             json_out(['error' => 'Situation invalide'], 422);
         }
         $id = bin2hex(random_bytes(8));

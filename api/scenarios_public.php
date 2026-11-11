@@ -28,7 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         usleep(300000);
         json_out(['error' => 'Code incorrect'], 403);
     }
-    json_out(['scenario' => ['id' => $r['id'], 'title' => $r['title']] + json_decode($r['content'], true)]);
+    json_out(['scenario' => (object)(['id' => $r['id'], 'title' => $r['title']] + (array)json_decode($r['content']))]);
 }
 
 json_out(['error' => 'Méthode non autorisée'], 405);

@@ -45,6 +45,12 @@ function body(): array {
     return is_array($d) ? $d : [];
 }
 
+/** Corps de requête JSON décodé en objets : garde les objets vides {} (sinon PHP les transforme en []). */
+function body_obj(): ?object {
+    $d = json_decode(file_get_contents('php://input') ?: 'null');
+    return is_object($d) ? $d : null;
+}
+
 /** Exige un enseignant connecté. */
 function require_teacher(): array {
     if (empty($_SESSION['teacher'])) {

@@ -32,7 +32,14 @@
     return normStep({ id: uid('q'), title: 'Nouvelle question', type: 'qcm' });
   }
   /** Complète les champs manquants d'une question (scénarios importés ou anciens). */
+  /* Répare les objets vides devenus [] (ancien enregistrement côté serveur) : sinon les clés ajoutées sur un tableau sont perdues à l'enregistrement. */
+  function fixObj(o, keys) { if (!o || typeof o !== 'object') return; keys.forEach(function (k) { if (Array.isArray(o[k])) o[k] = {}; }); }
+  function fixView(v) { if (v && typeof v === 'object' && !Array.isArray(v)) fixObj(v, ['layers', 'btypes', 'qtypes', 'vmodes', 'vcat']); }
   function normStep(s) {
+    fixObj(s, ['menu', 'bg', 'cons', 'pass', 'view']);
+    if (s.view && typeof s.view === 'object' && !Object.keys(s.view).length) s.view = null;
+    fixView(s.view);
+    (Array.isArray(s.buttons) ? s.buttons : []).forEach(function (bt) { fixObj(bt, ['view']); if (Array.isArray(bt.target)) bt.target = null; fixView(bt.view); });
     s.id = s.id || uid('q');
     s.title = s.title == null ? '' : s.title;
     ['intro', 'proposal', 'question', 'ctext', 'rubric', 'why'].forEach(function (k) { if (s[k] == null) s[k] = ''; });

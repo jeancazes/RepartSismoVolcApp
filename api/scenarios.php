@@ -10,7 +10,7 @@ if ($method === 'GET') {
     $st = $pdo->prepare('SELECT id, title, session_code, content, is_active, updated_at FROM scenarios WHERE teacher_id = ? ORDER BY updated_at DESC');
     $st->execute([$t['id']]);
     $rows = array_map(static function (array $r): array {
-        $r['content'] = json_decode($r['content'], true);
+        $r['content'] = json_decode($r['content']); // objets conservés ({} reste {})
         $r['is_active'] = (bool)$r['is_active'];
         return $r;
     }, $st->fetchAll());
@@ -28,8 +28,9 @@ if ($method === 'DELETE') {
 if ($method === 'POST') {
     $d = body();
     $id = preg_match('/^[a-z0-9_-]{3,40}$/i', (string)($d['id'] ?? '')) ? (string)$d['id'] : bin2hex(random_bytes(8));
-    $content = $d['content'] ?? null;
-    if (!is_array($content) || !isset($content['steps']) || !is_array($content['steps'])) {
+    $raw = body_obj();
+    $content = $raw->content ?? null; // décodé en objets : les {} vides ne deviennent pas []
+    if (!is_object($content) || !isset($content->steps) || !is_array($content->steps)) {
         json_out(['error' => 'Contenu de scénario invalide'], 422);
     }
 

@@ -14,7 +14,7 @@ if (preg_match('/^[a-f0-9]{64}$/', $t)) {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Confirmation du compte</title>
+<title>Confirmation du compte</title><link rel="icon" href="favicon.ico" sizes="any"><link rel="icon" type="image/svg+xml" href="icon.svg">
 <style>body{font-family:system-ui,sans-serif;max-width:560px;margin:40px auto;padding:0 16px;line-height:1.5}</style>
 </head>
 <body>

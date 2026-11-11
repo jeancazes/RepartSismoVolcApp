@@ -1255,14 +1255,26 @@ function checkCloze(sc,st){
 function sendText(sc,st){
   var t=$('#ans').value.trim();G.tries++;
   if(t.length<(st.minlen||15)){showFb('hint','Écris au moins une phrase complète.');return}
-  var r=gradeStep(t,st),miss=r.det.filter(function(d){return d.f<1});
-  ansBox()[akey(sc,st)]={text:t,score:r.s20,ai:!!st.ai,pending:!!st.ai};persist();
-  G.res={sent:true,correct:true,s20:r.s20};
-  var tbl='<table>'+r.det.map(function(d){return '<tr><td>'+esc(d.label)+'</td><td>'+d.pts+' / '+d.max+'</td></tr>'}).join('')+'<tr><td><b>Total</b></td><td><b>'+r.s20+' / 20</b></td></tr></table>';
-  var tip=miss.length?'<div style="margin-top:8px"><b>À améliorer :</b><br>'+miss.map(function(m){return '• '+esc(m.hint||m.label)}).join('<br>')+'</div>':'<div style="margin-top:8px">Toutes les idées-clés sont présentes.</div>';
-  var note=st.ai?'Note provisoire donnée par l\'IA, avant vérification par l\'enseignant.':'Correction automatique par mots-clés.';
-  showFb(r.s20>=12?'good':'hint','Réponse enregistrée.'+tbl+tip+'<div class="note" style="margin-top:8px">'+note+'</div>');
-  refreshNext();
+  var r=gradeStep(t,st),key=akey(sc,st);
+  function done(score,comment,src){
+    ansBox()[key]={text:t,score:score,kw:r.s20,ai:!!st.ai,pending:!!st.ai,aiOk:src==='ai',comment:comment||''};persist();
+    G.res={sent:true,correct:true,s20:score};
+    var miss=r.det.filter(function(d){return d.f<1});
+    var tbl=src==='ai'?'<table><tr><td><b>Note</b></td><td><b>'+score+' / 20</b></td></tr></table>'+(comment?'<div style="margin-top:6px">'+esc(comment)+'</div>':''):'<table>'+r.det.map(function(d){return '<tr><td>'+esc(d.label)+'</td><td>'+d.pts+' / '+d.max+'</td></tr>'}).join('')+'<tr><td><b>Total</b></td><td><b>'+score+' / 20</b></td></tr></table>';
+    var tip=miss.length?'<div style="margin-top:8px"><b>À améliorer :</b><br>'+miss.map(function(m){return '• '+esc(m.hint||m.label)}).join('<br>')+'</div>':'<div style="margin-top:8px">Toutes les idées-clés sont présentes.</div>';
+    var note=src==='ai'?'Note provisoire donnée par l\'IA, avant vérification par l\'enseignant.':(st.ai?'L\'IA n\'a pas pu corriger ('+esc(src)+') : correction automatique par mots-clés, à vérifier par l\'enseignant.':'Correction automatique par mots-clés.');
+    showFb(score>=12?'good':'hint','Réponse enregistrée.'+tbl+(src==='ai'&&!miss.length?'':tip)+'<div class="note" style="margin-top:8px">'+note+'</div>');
+    refreshNext();
+  }
+  if(!st.ai){done(r.s20,'','kw');return}
+  var sb=$('#chk');if(sb)sb.disabled=true;
+  showFb('hint','Correction en cours…');
+  fetch('api/grade.php',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:t,question:st.question||st.title||'',rubric:st.rubric||'',crit:(st.crit||[]).map(function(c){return {label:c.label,pts:c.pts}}),bin:store.bin||0})})
+    .then(function(x){return x.json().catch(function(){return {}}).then(function(j){return {ok:x.ok,st:x.status,j:j}})})
+    .then(function(o){if(sb)sb.disabled=false;
+      if(o.ok&&o.j&&typeof o.j.score==='number')done(o.j.score,o.j.commentaire||'','ai');
+      else done(r.s20,'',o.st===429?'trop de demandes, réessaie plus tard':o.st===503?'IA désactivée':'erreur '+o.st)})
+    .catch(function(){if(sb)sb.disabled=false;done(r.s20,'','réseau')});
 }
 function giveHint(){var st=G.st,hs=(st.hints||[]).filter(Boolean);if(!hs.length)return;var h=hs[Math.min(G.hint,hs.length-1)];G.hint++;showFb('hint','<b>Indice '+Math.min(G.hint,hs.length)+' / '+hs.length+'</b><br>'+esc(h))}
 function pts(st){return st.points==null?(st.diag?0:1):(+st.points||0)}

@@ -742,7 +742,7 @@ function drawBase(){
   }
   if(S.layers.volc){
     var vs=visibleVolc();S.vv=vs;
-    for(var j=0;j<vs.length;j++){var v=vs[j];if(!visible(v.lon,v.lat))continue;var pp=proj([v.lon,v.lat]);if(!pp)continue;var s=4.6*z*ps2;
+    for(var j=0;j<vs.length;j++){var v=vs[j];if(!visible(v.lon,v.lat))continue;var pp=proj([v.lon,v.lat]);if(!pp)continue;var s=(v.ill?2.8:4.6)*z*ps2;
       ctx.beginPath();ctx.moveTo(pp[0],pp[1]-s);ctx.lineTo(pp[0]+s*.95,pp[1]+s*.75);ctx.lineTo(pp[0]-s*.95,pp[1]+s*.75);ctx.closePath();
       ctx.fillStyle=vcol(v);ctx.globalAlpha=.92;ctx.fill();ctx.lineWidth=.8;ctx.strokeStyle=COL.fg;ctx.globalAlpha=.8;ctx.stroke();
       ctx.globalAlpha=1}
@@ -877,7 +877,8 @@ function showInfo(b){
     h='<h3>Séisme M '+o.mag.toFixed(1)+'</h3><dl><dt>Lieu</dt><dd>'+esc(o.place)+'</dd><dt>Date</dt><dd>'+fmtDate(o.t)+'</dd><dt>Profondeur</dt><dd>'+Math.round(o.depth)+' km</dd><dt>Contexte</dt><dd>'+CLS[o.cls]+' <span class="note">('+(o.cls0?'':'estimé : ')+esc(o.how)+')</span></dd>'+(o.note?'<dt>Note</dt><dd>'+esc(o.note)+'</dd>':'')+(o.add?'<dt>Source</dt><dd>ajouté par l\'enseignant</dd>':(o.mod?'<dt>Données</dt><dd>corrigées par l\'enseignant</dd>':''))+'</dl>';
   }else{
     var tl={subduction:'Zone de subduction',ridge:'Dorsale / rift océanique',rift:'Rift continental',hotspot:'Point chaud / intraplaque',unknown:'Non classé'}[o.cat];
-    h='<h3>'+esc(o.name)+'</h3><dl><dt>Pays</dt><dd>'+esc(o.country)+'</dd><dt>Type</dt><dd>'+esc(o.type||'—')+'</dd><dt>Contexte</dt><dd>'+tl+'</dd><dt>Dynamisme</dt><dd>'+({expl:'Explosif (contexte de subduction)',eff:'Effusif',unk:'Non déterminé'}[vMode(o)])+'</dd><dt>Dernière éruption</dt><dd>'+(o.last===null?'inconnue':(o.last<0?Math.abs(o.last)+' av. J.-C.':o.last))+'</dd>'+erInfo(o)+(o.note?'<dt>Note</dt><dd>'+esc(o.note)+'</dd>':'')+(o.add?'<dt>Source</dt><dd>ajouté par l\'enseignant</dd>':(o.mod?'<dt>Données</dt><dd>corrigées par l\'enseignant</dd>':''))+(o.liveStatus?'<dt>Statut live</dt><dd>'+esc(o.liveStatus)+'</dd>':'')+'</dl>';
+    if(o.ill)h='<h3>Volcan sous-marin de dorsale</h3><dl><dt>Contexte</dt><dd>Dorsale océanique (divergence)</dd><dt>Dynamisme</dt><dd>Effusif (laves basaltiques)</dd><dt>Dernière éruption</dt><dd>Holocène (date inconnue)</dd><dt>Position</dt><dd>illustrative : ce point représente le volcanisme sous-marin réparti le long de la dorsale, ce n\'est pas un volcan précis recensé.</dd></dl>';
+    else h='<h3>'+esc(o.name)+'</h3><dl><dt>Pays</dt><dd>'+esc(o.country)+'</dd><dt>Type</dt><dd>'+esc(o.type||'—')+'</dd><dt>Contexte</dt><dd>'+tl+'</dd><dt>Dynamisme</dt><dd>'+({expl:'Explosif (contexte de subduction)',eff:'Effusif',unk:'Non déterminé'}[vMode(o)])+'</dd><dt>Dernière éruption</dt><dd>'+(o.last===null?'inconnue':(o.last<0?Math.abs(o.last)+' av. J.-C.':o.last))+'</dd>'+erInfo(o)+(o.note?'<dt>Note</dt><dd>'+esc(o.note)+'</dd>':'')+(o.add?'<dt>Source</dt><dd>ajouté par l\'enseignant</dd>':(o.mod?'<dt>Données</dt><dd>corrigées par l\'enseignant</dd>':''))+(o.liveStatus?'<dt>Statut live</dt><dd>'+esc(o.liveStatus)+'</dd>':'')+'</dl>';
   }
   var el=$('#info');el.innerHTML='<button class="x" aria-label="Fermer">✕</button>'+h;el.hidden=false;el.querySelector('.x').onclick=function(){el.hidden=true;S.sel=null;dirty()};
 }
@@ -944,7 +945,7 @@ function loadArch(force){
 Promise.all(['data/land.json','data/plates.json','data/boundaries3.json','data/volcans.json','data/eruptions.json'].map(function(u){return fetch(u).then(function(r){return r.json()})})).then(function(a){
   S.land=a[0];S.plates=platesLines(a[1]);S.bound=a[2];S.bound.features.forEach(function(f){f.properties.sub=BKIND[f.properties.kind]||({conv:'subduction',div:'accretion',trans:'coulissant'}[f.properties.type])});
   getJSON('data/gps.json').then(function(d){S.gps=d.stations.map(function(r,i){return {lon:r[0],lat:r[1],ve:r[2],vn:r[3],code:r[4],sp:Math.max(.001,Math.hypot(r[2],r[3])),pr:((i*2654435761)>>>0)%100003}}).sort(function(a,b){return a.pr-b.pr});dirty()}).catch(function(){});
-  S.volcBase=a[3].map(function(r){return {num:r[0],name:r[1],lat:r[2],lon:r[3],lon_:r[3],type:r[4],last:r[5],country:r[6],cat:r[7],setting:r[8],sub:r[9]===1}});rebuildVolc();rebuildMarkers();
+  S.volcBase=a[3].map(function(r){return {num:r[0],name:r[1],lat:r[2],lon:r[3],lon_:r[3],type:r[4],last:r[5],country:r[6],cat:r[7],setting:r[8],sub:r[9]===1||r[9]===2,ill:r[9]===2}});rebuildVolc();rebuildMarkers();
   S.er={};a[4].forEach(function(r){if(r[5]!==1)return;(S.er[r[0]]=S.er[r[0]]||[]).push(r)});
   buildGrid();S.ready=true;syncUI();dirty();loadLiveData();return Promise.resolve().then(function(){var sc=curScen();applyStep(sc.steps[curIdx()]||null);return loadArch(true)});
 }).catch(function(){setStatus('Fichiers de données introuvables')});

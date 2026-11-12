@@ -17,7 +17,7 @@ for line in osr:
         d=hav(p,q);segs.append((tot,d,p,q));tot+=d
 print('total km',round(tot))
 rnd=random.Random(20261112)
-N=300;mean=tot/N
+N=900;mean=tot/N
 pos=[];x=rnd.uniform(0,mean)
 while x<tot:
     pos.append(x);x+=mean*rnd.uniform(.35,1.65)

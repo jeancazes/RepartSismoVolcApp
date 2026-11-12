@@ -719,12 +719,12 @@ function drawBase(){
   if(bg){ctx.fillStyle=getComputedStyle(document.body).backgroundColor;}
   if(S.layers.coast&&S.land){ctx.beginPath();path(S.land);ctx.fillStyle=COL.land;ctx.fill();if(COL.coast&&COL.coast!=='none'){ctx.strokeStyle=COL.coast;ctx.lineWidth=.8;ctx.stroke()}}
   if(S.layers.grat){ctx.beginPath();path(d3.geoGraticule10());ctx.strokeStyle=COL.grat;ctx.lineWidth=.6;ctx.stroke()}
-  if(S.layers.plates&&S.plates){ctx.beginPath();path(S.plates);ctx.strokeStyle=COL.plate;ctx.lineWidth=.8;ctx.setLineDash([4,3]);ctx.stroke();ctx.setLineDash([])}
+  if(S.layers.plates&&S.plates){ctx.beginPath();path(S.level==='col'&&S.platesCol?S.platesCol:S.plates);ctx.strokeStyle=COL.plate;ctx.lineWidth=.8;ctx.setLineDash([4,3]);ctx.stroke();ctx.setLineDash([])}
   if(S.layers.pnames){var pk=store.set.ps/100,fs=Math.min(19,11+2*Math.sqrt(S.k))*pk;ctx.font='700 '+fs+'px '+getComputedStyle(document.body).fontFamily;ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineJoin='round';
     PNAMES.forEach(function(n){if(!visible(n[2],n[1]))return;var q=proj([n[2],n[1]]);if(!q)return;ctx.lineWidth=4;ctx.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--panel')||'#fff';ctx.strokeText(n[0],q[0],q[1]);ctx.fillStyle=COL.fg||'#000';ctx.fillText(n[0],q[0],q[1])});ctx.textAlign='start';ctx.textBaseline='alphabetic'}
   if(S.layers.bound&&S.bound){
     var wk=Math.max(1.4,1.2*Math.sqrt(S.k)),ps=store.set.ps/100;
-    S.bound.features.forEach(function(f){var sb=f.properties.sub;if(!S.btypes[sb]||(S.level==='col'&&sb==='coulissant'))return;ctx.beginPath();path(f);ctx.strokeStyle=COL[BCOL[sb]];ctx.lineWidth=wk*(sb==='coulissant'?1:1.15);ctx.globalAlpha=.95;ctx.setLineDash(sb==='collision'?[8,4]:sb==='coulissant'?[2,3]:[]);ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1});
+    S.bound.features.forEach(function(f){var sb=f.properties.sub;if(!S.btypes[sb]||(S.level==='col'&&(sb==='coulissant'||f.properties.adv)))return;ctx.beginPath();path(f);ctx.strokeStyle=COL[BCOL[sb]];ctx.lineWidth=wk*(sb==='coulissant'?1:1.15);ctx.globalAlpha=.95;ctx.setLineDash(sb==='collision'?[8,4]:sb==='coulissant'?[2,3]:[]);ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1});
   }
   var ps2=store.set.ps/100,z=Math.min(1.6,.75+.25*Math.sqrt(S.k));
   drawGPS(z);
@@ -822,7 +822,7 @@ cv.addEventListener('pointermove',function(e){
   requestAnimationFrame(function(){btWait=false;
     if(drag0||!S.layers.bound||!S.bound||!proj){btip.hidden=true;return}
     var r=cv.getBoundingClientRect(),x=cx-r.left,y=cy-r.top,best=null,bd=7;
-    S.bound.features.forEach(function(f){var sb=f.properties.sub;if(!S.btypes[sb]||(S.level==='col'&&sb==='coulissant'))return;
+    S.bound.features.forEach(function(f){var sb=f.properties.sub;if(!S.btypes[sb]||(S.level==='col'&&(sb==='coulissant'||f.properties.adv)))return;
       f.geometry.coordinates.forEach(function(line){for(var i=0;i<line.length;i+=2){var pt=line[i];if(!visible(pt[0],pt[1]))continue;var q=proj(pt);if(!q)continue;var d=Math.abs(q[0]-x)+Math.abs(q[1]-y);if(d<bd*1.5){var dd=Math.hypot(q[0]-x,q[1]-y);if(dd<bd){bd=dd;best=sb}}}})});
     if(!best){btip.hidden=true;return}
     btip.innerHTML='<b>Frontière : '+BNAME[best].toLowerCase()+'</b><br>'+BDESC[best];btip.hidden=false;
@@ -943,7 +943,7 @@ function loadArch(force){
   }).catch(function(e){S.archSig='';setStatus('Archives : année introuvable ('+e.message+')')});
 }
 Promise.all(['data/land.json','data/plates.json','data/boundaries3.json','data/volcans.json','data/eruptions.json'].map(function(u){return fetch(u).then(function(r){return r.json()})})).then(function(a){
-  S.land=a[0];S.plates=platesLines(a[1]);S.bound=a[2];S.bound.features.forEach(function(f){f.properties.sub=BKIND[f.properties.kind]||({conv:'subduction',div:'accretion',trans:'coulissant'}[f.properties.type])});
+  S.land=a[0];S.plates=platesLines(a[1]);S.platesCol=platesLines(a[1],true);S.bound=a[2];S.bound.features.forEach(function(f){f.properties.sub=BKIND[f.properties.kind]||({conv:'subduction',div:'accretion',trans:'coulissant'}[f.properties.type])});
   getJSON('data/gps.json').then(function(d){S.gps=d.stations.map(function(r,i){return {lon:r[0],lat:r[1],ve:r[2],vn:r[3],code:r[4],sp:Math.max(.001,Math.hypot(r[2],r[3])),pr:((i*2654435761)>>>0)%100003}}).sort(function(a,b){return a.pr-b.pr});dirty()}).catch(function(){});
   S.volcBase=a[3].map(function(r){return {num:r[0],name:r[1],lat:r[2],lon:r[3],lon_:r[3],type:r[4],last:r[5],country:r[6],cat:r[7],setting:r[8],sub:r[9]===1||r[9]===2,ill:r[9]===2}});rebuildVolc();rebuildMarkers();
   S.er={};a[4].forEach(function(r){if(r[5]!==1)return;(S.er[r[0]]=S.er[r[0]]||[]).push(r)});
@@ -951,12 +951,12 @@ Promise.all(['data/land.json','data/plates.json','data/boundaries3.json','data/v
 }).catch(function(){setStatus('Fichiers de données introuvables')});
 
 /* contours de plaques : retire les segments sur l'antiméridien / les pôles (ligne verticale parasite) */
-function platesLines(fc){
-  var out=[],SK={};(fc.skip||[]).forEach(function(k){SK[k]=1});function sk(p){return SK[(+p[0]).toFixed(2)+','+(+p[1]).toFixed(2)]}
+function platesLines(fc,col){
+  var out=[],SK={};(fc.skip||[]).forEach(function(k){SK[k]=1});var AV={};if(col)(fc.advskip||[]).forEach(function(k){AV[k]=1});function av(p){return AV[(+p[0]).toFixed(2)+','+(+p[1]).toFixed(2)]}function sk(p){return SK[(+p[0]).toFixed(2)+','+(+p[1]).toFixed(2)]}
   function ring(r){var cur=[];
     for(var i=0;i<r.length-1;i++){var p=r[i],q=r[i+1];
       var seam=(Math.abs(Math.abs(p[0])-180)<1e-6&&Math.abs(Math.abs(q[0])-180)<1e-6)||Math.abs(p[0]-q[0])>180||(Math.abs(Math.abs(p[1])-90)<1e-6&&Math.abs(Math.abs(q[1])-90)<1e-6);
-      if(seam||(sk(p)&&sk(q))){if(cur.length>1)out.push(cur);cur=[];continue}
+      if(seam||(sk(p)&&sk(q))||(col&&av(p)&&av(q))){if(cur.length>1)out.push(cur);cur=[];continue}
       if(!cur.length)cur.push(p);cur.push(q)}
     if(cur.length>1)out.push(cur)}
   fc.features.forEach(function(f){var g=f.geometry;
@@ -1300,7 +1300,7 @@ function printSheet(sc,st){
   var svg='<svg viewBox="0 0 '+W+' '+H+'" xmlns="http://www.w3.org/2000/svg"><rect width="'+W+'" height="'+H+'" fill="#fff" stroke="#000" stroke-width="1.5"/>';
   if(bg.grat){for(var lo=-150;lo<=180;lo+=30)svg+='<line x1="'+X(lo)+'" y1="0" x2="'+X(lo)+'" y2="'+H+'" stroke="#bbb" stroke-width=".6"/>';for(var la=-60;la<=60;la+=30)svg+='<line x1="0" y1="'+Y(la)+'" x2="'+W+'" y2="'+Y(la)+'" stroke="#bbb" stroke-width=".6"/>'}
   svg+='<path d="'+d+'" fill="#f4f4f4" stroke="#000" stroke-width="1" stroke-linejoin="round"/>';
-  if(bg.plates&&S.plates){var pd='';S.plates.coordinates.forEach(function(l){for(var i=0;i<l.length;i++){if(i===0||Math.abs(l[i][0]-l[i-1][0])>180)pd+='M';else pd+='L';pd+=X(l[i][0]).toFixed(1)+' '+Y(l[i][1]).toFixed(1)}});svg+='<path d="'+pd+'" fill="none" stroke="#000" stroke-width=".7" stroke-dasharray="5 3"/>'}
+  if(bg.plates&&S.plates){var pd='';(S.level==='col'&&S.platesCol?S.platesCol:S.plates).coordinates.forEach(function(l){for(var i=0;i<l.length;i++){if(i===0||Math.abs(l[i][0]-l[i-1][0])>180)pd+='M';else pd+='L';pd+=X(l[i][0]).toFixed(1)+' '+Y(l[i][1]).toFixed(1)}});svg+='<path d="'+pd+'" fill="none" stroke="#000" stroke-width=".7" stroke-dasharray="5 3"/>'}
   var mk=st.marks||[];
   mk.forEach(function(m,k){var x=X(m.lon),y=Y(m.lat);svg+='<circle cx="'+x+'" cy="'+y+'" r="3" fill="#000"/><text x="'+(x+6)+'" y="'+(y-6)+'" font-size="22" font-weight="700" font-family="Arial,sans-serif" stroke="#fff" stroke-width="5" paint-order="stroke" fill="#000">'+(k+1)+'</text>'});
   svg+='</svg>';

@@ -952,11 +952,11 @@ Promise.all(['data/land.json','data/plates.json','data/boundaries3.json','data/v
 
 /* contours de plaques : retire les segments sur l'antiméridien / les pôles (ligne verticale parasite) */
 function platesLines(fc){
-  var out=[];
+  var out=[],SK={};(fc.skip||[]).forEach(function(k){SK[k]=1});function sk(p){return SK[(+p[0]).toFixed(2)+','+(+p[1]).toFixed(2)]}
   function ring(r){var cur=[];
     for(var i=0;i<r.length-1;i++){var p=r[i],q=r[i+1];
       var seam=(Math.abs(Math.abs(p[0])-180)<1e-6&&Math.abs(Math.abs(q[0])-180)<1e-6)||Math.abs(p[0]-q[0])>180||(Math.abs(Math.abs(p[1])-90)<1e-6&&Math.abs(Math.abs(q[1])-90)<1e-6);
-      if(seam){if(cur.length>1)out.push(cur);cur=[];continue}
+      if(seam||(sk(p)&&sk(q))){if(cur.length>1)out.push(cur);cur=[];continue}
       if(!cur.length)cur.push(p);cur.push(q)}
     if(cur.length>1)out.push(cur)}
   fc.features.forEach(function(f){var g=f.geometry;

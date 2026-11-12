@@ -245,6 +245,8 @@ body.lv-adv [data-col]{display:none!important}
 #sits .sit-save{font-size:.85em;border-style:dashed}
 #edbar{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:55;display:flex;gap:10px;align-items:center;background:var(--fg);color:var(--bg);padding:8px 12px;max-width:calc(100vw - 20px);flex-wrap:wrap;box-shadow:0 6px 24px rgba(0,0,0,.35)}
 #edbar span{font-size:.9em}
+/* outils de situation : réservés à un enseignant connecté (espace enseignant) */
+body:not(.is-teacher) #edbar-cap,body:not(.is-teacher) .tch-only{display:none!important}
 #edbar .btn.ghost{color:var(--bg);border-color:var(--bg)}
 
 .mini{font:inherit;font-size:.86em;padding:2px 10px;background:var(--bg);border:1px solid var(--line);color:var(--fg,inherit);cursor:pointer}
@@ -1417,7 +1419,7 @@ function delSituation(i){
     .then(function(st){G.st.buttons=st.buttons;renderSits();sitMsg('Bouton supprimé.')})
     .catch(function(e){sitMsg(e.message,true)});
 }
-tApi('api/me.php').then(function(d){TEACHER=d.teacher||null;if(TEACHER)renderSits()}).catch(function(){});
+tApi('api/me.php').then(function(d){TEACHER=d.teacher||null;document.body.classList.toggle('is-teacher',!!TEACHER);if(TEACHER)renderSits()}).catch(function(){});
 var SNAPS={},LASTK=null;
 function stepKey(st){return (curScen().id||'')+'/'+st.id}
 function snapState(){var v=captureView();delete v.mode;delete v.rot;delete v.k;delete v.pan;return v}
@@ -1498,7 +1500,7 @@ if(store.bin){$('#bin-n').textContent=('0'+store.bin).slice(-2)}else openBin();
 renderStep();
 loop();
 /*ADMIN_GLUE*/
-window.APP={S:S,adm:adm,store:store,admSave:admSave,save:save,getJSON:getJSON,esc:esc,fmtDate:fmtDate,CLS:CLS,norm:norm,gradeStep:gradeStep,kwRe:kwRe,
+window.APP={isTeacher:function(){return !!TEACHER},S:S,adm:adm,store:store,admSave:admSave,save:save,getJSON:getJSON,esc:esc,fmtDate:fmtDate,CLS:CLS,norm:norm,gradeStep:gradeStep,kwRe:kwRe,
   qKey:qKey,loadArch:loadArch,rebuildVolc:rebuildVolc,rebuildMarkers:rebuildMarkers,captureView:captureView,preview:previewStep,endPreview:endPreview,
   clearSnaps:function(){SNAPS={};LASTK=null},applyFree:applyFree,captureTarget:captureTarget,S:S,showSit:function(bt){sitView(bt.view?bt:{view:bt})},resetMap:resetMap,scenChanged:scenChanged,DEFAULT_SCEN:DEFAULT_SCEN,emptyOv:emptyOv,curScen:curScen,PVget:function(){return PV},resize:resize,dirty:dirty,readYears:readYears,TYPE_LABEL:TYPE_LABEL,LAYER_LABEL:LAYER_LABEL,rowsToQuakes:rowsToQuakes,classify:classify,applyCtx:applyCtx,finish:finish};
 })();
@@ -1764,7 +1766,7 @@ function tData(st){
 function tView(st){
   var v=st.view,h='<label class="ck" style="margin-bottom:8px"><input type="checkbox" data-c="view-on"'+(v?' checked':'')+'> Définir l\'affichage de départ de cette question</label>';
   if(!v)return h+'<div class="msg">Sans réglage, la carte garde l\'affichage précédent.</div>';
-  h+='<div class="adm-h" style="margin-bottom:8px"><button class="sb pri" data-act="view-capture">Capturer l\'affichage de la carte</button><button class="sb" data-act="view-preview">Voir sur la carte</button></div><div class="msg">« Capturer » ouvre la carte : règle-la (zoom, couches, années, globe…), puis valide.</div>';
+  h+='<div class="adm-h tch-only" style="margin-bottom:8px"><button class="sb pri" data-act="view-capture">Capturer l\'affichage de la carte</button><button class="sb" data-act="view-preview">Voir sur la carte</button></div><div class="msg tch-only">« Capturer » ouvre la carte : règle-la (zoom, couches, années, globe…), puis valide.</div>';
   h+='<div class="fl"><span>Projection</span><select data-b="v.mode" data-re="1"><option value="flat"'+(v.mode==='flat'?' selected':'')+'>Plane</option><option value="globe"'+(v.mode==='globe'?' selected':'')+'>Globe</option></select></div>';
   h+='<div class="row2"><div class="fl" style="margin:0"><span>Longitude du centre</span><input type="number" data-c="lon" value="'+(v.rot?Math.round(-v.rot[0]):'')+'" placeholder="auto"></div><div class="fl" style="margin:0"><span>Latitude du centre (globe)</span><input type="number" data-c="lat" value="'+(v.rot?Math.round(-v.rot[1]):'')+'" placeholder="auto"></div><div class="fl" style="margin:0"><span>Zoom</span><input type="number" min="0.8" max="14" step="0.1" data-b="v.k" data-t="n" value="'+(v.k==null?'':v.k)+'" placeholder="1"></div></div>';
   h+='<div class="fl"><span>Couches visibles au départ</span>'+LAYERS.map(function(l){return '<label class="ck"><input type="checkbox" data-c="vl" data-k="'+l[0]+'"'+((v.layers||{})[l[0]]?' checked':'')+'> '+l[1]+'</label>'}).join('')+'</div>';
@@ -1838,13 +1840,13 @@ function scenAct(a,b){
     case 'crit-del':st.crit.splice(i,1);save();renderBody();return true;
     case 'mi':if(b.dataset.v==='show')delete st.menu[b.dataset.k];else st.menu[b.dataset.k]=b.dataset.v;save();return true;
     case 'mi-all':st.menu={};if(b.dataset.v!=='show')MI.forEach(function(g){g[1].forEach(function(it){st.menu[it[0]]=b.dataset.v})});save();renderBody();return true;
-    case 'view-capture':A.preview(sc.id,ST.si,function(v){st.view=v;save()});$('#edbar-cap').hidden=false;return true;
-    case 'view-preview':A.preview(sc.id,ST.si,null);$('#edbar-cap').hidden=true;return true;
+    case 'view-capture':if(!A.isTeacher())return true;A.preview(sc.id,ST.si,function(v){st.view=v;save()});$('#edbar-cap').hidden=false;return true;
+    case 'view-preview':if(!A.isTeacher())return true;A.preview(sc.id,ST.si,null);$('#edbar-cap').hidden=true;return true;
   }
   return false;
 }
 $('#edbar-back').onclick=function(){A.endPreview();renderBody()};
-$('#edbar-cap').onclick=function(){var pv=A.PVget();if(pv&&pv.onCapture)pv.onCapture(A.captureView());A.endPreview();renderBody()};
+$('#edbar-cap').onclick=function(){if(!A.isTeacher())return;var pv=A.PVget();if(pv&&pv.onCapture)pv.onCapture(A.captureView());A.endPreview();renderBody()};
 
 /* ---------- données (séismes, volcans, marqueurs) ---------- */
 var DT={y0:2011,y1:2011,mag:7,q:'',mod:false,page:0,cache:{},view:[],sel:null,edit:null,pick:false,proj:null,msg:''};
@@ -2377,7 +2379,7 @@ var isPv=/#preview/.test(location.hash);
 if(isPv){
   // Fenêtre d'aperçu ouverte depuis l'éditeur de scénarios : le scénario arrive par message, rien n'est enregistré.
   A.isPreview=true;var CAPID=null;
-  document.addEventListener('click',function(e){var c=e.target.closest&&e.target.closest('#edbar-cap');if(!c||!CAPID)return;e.stopImmediatePropagation();e.preventDefault();if(window.opener)window.opener.postMessage({type:'tecto-capture',id:CAPID.id,view:A.captureView(),target:A.captureTarget()},location.origin);c.textContent='Enregistré ✓';setTimeout(function(){c.textContent='Enregistrer la situation'},1800)},true);
+  document.addEventListener('click',function(e){var c=e.target.closest&&e.target.closest('#edbar-cap');if(!c||!CAPID||!A.isTeacher())return;e.stopImmediatePropagation();e.preventDefault();if(window.opener)window.opener.postMessage({type:'tecto-capture',id:CAPID.id,view:A.captureView(),target:A.captureTarget()},location.origin);c.textContent='Enregistré ✓';setTimeout(function(){c.textContent='Enregistrer la situation'},1800)},true);
   var hideT=setInterval(function(){['#splash','#ov-bin','#ov-scen'].forEach(function(q){var e=$(q);if(e)e.hidden=true})},150);
   setTimeout(function(){clearInterval(hideT)},12000);
   window.addEventListener('message',function(e){

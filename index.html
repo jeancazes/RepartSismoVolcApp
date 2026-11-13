@@ -79,7 +79,7 @@ aside{background:var(--panel);overflow:auto;min-height:0;min-width:0}
 .seg button+button{border-left:1px solid var(--line)}
 .seg button.on{background:var(--accent);color:var(--accent-fg)}
 .note{color:var(--mute);font-size:.85em}
-#mapcol{display:grid;grid-template-rows:minmax(0,1fr) auto;min-width:0;min-height:0;position:relative;background:var(--sea)}
+#mapcol{display:grid;grid-template-rows:minmax(0,1fr) auto auto;min-width:0;min-height:0;position:relative;background:var(--sea)}
 #mapwrap{position:relative;min-height:0;min-width:0;overflow:hidden;touch-action:none}
 canvas{display:block;width:100%;height:100%;cursor:grab}
 canvas:active{cursor:grabbing}
@@ -135,6 +135,8 @@ textarea#ans{width:100%;min-height:130px;resize:vertical;background:var(--bg);bo
 .btn.ghost{background:transparent;color:var(--fg);border-color:var(--line)}
 .btn[disabled]{opacity:.45;cursor:default}
 footer.src{padding:8px 14px;border-top:1px solid var(--line);font-size:.74em;color:var(--mute);line-height:1.35}
+/* sources : ligne fine sous le planisphère (texte complet au survol) */
+.srcline{padding:2px 12px;border-top:1px solid var(--line);background:var(--panel);font-size:.66em;line-height:1.5;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* modal */
 [hidden]{display:none!important}
 .mi-h{display:none!important}
@@ -590,13 +592,13 @@ body{background-image:var(--paper)}
           <span class="sp"></span>
         </div>
       </div>
+      <div id="srcline" class="srcline" title="Sources : USGS (séismes, alertes volcans) · Smithsonian GVP (volcans) · PB2002, Bird 2003 via fraxen/Nordpil (ODC-By) · Natural Earth · volcans de dorsale : positions illustratives · contexte des séismes estimé par la profondeur et la distance aux frontières">Sources : USGS (séismes, alertes volcans) · Smithsonian GVP (volcans) · PB2002, Bird 2003 via fraxen/Nordpil (ODC-By) · Natural Earth · volcans de dorsale : positions illustratives · contexte des séismes estimé par la profondeur et la distance aux frontières</div>
     </section>
 
     <aside id="guide" aria-label="Parcours de questions">
       <div id="g-head"><h2>Parcours guidé</h2><span class="chip mono" id="g-step">1 / 8</span><button class="chip" id="g-scen" type="button" title="Changer de scénario">Changer</button><button class="chip" id="g-map" type="button" title="Remettre la carte comme au début de cette question">Réinitialiser la carte</button><button class="chip" id="g-reset" type="button" title="Effacer mes réponses et revenir à la première question">Recommencer</button></div>
       <div id="g-prog"></div>
       <div id="g-body"></div>
-      <footer class="src">Sources : USGS (séismes, alertes volcans), Smithsonian GVP (volcans), PB2002 Bird 2003 via fraxen/Nordpil (ODC-By), Natural Earth. Archives : fichiers enregistrés dans l'app. Live : instantané figé dans ce prototype (le direct viendra avec la version sur serveur). Contexte estimé par la profondeur et la distance aux frontières.</footer>
     </aside>
     <button class="handle" id="hl" aria-controls="layers" aria-expanded="true"><span class="ar">‹</span><span class="t">Couches</span></button>
     <button class="handle" id="hr" aria-controls="guide" aria-expanded="true"><span class="ar">›</span><span class="t">Questions</span></button>

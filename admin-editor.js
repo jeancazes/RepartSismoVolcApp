@@ -11,7 +11,7 @@
     ['Frontières de plaques', [['bound', 'Afficher les frontières'], ['btypes', 'Types : subduction / collision / accrétion / coulissant']]],
     ['GPS', [['gps', 'Mouvements des plaques (GPS)']]],
     ['Marqueurs', [['markers', "Marqueurs de l'enseignant"]]],
-    ['Carte', [['proj', 'Plane / Globe'], ['zoom', 'Zoom + / −'], ['timeline', 'Frise temporelle'], ['legend', 'Légende']]]
+    ['Carte', [['proj', 'Plane / Globe'], ['zoom', 'Zoom + / −'], ['timeline', 'Frise temporelle'], ['legend', 'Légende'], ['coupe', 'Coupe (bouton du haut)']]]
   ];
   var LAYERS = [['coast', 'Continents'], ['grat', 'Quadrillage'], ['plates', 'Plaques (contours)'], ['pnames', 'Noms des plaques'], ['bound', 'Frontières'], ['quakes', 'Séismes'], ['volc', 'Volcans'], ['gps', 'Mouvements des plaques (GPS)'], ['markers', 'Marqueurs']];
   var TYPE_LABEL = { qcm: 'Au choix', cloze: 'À compléter', text: 'Rédigée', sheet: 'Fiche papier' };

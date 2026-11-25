@@ -81,6 +81,34 @@ aside{background:var(--panel);overflow:auto;min-height:0;min-width:0}
 .note{color:var(--mute);font-size:.85em}
 #mapcol{display:grid;grid-template-rows:minmax(0,1fr) auto auto;min-width:0;min-height:0;position:relative;background:var(--sea)}
 #mapwrap{position:relative;min-height:0;min-width:0;overflow:hidden;touch-action:none}
+/* ---- outil Coupe ---- */
+#mapcol #cp-menu,#mapcol #cp-graph{display:none}
+body.cp-on #mapcol{grid-template-columns:minmax(0,1fr) max(20%,232px)}
+#timeline,#srcline,#cp-graph{grid-column:1/-1}
+body.cp-on #mapcol #cp-menu{display:flex}
+body.cp-graph #mapcol #cp-graph{display:block}
+body.cp-graph #mapcol{grid-template-rows:minmax(0,1fr) minmax(190px,40%) auto auto}
+#cp-menu{flex-direction:column;gap:8px;padding:8px 12px;background:var(--panel);border-left:1px solid var(--line);overflow:auto;min-height:0;font-size:.9em}
+#cp-menu[hidden],#cp-graph[hidden],#cp-menu [hidden],#cp-graph [hidden]{display:none!important}
+#cp-menu .cp-h{display:flex;align-items:center;justify-content:space-between;font-size:1.05em}
+#cp-menu .cp-x{border:0;background:transparent;font-size:1.1em;padding:2px 6px;color:var(--mute)}
+#cp-menu .cp-b{width:100%;justify-content:center;padding:8px 10px}
+#cp-menu .cp-b.on,#btn-cp.on{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+#cp-menu .cp-hint{margin:0;color:var(--mute);font-size:.88em;line-height:1.35}
+#cp-menu .cp-s{display:grid;gap:3px;font-size:.88em}
+#cp-menu .cp-s output{color:var(--mute);font-family:var(--mono)}
+#cp-menu .cp-s input{width:100%}
+#cp-menu #cp-opts{display:grid;gap:9px;padding-top:8px;border-top:1px solid var(--line)}
+body.cp-graph #cp-menu .cp-hint{display:none}
+#cp-menu .cp-sum{margin:0;font-size:.86em;line-height:1.5}
+#cp-graph{position:relative;min-height:0;background:var(--panel);border-top:1px solid var(--line);overflow:hidden}
+#cp-graph canvas#cp-cv{width:100%;height:100%;cursor:default}
+#cp-3dw{position:absolute;inset:0}
+#cp-tip{position:absolute;pointer-events:none;background:var(--panel);border:1px solid var(--line);padding:3px 8px;font-size:.82em;box-shadow:0 2px 8px rgba(0,0,0,.18);z-index:3;white-space:nowrap}
+#cp-cap{position:absolute;left:10px;bottom:6px;font-size:.82em;color:var(--mute);pointer-events:none;z-index:2}
+#cp-sw{position:absolute;right:46px;top:8px;z-index:3}
+#mapwrap.cp-draw canvas{cursor:crosshair}
+
 canvas{display:block;width:100%;height:100%;cursor:grab}
 canvas:active{cursor:grabbing}
 #cv2{position:absolute;left:0;top:0;pointer-events:none;cursor:auto}
@@ -495,6 +523,7 @@ body{background-image:var(--paper)}
     <span class="chip hide-s" id="chip-proto">Prototype</span>
     <button class="ibtn sq" id="btn-snd" aria-pressed="true"></button>
     <button class="ibtn sq" id="btn-th"></button>
+    <button class="ibtn" id="btn-cp" data-mi="coupe" aria-pressed="false" title="Coupe topographique : relief, séismes et volcans le long d'une ligne">Coupe</button>
     <button class="ibtn" id="btn-set" aria-haspopup="dialog">Affichage</button>
     <button class="ibtn" id="btn-back" type="button" hidden title="Reprendre le scénario">← Scénario</button>
     <button class="ibtn" id="btn-adm" aria-haspopup="dialog">Admin</button>
@@ -580,6 +609,25 @@ body{background-image:var(--paper)}
         </div>
         <div id="info" hidden></div>
       </div>
+      <aside id="cp-menu" hidden aria-label="Outil Coupe">
+        <div class="cp-h"><b>Coupe</b><button class="cp-x" id="cp-close" aria-label="Fermer la coupe">✕</button></div>
+        <button class="ibtn cp-b" id="cp-sel">Sélectionner une région</button>
+        <p class="cp-hint" id="cp-hint"></p>
+        <label class="cp-s" id="cp-wl" hidden>Largeur de la bande <output id="cp-wo">300 km</output><input type="range" id="cp-w" min="40" max="1500" step="10" value="300"></label>
+        <button class="ibtn cp-b" id="cp-go" disabled>Visualiser la coupe</button>
+        <div id="cp-opts" hidden>
+          <label class="cp-s">Profondeur <output id="cp-do">700 km</output><input type="range" id="cp-d" min="50" max="700" step="10" value="700"></label>
+          <label class="cp-s">Exagération du relief <output id="cp-eo">×5</output><input type="range" id="cp-e" min="1" max="40" step="1" value="5"></label>
+          <button class="ibtn cp-b" id="cp-3d">Bloc 3D</button>
+        </div>
+        <p class="cp-sum" id="cp-sum"></p>
+      </aside>
+      <section id="cp-graph" hidden aria-label="Coupe">
+        <canvas id="cp-cv" role="img" aria-label="Coupe : relief, séismes et volcans"></canvas>
+        <div id="cp-3dw" hidden></div>
+        <button class="ibtn" id="cp-sw" hidden>⏸ Pause</button>
+        <div id="cp-tip" hidden></div><div id="cp-cap"></div>
+      </section>
       <div id="timeline" data-ctx="quakes" data-mi="timeline">
         <button class="ibtn" id="play" aria-label="Lecture de la frise">▶</button>
         <input type="range" id="tl" aria-label="Date sur la frise" min="0" max="1" value="1">
@@ -592,7 +640,7 @@ body{background-image:var(--paper)}
           <span class="sp"></span>
         </div>
       </div>
-      <div id="srcline" class="srcline" title="Sources : USGS (séismes, alertes volcans) · Smithsonian GVP (volcans) · PB2002, Bird 2003 via fraxen/Nordpil (ODC-By) · Natural Earth · volcans de dorsale : positions illustratives · contexte des séismes estimé par la profondeur et la distance aux frontières">Sources : USGS (séismes, alertes volcans) · Smithsonian GVP (volcans) · PB2002, Bird 2003 via fraxen/Nordpil (ODC-By) · Natural Earth · volcans de dorsale : positions illustratives · contexte des séismes estimé par la profondeur et la distance aux frontières</div>
+      <div id="srcline" class="srcline" title="Sources : USGS (séismes, alertes volcans) · Smithsonian GVP (volcans) · PB2002, Bird 2003 via fraxen/Nordpil (ODC-By) · Natural Earth · relief ETOPO (NOAA) · volcans de dorsale : positions illustratives · contexte des séismes estimé par la profondeur et la distance aux frontières">Sources : USGS (séismes, alertes volcans) · Smithsonian GVP (volcans) · PB2002, Bird 2003 via fraxen/Nordpil (ODC-By) · Natural Earth · relief ETOPO (NOAA) · volcans de dorsale : positions illustratives · contexte des séismes estimé par la profondeur et la distance aux frontières</div>
     </section>
 
     <aside id="guide" aria-label="Parcours de questions">
@@ -803,6 +851,7 @@ function drawOverlay(now){
   }
   if(S.sheetMarks&&S.sheetMarks.length){S.sheetMarks.forEach(function(m,k){if(!visible(m.lon,m.lat))return;var p=proj([m.lon,m.lat]);if(!p)return;var r=9*ps2;ctx2.beginPath();ctx2.arc(p[0],p[1],r,0,6.2832);ctx2.fillStyle=COL.accent;ctx2.fill();ctx2.lineWidth=1.5;ctx2.strokeStyle='#fff';ctx2.stroke();ctx2.fillStyle='#fff';ctx2.font='700 '+(11*ps2)+'px sans-serif';ctx2.textAlign='center';ctx2.textBaseline='middle';ctx2.fillText(String(k+1),p[0],p[1]+.5);ctx2.textAlign='start';ctx2.textBaseline='alphabetic'})}
   S.lq=lq;S.lvv=lv;
+  if(window.CP&&window.CP.draw)window.CP.draw(ctx2);
   if(S.sel){var sp=proj([S.sel.lon,S.sel.lat]);if(sp&&visible(S.sel.lon,S.sel.lat)){ctx2.beginPath();ctx2.arc(sp[0],sp[1],14,0,6.2832);ctx2.lineWidth=1.6;ctx2.strokeStyle=COL.accent;ctx2.setLineDash([3,3]);ctx2.stroke();ctx2.setLineDash([])}}
 }
 function hansColor(c){c=(c||'').toUpperCase();return c==='RED'?'#DC2626':c==='ORANGE'?'#EA580C':c==='YELLOW'?'#CA8A04':'#16A34A'}
@@ -1116,6 +1165,7 @@ function applyMenu(m){
   $$('[data-mi]').forEach(function(el){var s=m[el.dataset.mi]||'show';if(s==='hide')el.classList.add('mi-h');else if(s==='grey')el.classList.add('mi-g')});
   $$('#layers .sec').forEach(function(sec){if(sec.hasAttribute('data-mi'))return;sec.classList.remove('mi-h');var items=[].slice.call(sec.querySelectorAll('[data-mi]'));if(items.length&&items.every(function(e){return e.classList.contains('mi-h')}))sec.classList.add('mi-h')});
   applyCtx();
+  if(window.CP&&window.CP.menuChanged)window.CP.menuChanged();
 }
 function applyCons(c){
   c=c||{};S.cons={qy:c.qy||null,vy:c.vy||null,amag:c.amag||null,minmag:c.minmag||null};
@@ -1507,7 +1557,7 @@ if(store.bin){$('#bin-n').textContent=('0'+store.bin).slice(-2)}else openBin();
 renderStep();
 loop();
 /*ADMIN_GLUE*/
-window.APP={isTeacher:function(){return !!TEACHER},S:S,adm:adm,store:store,admSave:admSave,save:save,getJSON:getJSON,esc:esc,fmtDate:fmtDate,CLS:CLS,norm:norm,gradeStep:gradeStep,kwRe:kwRe,
+window.APP={CPK:{cv:cv,proj:function(){return proj},COL:function(){return COL},qColor:qColor,vcol:vcol,dirty:dirty,resize:resize,size:function(){return {z:Math.min(1.6,.75+.25*Math.sqrt(S.k)),ps:store.set.ps/100}},lists:function(){var q=S.layers.quakes?(S.vq||[]).slice():[],v=S.layers.volc?(S.vv||[]).slice():[];if(S.live.on){if(S.live.q)q=q.concat(S.lq||[]);if(S.live.v)v=v.concat(S.lvv||[])}return {q:q,v:v}}},isTeacher:function(){return !!TEACHER},S:S,adm:adm,store:store,admSave:admSave,save:save,getJSON:getJSON,esc:esc,fmtDate:fmtDate,CLS:CLS,norm:norm,gradeStep:gradeStep,kwRe:kwRe,
   qKey:qKey,loadArch:loadArch,rebuildVolc:rebuildVolc,rebuildMarkers:rebuildMarkers,captureView:captureView,preview:previewStep,endPreview:endPreview,
   clearSnaps:function(){SNAPS={};LASTK=null},applyFree:applyFree,captureTarget:captureTarget,S:S,showSit:function(bt){sitView(bt.view?bt:{view:bt})},resetMap:resetMap,scenChanged:scenChanged,DEFAULT_SCEN:DEFAULT_SCEN,emptyOv:emptyOv,curScen:curScen,PVget:function(){return PV},resize:resize,dirty:dirty,readYears:readYears,TYPE_LABEL:TYPE_LABEL,LAYER_LABEL:LAYER_LABEL,rowsToQuakes:rowsToQuakes,classify:classify,applyCtx:applyCtx,finish:finish};
 })();
@@ -2441,3 +2491,4 @@ if(pk){
 })();
 
 </script>
+<script src="coupe.js"></script>

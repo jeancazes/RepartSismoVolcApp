@@ -384,7 +384,7 @@ cvg.addEventListener('pointermove',function(e){
 cvg.addEventListener('pointerleave',function(){tip.hidden=true});
 
 /* ---------- bloc 3D (three.js) ---------- */
-var T=null,threeP=null,r3=null,sc3=null,cam3=null,grp3=null,raf3=0,t3=0,swing=true,off3=0,drag3=null;
+var T=null,threeP=null,r3=null,sc3=null,cam3=null,grp3=null,raf3=0,t3=0,swing=true,off3=0,drag3=null,ty3=0,R3l=1000;
 function loadThree(){
   if(window.THREE)return Promise.resolve();
   if(threeP)return threeP;
@@ -399,11 +399,11 @@ function start3d(){
     if(!r3){
       r3=new T.WebGLRenderer({antialias:true,alpha:true});r3.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
       wrap3.appendChild(r3.domElement);r3.domElement.style.cssText='width:100%;height:100%;display:block;cursor:grab;touch-action:none';
-      r3.domElement.addEventListener('pointerdown',function(e){drag3={x:e.clientX,o:off3};swing=false;$('#cp-sw').textContent='▶ Balancer';try{r3.domElement.setPointerCapture(e.pointerId)}catch(_){}});
+      r3.domElement.addEventListener('pointerdown',function(e){drag3={x:e.clientX,y:e.clientY,o:off3,t:ty3};swing=false;$('#cp-sw').textContent='▶ Balancer';try{r3.domElement.setPointerCapture(e.pointerId)}catch(_){}});
       var pts3={},pd0=0,pz0=1;
       r3.domElement.addEventListener('wheel',function(e){e.preventDefault();st.zoom3=Math.max(.3,Math.min(6,st.zoom3*Math.exp(-e.deltaY*.0015)))},{passive:false});
       r3.domElement.addEventListener('pointerdown',function(e){pts3[e.pointerId]=[e.clientX,e.clientY];var k=Object.keys(pts3);if(k.length===2){var a=pts3[k[0]],b=pts3[k[1]];pd0=Math.hypot(a[0]-b[0],a[1]-b[1]);pz0=st.zoom3}});
-      r3.domElement.addEventListener('pointermove',function(e){if(pts3[e.pointerId]){pts3[e.pointerId]=[e.clientX,e.clientY];var k=Object.keys(pts3);if(k.length===2&&pd0>0){var a=pts3[k[0]],b=pts3[k[1]];st.zoom3=Math.max(.3,Math.min(6,pz0*Math.hypot(a[0]-b[0],a[1]-b[1])/pd0));return}}if(drag3){off3=drag3.o+(e.clientX-drag3.x)*.01}});
+      r3.domElement.addEventListener('pointermove',function(e){if(pts3[e.pointerId]){pts3[e.pointerId]=[e.clientX,e.clientY];var k=Object.keys(pts3);if(k.length===2&&pd0>0){var a=pts3[k[0]],b=pts3[k[1]];st.zoom3=Math.max(.3,Math.min(6,pz0*Math.hypot(a[0]-b[0],a[1]-b[1])/pd0));return}}if(drag3){off3=drag3.o+(e.clientX-drag3.x)*.01;ty3=drag3.t+(e.clientY-drag3.y)*(2*R3l*Math.tan(19*D2R)/Math.max(100,wrap3.clientHeight))}});
       r3.domElement.addEventListener('pointercancel',function(e){delete pts3[e.pointerId]});
       r3.domElement.addEventListener('pointerup',function(e){delete pts3[e.pointerId]});
       r3.domElement.addEventListener('pointerup',function(){drag3=null});
@@ -492,8 +492,8 @@ function build3d(){
     vm.instanceMatrix.needsUpdate=true;if(vm.instanceColor)vm.instanceColor.needsUpdate=true;grp3.add(vm);
   }
   var lonMode=Math.abs(norm180(d.ll[d.N][0]-d.ll[0][0]))>=Math.abs(d.ll[d.N][1]-d.ll[0][1]);
-  $('#cp-cap').textContent=lblCoord(d.ll[0],lonMode)+' ← → '+lblCoord(d.ll[d.N],lonMode)+' · bande de '+Math.round(st.w)+' km · profondeur '+D+' km · '+(st.uni?'verticale ×'+ex:'relief ×'+ex);
-  grp3.userData={L:L,w:st.w,D:DD,top:Math.max(10,d.mx/1000*ex)};
+  $('#cp-cap').textContent=lblCoord(d.ll[0],lonMode)+' ← → '+lblCoord(d.ll[d.N],lonMode)+' · bande de '+Math.round(st.w)+' km · profondeur '+D+' km · '+(st.uni?'verticale ×'+ex+' · glisser vers le haut/bas pour parcourir':'relief ×'+ex);
+  grp3.userData={L:L,w:st.w,D:DD,D0:D,top:Math.max(10,d.mx/1000*ex),top0:Math.max(10,d.mx/1000)};
   fit3d();
 }
 function loop3(){
@@ -501,11 +501,12 @@ function loop3(){
   (function f(ts){
     raf3=requestAnimationFrame(f);
     if(st.view!=='3d'||!r3||!sc3||!grp3)return;
-    var u=grp3.userData,asp=cam3.aspect||1.6,tv=Math.tan(19*D2R),th=tv*asp,R3=Math.max(u.L/.78/(2*th),(u.D+u.top)*1.5/(2*tv),u.w*1.4);R3=R3/1.1/st.zoom3;
+    var u=grp3.userData,asp=cam3.aspect||1.6,tv=Math.tan(19*D2R),th=tv*asp,R3=Math.max(u.L/.78/(2*th),(u.D0+u.top0)*1.5/(2*tv),u.w*1.4);R3=R3/1.1/st.zoom3;R3l=R3;
+    var ty=Math.max(-u.D,Math.min(u.top,-u.D0*.32+ty3));ty3=ty+u.D0*.32;
     if(swing)t3=ts/1000;
     var az=(swing?Math.sin(t3*.55)*.62:0)+off3,el=.42;
-    cam3.position.set(Math.sin(az)*Math.cos(el)*R3*1.1,Math.sin(el)*R3*.9-u.D*.18,Math.cos(az)*Math.cos(el)*R3*1.1);
-    cam3.lookAt(0,-u.D*.32,0);
+    cam3.position.set(Math.sin(az)*Math.cos(el)*R3*1.1,ty+Math.sin(el)*R3*.9+u.D0*.14,Math.cos(az)*Math.cos(el)*R3*1.1);
+    cam3.lookAt(0,ty,0);
     r3.render(sc3,cam3);
   })(performance.now());
 }

@@ -297,11 +297,11 @@
     return h;
   }
 
-  function newCoupe() { return { id: uid('c'), label: 'Nouvelle coupe', a: null, b: null, w: 300, maxD: 700, exag: 1, uni: true, view: '2d', trans: true, layers: { quakes: true, volc: true, trench: true } }; }
+  function newCoupe() { return { id: uid('c'), label: 'Nouvelle coupe', a: null, b: null, w: 300, maxD: 700, exag: 1, rel: 5, uni: true, view: '2d', trans: true, layers: { quakes: true, volc: true, trench: true } }; }
   function okLine(c) { return c && c.a && c.b && typeof c.a[0] === 'number' && typeof c.a[1] === 'number' && typeof c.b[0] === 'number' && typeof c.b[1] === 'number'; }
   function coupeSummary(c) {
     if (!okLine(c)) return 'Ligne pas encore tracée : utilise « Régler sur la carte ».';
-    return 'A (' + c.a[1] + '°, ' + c.a[0] + '°) → B (' + c.b[1] + '°, ' + c.b[0] + '°) · bande ' + c.w + ' km · étirement ×' + c.exag + ' · ' + (c.view === '3d' ? 'bloc 3D' : 'coupe 2D');
+    return 'A (' + c.a[1] + '°, ' + c.a[0] + '°) → B (' + c.b[1] + '°, ' + c.b[0] + '°) · bande ' + c.w + ' km · étirement ×' + c.exag + ' · relief ×' + (c.rel || 5) + ' · ' + (c.view === '3d' ? 'bloc 3D' : 'coupe 2D');
   }
   function tCoupe(st) {
     var cs = st.coupes || [];
@@ -318,6 +318,7 @@
         '<div class="row2"><label>B : latitude<input type="number" step="0.01" data-b="' + p + 'b.1" data-t="n" value="' + (c.b && c.b[1] != null ? c.b[1] : '') + '"></label><label>B : longitude<input type="number" step="0.01" data-b="' + p + 'b.0" data-t="n" value="' + (c.b && c.b[0] != null ? c.b[0] : '') + '"></label></div>' +
         '<div class="row2"><label>Largeur de bande (km)<input type="number" min="40" max="1500" step="10" data-b="' + p + 'w" data-t="n" value="' + (c.w == null ? '' : c.w) + '"></label>' +
         '<label>Étirement vertical (× ; 1 = 700 km entiers dans le cadre)<input type="number" min="0.3" max="10" step="0.1" data-b="' + p + 'exag" data-t="n" value="' + (c.exag == null ? '' : c.exag) + '"></label></div>' +
+        '<label>Exagération du relief, terre et mer (×)<input type="number" min="1" max="40" step="1" data-b="' + p + 'rel" data-t="n" value="' + (c.rel == null ? 5 : c.rel) + '"></label>' +
         '<label>Vue de départ<select data-b="' + p + 'view"><option value="2d"' + (c.view !== '3d' ? ' selected' : '') + '>Coupe 2D</option><option value="3d"' + (c.view === '3d' ? ' selected' : '') + '>Bloc 3D</option></select></label>' +
         '<label class="ck"><input type="checkbox" data-b="' + p + 'trans"' + (c.trans !== false ? ' checked' : '') + '> Bloc 3D transparent</label>' +
         '<div class="lbl">Couches affichées</div>' + [['quakes', 'Séismes'], ['volc', 'Volcans'], ['trench', 'Fosses océaniques']].map(function (l) {

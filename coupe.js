@@ -9,7 +9,7 @@ var $=function(s){return document.querySelector(s)};
 var R=6371,D2R=Math.PI/180;
 var THREE_URL='https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
 
-var st={on:false,mode:'idle',a:null,b:null,w:300,view:'none',maxD:700,exag:5,drag:null,data:null,h:null,dirty:false};
+var st={on:false,mode:'idle',a:null,b:null,w:300,view:'none',maxD:700,exag:5,uni:true,drag:null,data:null,h:null,dirty:false};
 var btn=$('#btn-cp'),menu=$('#cp-menu'),gr=$('#cp-graph'),cvg=$('#cp-cv'),wrap3=$('#cp-3dw'),tip=$('#cp-tip'),cap=$('#cp-cap');
 if(!btn||!menu||!gr||!cvg)return;
 var cv=K.cv;
@@ -54,6 +54,33 @@ function ordered(){
   return sw?[b,a]:[a,b];
 }
 
+/* ---------- fosses océaniques ---------- */
+var TR_NAMES=[['Fosse des Mariannes',143,13],['Fosse du Japon',143.5,38],['Fosse d\'Izu-Bonin',142,28],['Fosse des Ryukyu',128,26],['Fosse des Kouriles',151,45],['Fosse des Aléoutiennes',-175,51],['Fosse d\'Alaska',-152,56],['Cascadia',-125,45],['Fosse d\'Amérique centrale',-93,13],['Fosse du Pérou-Chili',-72,-23],['Fosse du Pérou',-80,-10],['Fosse des Philippines',127,10],['Fosse de la Sonde (Java)',108,-10],['Fosse de Sumatra',96,2],['Fosse de Tonga',-174,-22],['Fosse des Kermadec',-176,-31],['Fosse du Vanuatu',167,-17],['Fosse des Salomon',157,-8],['Fosse de Nouvelle-Bretagne',153,-6],['Fosse de Porto Rico',-66,19.5],['Fosse des Petites Antilles',-60,15],['Fosse des Sandwich du Sud',-26,-58],['Fosse hellénique',23,35],['Fosse de Makran',60,25]];
+var trV=null,trSrc=null;
+function trLines(){
+  var ls=K.trenchLines();if(trV&&trSrc===ls)return trV;
+  trSrc=ls;trV=ls.map(function(l){return l.map(function(p){var v=vec(p[0],p[1]);return [v[0],v[1],v[2],p[0],p[1]]})});return trV;
+}
+function hav(a,b){var dl=(b[1]-a[1])*D2R,dn=(b[0]-a[0])*D2R,h=Math.sin(dl/2)*Math.sin(dl/2)+Math.cos(a[1]*D2R)*Math.cos(b[1]*D2R)*Math.sin(dn/2)*Math.sin(dn/2);return 2*R*Math.asin(Math.min(1,Math.sqrt(h)))}
+function trenchCross(f){
+  var out=[];
+  trLines().forEach(function(l){
+    for(var i=0;i<l.length-1;i++){
+      var p=l[i],q=l[i+1];if(Math.abs(p[3]-q[3])>180)continue;
+      var x1=p[0]*f.n[0]+p[1]*f.n[1]+p[2]*f.n[2],x2=q[0]*f.n[0]+q[1]*f.n[1]+q[2]*f.n[2];
+      if(x1===x2||x1*x2>0)continue;
+      var t=x1/(x1-x2),P=[p[0]+(q[0]-p[0])*t,p[1]+(q[1]-p[1])*t,p[2]+(q[2]-p[2])*t];
+      var a=dt(P,f.A);if(a<=0)continue;
+      var s=Math.atan2(dt(P,f.t),a)*R;if(s<0||s>f.L)continue;
+      out.push({s:s,ll:toLL(P)});
+    }
+  });
+  out.sort(function(a,b){return a.s-b.s});
+  var res=[];out.forEach(function(o){if(res.length&&o.s-res[res.length-1].s<80)return;
+    var best='Fosse océanique',bd=800;TR_NAMES.forEach(function(n){var d=hav(o.ll,[n[1],n[2]]);if(d<bd){bd=d;best=n[0]}});o.name=best;res.push(o)});
+  return res;
+}
+
 /* ---------- calcul de la coupe ---------- */
 function compute(){
   var o=ordered();if(!o){st.data=null;return}
@@ -72,8 +99,9 @@ function compute(){
     vs.push({s:s,x:Math.asin(Math.max(-1,Math.min(1,x)))*R,e:elev(v.lon,v.lat),c:K.vcol(v),v:v});
   });
   qs.sort(function(a,b){return a.m-b.m});
+  var trs=S.layers.trench?trenchCross(f):[];
   var mx=-1e9,mn=1e9;for(i=0;i<=N;i++){if(el[i]>mx)mx=el[i];if(el[i]<mn)mn=el[i]}
-  st.data={f:f,o:o,N:N,el:el,ll:ll,qs:qs,vs:vs,L:f.L,mx:mx,mn:mn};
+  st.data={f:f,o:o,N:N,el:el,ll:ll,qs:qs,vs:vs,tr:trs,L:f.L,mx:mx,mn:mn};
   updSum();
 }
 
@@ -118,6 +146,8 @@ $('#cp-sel').onclick=function(){st.mode='draw';st.a=st.b=null;st.data=null;$('#c
 $('#cp-w').oninput=function(){st.w=+this.value;setHint();refresh(true);K.dirty()};
 $('#cp-d').oninput=function(){st.maxD=+this.value;setHint();redraw()};
 $('#cp-e').oninput=function(){st.exag=+this.value;setHint();redraw()};
+$('#cp-u').onchange=function(){st.uni=this.checked;redraw()};
+$('#cp-png').onclick=exportPng;
 $('#cp-go').onclick=function(){
   loadRelief().then(function(){showGraph('2d')}).catch(function(){$('#cp-hint').textContent='Relief indisponible (data/relief.bin).'});
 };
@@ -259,12 +289,19 @@ function draw2d(){
   var c=cvg.getContext('2d');c.setTransform(DPR,0,0,DPR,0,0);
   var COL=K.COL(),ff='Barlow,sans-serif',z=K.size();
   var ml=62,mr=16,mt=34,mb=50,pw=wpx-ml-mr,ph=hpx-mt-mb;if(pw<40||ph<40)return;
-  var ex=st.exag,topKm=Math.max(2,d.mx/1000*ex);
-  topKm=Math.min(topKm,st.maxD*.6);
-  var totKm=st.maxD+topKm,ppk=ph/totKm,y0=mt+topKm*ppk,xs=pw/d.L;
+  var ex=st.exag,xs=pw/d.L,topKm,ppk,visD,rx;
+  if(st.uni){
+    topKm=Math.max(2,d.mx/1000);rx=1;
+    ppk=Math.min(xs*ex,ph/(topKm+Math.min(st.maxD,50)));
+    visD=Math.min(st.maxD,(ph-topKm*ppk)/ppk);
+  }else{
+    rx=ex;topKm=Math.min(Math.max(2,d.mx/1000*ex),st.maxD*.6);
+    ppk=ph/(st.maxD+topKm);visD=st.maxD;
+  }
+  var y0=mt+topKm*ppk;
   function X(s){return ml+s*xs}
   function Yd(km){return y0+km*ppk}
-  function Ye(m){return y0-Math.min(topKm,m/1000*ex)*ppk}
+  function Ye(m){return y0-Math.min(topKm,m/1000*rx)*ppk}
   G={ml:ml,mt:mt,pw:pw,ph:ph,xs:xs,ppk:ppk,y0:y0};
   c.clearRect(0,0,wpx,hpx);c.fillStyle=COL.panel;c.fillRect(0,0,wpx,hpx);
   // terre (sous la surface)
@@ -279,16 +316,16 @@ function draw2d(){
   c.lineTo(X(d.L),y0);c.closePath();
   c.fillStyle='#5ea7d8';c.globalAlpha=.85;c.fill();c.globalAlpha=1;
   // grille profondeur
-  var step=st.maxD<=120?10:st.maxD<=300?50:100;
+  var step=visD<=60?10:visD<=120?20:visD<=300?50:100;
   c.font='500 11px '+ff;c.textAlign='right';c.textBaseline='middle';
-  for(var k=step;k<=st.maxD;k+=step){var yy=Yd(k);c.beginPath();c.moveTo(ml,yy);c.lineTo(ml+pw,yy);c.lineWidth=.6;c.strokeStyle='rgba(255,255,255,.35)';c.stroke();c.fillStyle=COL.fg;c.fillText(k+' km',ml-6,yy)}
+  for(var k=step;k<=visD+.01;k+=step){var yy=Yd(k);c.beginPath();c.moveTo(ml,yy);c.lineTo(ml+pw,yy);c.lineWidth=.6;c.strokeStyle='rgba(255,255,255,.35)';c.stroke();c.fillStyle=COL.fg;c.fillText(k+' km',ml-6,yy)}
   // niveau de la mer
   c.beginPath();c.moveTo(ml,y0);c.lineTo(ml+pw,y0);c.lineWidth=1;c.setLineDash([4,3]);c.strokeStyle=COL.fg;c.stroke();c.setLineDash([]);
   c.fillStyle=COL.fg;c.fillText('0',ml-6,y0);
   // altitude (échelle exagérée)
-  var ea=niceStep(topKm/ex*1000,3);
+  var ea=niceStep(topKm/rx*1000,3);
   c.fillStyle=COL.mute;
-  for(var m=ea;m/1000*ex<=topKm*0.98;m+=ea){var ye=y0-m/1000*ex*ppk;if(y0-ye<16||ye<mt+8)continue;c.beginPath();c.moveTo(ml-4,ye);c.lineTo(ml,ye);c.lineWidth=1;c.strokeStyle=COL.mute;c.stroke();c.fillText('+'+(m>=1000?(m/1000)+' km':m+' m'),ml-6,ye)}
+  for(var m=ea;m/1000*rx<=topKm*0.98;m+=ea){var ye=y0-m/1000*rx*ppk;if(y0-ye<16||ye<mt+8)continue;c.beginPath();c.moveTo(ml-4,ye);c.lineTo(ml,ye);c.lineWidth=1;c.strokeStyle=COL.mute;c.stroke();c.fillText('+'+(m>=1000?(m/1000)+' km':m+' m'),ml-6,ye)}
   // surface
   c.beginPath();for(i=0;i<=d.N;i++){var xx=X(d.L*i/d.N),yy2=Ye(d.el[i]);i?c.lineTo(xx,yy2):c.moveTo(xx,yy2)}
   c.lineWidth=1.8;c.strokeStyle=COL.fg;c.lineJoin='round';c.stroke();
@@ -297,8 +334,8 @@ function draw2d(){
   // séismes
   var ps=z.ps,zz=z.z;
   d.qs.forEach(function(o){
-    var r=Math.max(1.5,(0.9+(o.m-3.2)*1.25))*zz*ps,x=X(o.s),y=Yd(Math.min(o.d,st.maxD+20));
-    if(o.d>st.maxD)return;o.px=[x,y,r];
+    var r=Math.max(1.5,(0.9+(o.m-3.2)*1.25))*zz*ps,x=X(o.s),y=Yd(Math.min(o.d,visD+20));
+    if(o.d>visD)return;o.px=[x,y,r];
     c.beginPath();c.arc(x,y,r,0,6.2832);c.globalAlpha=.78;c.fillStyle=o.c;c.fill();c.globalAlpha=.9;c.lineWidth=.7;c.strokeStyle=COL.fg;c.stroke();c.globalAlpha=1;
   });
   // volcans (sur la surface)
@@ -307,6 +344,17 @@ function draw2d(){
     c.beginPath();c.moveTo(x,yc-s);c.lineTo(x+s*.95,yc+s*.75);c.lineTo(x-s*.95,yc+s*.75);c.closePath();
     c.fillStyle=o.c;c.globalAlpha=.95;c.fill();c.lineWidth=.8;c.strokeStyle=COL.fg;c.stroke();c.globalAlpha=1;
   });
+  // fosses océaniques
+  if(d.tr&&d.tr.length){
+    c.font='600 11px '+ff;c.textBaseline='middle';
+    d.tr.forEach(function(t,k){
+      var x=X(t.s),idx=Math.min(d.N,Math.round(t.s/d.L*d.N)),ys=Ye(d.el[idx]),ly=mt+11+(k%2)*15;
+      c.beginPath();c.moveTo(x,ly+8);c.lineTo(x,ys);c.setLineDash([4,3]);c.lineWidth=1.4;c.strokeStyle='#0f3b8c';c.stroke();c.setLineDash([]);
+      var tw=c.measureText(t.name).width+12,bx=Math.max(ml+2,Math.min(ml+pw-tw-2,x-tw/2));
+      c.fillStyle='#0f3b8c';c.globalAlpha=.92;c.fillRect(bx,ly-8,tw,16);c.globalAlpha=1;
+      c.fillStyle='#fff';c.textAlign='center';c.fillText(t.name,bx+tw/2,ly);
+    });
+  }
   // axe horizontal : km + longitude/latitude
   var lonMode=Math.abs(norm180(d.ll[d.N][0]-d.ll[0][0])*Math.cos((d.ll[0][1]+d.ll[d.N][1])/2*D2R))>=Math.abs(d.ll[d.N][1]-d.ll[0][1]);
   var sx=niceStep(d.L,Math.max(3,pw/110));
@@ -319,7 +367,7 @@ function draw2d(){
   }
   c.fillStyle=COL.mute;c.textAlign='left';c.textBaseline='alphabetic';
   c.fillText((lonMode?'Longitude':'Latitude')+' (et distance le long de la coupe)',ml,hpx-5);
-  c.textAlign='right';c.fillText('Profondeur sous le niveau de la mer · relief exagéré ×'+ex,ml+pw,hpx-5);
+  c.textAlign='right';c.fillText('Profondeur sous le niveau de la mer · '+(st.uni?'échelle verticale ×'+ex+' (profondeurs et relief) · '+Math.round(visD)+' km affichés':'relief exagéré ×'+ex),ml+pw,hpx-5);
   c.textAlign='left';c.fillStyle=COL.fg;c.font='600 12px '+ff;
   c.fillText(lblCoord(d.ll[0],lonMode)+'  ('+d.ll[0][1].toFixed(1)+'°, '+d.ll[0][0].toFixed(1)+'°)  →  '+lblCoord(d.ll[d.N],lonMode)+'  ('+d.ll[d.N][1].toFixed(1)+'°, '+d.ll[d.N][0].toFixed(1)+'°)',ml,mt-14);
 }
@@ -379,7 +427,7 @@ function build3d(){
     sc3.add(new T.AmbientLight(0xffffff,.62));var dl=new T.DirectionalLight(0xffffff,.75);dl.position.set(-.6,1,.8);sc3.add(dl);
   }
   grp3=new T.Group();sc3.add(grp3);
-  var L=d.L,hw=st.w/2,D=st.maxD,ex=st.exag,f=d.f;
+  var L=d.L,hw=st.w/2,D=st.maxD,ex=st.exag,f=d.f,dvf=st.uni?ex:1,DD=D*dvf;
   var nx=Math.max(24,Math.min(240,Math.round(L/6))),nz=Math.max(8,Math.min(60,Math.round(st.w/8)));
   // dessus : relief
   var pos=new Float32Array((nx+1)*(nz+1)*3),col=new Float32Array((nx+1)*(nz+1)*3),hts=[];
@@ -399,7 +447,7 @@ function build3d(){
     var n=getPt.n,sp=[],sc=[],si=[];
     for(var q=0;q<=n;q++){
       var p=getPt(q);
-      sp.push(p[0],p[1],p[2],p[0],-D,p[2]);
+      sp.push(p[0],p[1],p[2],p[0],-DD,p[2]);
       var tcol=[196,172,132],bcol=[84,56,40];
       sc.push(tcol[0]/255,tcol[1]/255,tcol[2]/255,bcol[0]/255,bcol[1]/255,bcol[2]/255);
       if(q<n){var o=q*2;si.push(o,o+1,o+2,o+2,o+1,o+3)}
@@ -413,8 +461,8 @@ function build3d(){
   var fe=function(i){var h=function(q){return topPos(i,q)};h.n=nz;return h};
   side(fe(0));side(fe(nx));
   // fond + arêtes
-  var bm=new T.Mesh(new T.PlaneGeometry(L,st.w).rotateX(Math.PI/2),new T.MeshBasicMaterial({color:0x2a1a12}));bm.position.y=-D;grp3.add(bm);
-  var ev=new T.LineSegments(new T.BufferGeometry().setFromPoints([[-L/2,-D,-hw],[L/2,-D,-hw],[L/2,-D,-hw],[L/2,-D,hw],[L/2,-D,hw],[-L/2,-D,hw],[-L/2,-D,hw],[-L/2,-D,-hw]].map(function(p){return new T.Vector3(p[0],p[1],p[2])})),new T.LineBasicMaterial({color:0x000000,transparent:true,opacity:.5}));
+  var bm=new T.Mesh(new T.PlaneGeometry(L,st.w).rotateX(Math.PI/2),new T.MeshBasicMaterial({color:0x2a1a12}));bm.position.y=-DD;grp3.add(bm);
+  var ev=new T.LineSegments(new T.BufferGeometry().setFromPoints([[-L/2,-DD,-hw],[L/2,-DD,-hw],[L/2,-DD,-hw],[L/2,-DD,hw],[L/2,-DD,hw],[-L/2,-DD,hw],[-L/2,-DD,hw],[-L/2,-DD,-hw]].map(function(p){return new T.Vector3(p[0],p[1],p[2])})),new T.LineBasicMaterial({color:0x000000,transparent:true,opacity:.5}));
   grp3.add(ev);
   // séismes / volcans (même couleur et même taille relative que sur la carte)
   var z=K.size(),kpx=L/Math.max(520,wrap3.clientWidth*.7);
@@ -423,7 +471,7 @@ function build3d(){
     var im=new T.InstancedMesh(sg,new T.MeshLambertMaterial({transparent:true,opacity:.92}),d.qs.length),M=new T.Matrix4(),C=new T.Color();
     d.qs.forEach(function(o,q){
       var r=Math.max(1.5,(0.9+(o.m-3.2)*1.25))*z.z*z.ps*kpx*.75;
-      M.makeScale(r,r,r);M.setPosition(o.s-L/2,-Math.min(o.d,D),-o.x);im.setMatrixAt(q,M);C.set(o.c);im.setColorAt(q,C);
+      M.makeScale(r,r,r);M.setPosition(o.s-L/2,-Math.min(o.d,D)*dvf,-o.x);im.setMatrixAt(q,M);C.set(o.c);im.setColorAt(q,C);
     });
     im.instanceMatrix.needsUpdate=true;if(im.instanceColor)im.instanceColor.needsUpdate=true;grp3.add(im);
   }
@@ -436,8 +484,8 @@ function build3d(){
     vm.instanceMatrix.needsUpdate=true;if(vm.instanceColor)vm.instanceColor.needsUpdate=true;grp3.add(vm);
   }
   var lonMode=Math.abs(norm180(d.ll[d.N][0]-d.ll[0][0]))>=Math.abs(d.ll[d.N][1]-d.ll[0][1]);
-  $('#cp-cap').textContent=lblCoord(d.ll[0],lonMode)+' ← → '+lblCoord(d.ll[d.N],lonMode)+' · bande de '+Math.round(st.w)+' km · profondeur '+D+' km · relief ×'+ex;
-  grp3.userData={L:L,w:st.w,D:D,top:Math.max(10,d.mx/1000*ex)};
+  $('#cp-cap').textContent=lblCoord(d.ll[0],lonMode)+' ← → '+lblCoord(d.ll[d.N],lonMode)+' · bande de '+Math.round(st.w)+' km · profondeur '+D+' km · '+(st.uni?'verticale ×'+ex:'relief ×'+ex);
+  grp3.userData={L:L,w:st.w,D:DD,top:Math.max(10,d.mx/1000*ex)};
   fit3d();
 }
 function loop3(){
@@ -453,6 +501,21 @@ function loop3(){
     r3.render(sc3,cam3);
   })(performance.now());
 }
+
+/* ---------- export PNG ---------- */
+function exportPng(){
+  var d=st.data,src=null;if(!d)return;
+  if(st.view==='3d'&&r3&&sc3&&cam3){r3.render(sc3,cam3);src=r3.domElement}else if(st.view==='2d')src=cvg;
+  if(!src)return;
+  var dpr=src.width/Math.max(1,src.clientWidth||src.width),strip=Math.round(24*dpr),o=document.createElement('canvas');
+  o.width=src.width;o.height=src.height+strip;var c=o.getContext('2d'),COL=K.COL();
+  c.fillStyle=COL.panel;c.fillRect(0,0,o.width,o.height);c.drawImage(src,0,0);
+  c.fillStyle=COL.mute;c.font='500 '+Math.round(11*dpr)+'px Barlow,sans-serif';c.textBaseline='middle';
+  c.fillText('Carte Tectonique 4e · coupe de '+Math.round(d.L)+' km, bande de '+Math.round(st.w)+' km · relief ETOPO (NOAA) · séismes USGS · volcans Smithsonian GVP',Math.round(10*dpr),src.height+strip/2);
+  o.toBlob(function(b){if(!b)return;var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='coupe'+(st.view==='3d'?'-3d':'')+'.png';document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove()},500)},'image/png');
+}
+
+document.addEventListener('change',function(e){var t=e.target;if(st.on&&st.view!=='none'&&t&&t.dataset&&t.dataset.layer)setTimeout(function(){if(frame(st.a,st.b)){compute();redraw()}},60)});
 
 /* ---------- API pour la carte ---------- */
 window.CP={

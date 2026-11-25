@@ -98,6 +98,7 @@ body.cp-graph #mapcol{grid-template-rows:minmax(0,1fr) minmax(190px,40%) auto au
 #cp-menu .cp-s{display:grid;gap:3px;font-size:.88em}
 #cp-menu .cp-s output{color:var(--mute);font-family:var(--mono)}
 #cp-menu .cp-s input{width:100%}
+#cp-menu .cp-c{display:flex;gap:6px;align-items:flex-start;font-size:.86em;line-height:1.3}
 #cp-menu #cp-opts{display:grid;gap:9px;padding-top:8px;border-top:1px solid var(--line)}
 body.cp-graph #cp-menu .cp-hint{display:none}
 #cp-menu .cp-sum{margin:0;font-size:.86em;line-height:1.5}
@@ -536,6 +537,7 @@ body{background-image:var(--paper)}
         <div class="row" data-mi="grat"><input type="checkbox" id="L-grat" data-layer="grat"><label for="L-grat">Quadrillage</label></div>
         <div class="row" data-mi="plates"><input type="checkbox" id="L-plates" data-layer="plates"><label for="L-plates">Plaques (contours)</label></div>
         <div class="row" data-mi="pnames"><input type="checkbox" id="L-pnames" data-layer="pnames"><label for="L-pnames">Noms des plaques</label></div>
+        <div class="row" data-mi="trench"><input type="checkbox" id="L-trench" data-layer="trench"><label for="L-trench">Fosses océaniques</label></div>
       </div>
       <div class="sec" id="live-sec" data-mi="live">
         <h2>Live</h2>
@@ -618,7 +620,9 @@ body{background-image:var(--paper)}
         <div id="cp-opts" hidden>
           <label class="cp-s">Profondeur <output id="cp-do">700 km</output><input type="range" id="cp-d" min="50" max="700" step="10" value="700"></label>
           <label class="cp-s">Exagération du relief <output id="cp-eo">×5</output><input type="range" id="cp-e" min="1" max="40" step="1" value="5"></label>
+          <label class="cp-c"><input type="checkbox" id="cp-u" checked> Exagérer aussi les profondeurs</label>
           <button class="ibtn cp-b" id="cp-3d">Bloc 3D</button>
+          <button class="ibtn cp-b" id="cp-png">Enregistrer l'image (PNG)</button>
         </div>
         <p class="cp-sum" id="cp-sum"></p>
       </aside>
@@ -695,7 +699,7 @@ try{var raw=localStorage.getItem(KEY); if(raw){var o=JSON.parse(raw); if(o&&type
 function save(){try{localStorage.setItem(KEY,JSON.stringify(store))}catch(e){}}
 
 /* ---------- état ---------- */
-var S={mode:'flat',rot:[-170,-15],pan:0,k:1,layers:{coast:true,grat:true,plates:false,bound:false,quakes:true,volc:false,hans:false,markers:true,gps:false,gpsv:false,pnames:false},gps:[],qtypes:{conv:true,div:true,trans:true,intra:true},vmodes:{expl:true,eff:true},cons:{qy:null,vy:null,amag:null,minmag:null},markers:[],volcBase:[],ready:false,archSig:'',
+var S={mode:'flat',rot:[-170,-15],pan:0,k:1,layers:{coast:true,grat:true,plates:false,bound:false,quakes:true,volc:false,hans:false,markers:true,gps:false,gpsv:false,pnames:false,trench:false},gps:[],qtypes:{conv:true,div:true,trans:true,intra:true},vmodes:{expl:true,eff:true},cons:{qy:null,vy:null,amag:null,minmag:null},markers:[],volcBase:[],ready:false,archSig:'',
   btypes:{subduction:true,collision:true,accretion:true,coulissant:true},colorMode:'depth',diffV:false,level:'col',vcat:{subduction:true,ridge:true,rift:true,hotspot:true,unknown:true},vmin:null,vmax:null,
   live:{on:false,span:3,q:true,v:true,now:Date.now(),qs:[],vs:[]},lq:[],lvv:[],minmag:0,win:9999,cut:0,tmin:0,tmax:1,quakes:[],volc:[],hans:{},land:null,plates:null,bound:null,sel:null,playing:false,dirty:true};
 var COL={};
@@ -780,6 +784,7 @@ function drawBase(){
     var wk=Math.max(1.4,1.2*Math.sqrt(S.k)),ps=store.set.ps/100;
     S.bound.features.forEach(function(f){var sb=f.properties.sub;if(!S.btypes[sb]||(S.level==='col'&&(sb==='coulissant'||f.properties.adv)))return;ctx.beginPath();path(f);ctx.strokeStyle=COL[BCOL[sb]];ctx.lineWidth=wk*(sb==='coulissant'?1:1.15);ctx.globalAlpha=.95;ctx.setLineDash(sb==='collision'?[8,4]:sb==='coulissant'?[2,3]:[]);ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1});
   }
+  if(S.layers.trench&&S.bound){var wt=Math.max(2.2,1.9*Math.sqrt(S.k));ctx.save();ctx.lineCap='round';ctx.lineJoin='round';S.bound.features.forEach(function(f){if(f.properties.kind!=='SUB'&&f.properties.kind!=='OCB')return;ctx.beginPath();path(f);ctx.strokeStyle='#fff';ctx.globalAlpha=.55;ctx.lineWidth=wt+2;ctx.stroke();ctx.strokeStyle='#0f3b8c';ctx.globalAlpha=.95;ctx.lineWidth=wt;ctx.setLineDash([wt*3.2,wt*1.6]);ctx.stroke();ctx.setLineDash([])});ctx.restore()}
   var ps2=store.set.ps/100,z=Math.min(1.6,.75+.25*Math.sqrt(S.k));
   drawGPS(z);
   if(S.layers.quakes){
@@ -1094,6 +1099,7 @@ function renderLegend(){
     else h+=(S.qtypes.conv?row('dot','var(--conv)','Séisme en compression'):'')+(S.qtypes.div?row('dot','var(--div)','Séisme en extension'):'')+(S.qtypes.trans&&S.level==='adv'?row('dot','var(--trans)','Séisme en cisaillement'):'')+(S.qtypes.intra?row('dot','var(--intra)','Intraplaque / autre'):'')+'<div class="note">Type estimé d\'après la frontière la plus proche, pas mesuré.</div>';
   }
   if(S.layers.volc){if(!S.diffV)h+=row('tri','var(--v-sub)','Volcan (Holocène)');else if(S.level==='col')h+=row('tri','var(--v-sub)','Volcan explosif')+row('tri','var(--v-hot)','Volcan effusif');else h+=VC.map(function(c){return row('tri','var(--'+c[2]+')',c[1])}).join('')+''}
+  if(S.layers.trench)h+=row('ln','#0f3b8c','Fosses océaniques');
   if(S.layers.bound)h+=Object.keys(BNAME).filter(function(k){return S.btypes[k]&&!(S.level==='col'&&k==='coulissant')}).map(function(k){return row('ln','var(--'+BCOL[k]+')','Frontière : '+BNAME[k].toLowerCase())}).join('');
   if(S.layers.gpsv)h+='<div class="note">Flèches GPS : sens et vitesse du déplacement (cm/an).</div>';
   if(S.live.on){if(S.live.q)h+=row('dot','var(--live)','Séisme récent (écho)');if(S.live.v)h+=row('tri','var(--livev)','Volcan actif (écho)')}
@@ -1282,7 +1288,7 @@ function clozeHtml(st){
     return s}).join('')+'</span>';
 }
 function showFb(cls,html){var f=$('#fb');if(f)f.innerHTML='<div class="fb '+cls+'">'+html+'</div>'}
-var LAYER_LABEL={pnames:'Noms des plaques',gps:'Stations GPS',gpsv:'Flèches GPS',coast:'Continents',grat:'Quadrillage',plates:'Plaques (contours)',bound:'Frontières de plaques',quakes:'Séismes',volc:'Volcans',markers:'Marqueurs',hans:'Alertes'};
+var LAYER_LABEL={trench:'Fosses océaniques',pnames:'Noms des plaques',gps:'Stations GPS',gpsv:'Flèches GPS',coast:'Continents',grat:'Quadrillage',plates:'Plaques (contours)',bound:'Frontières de plaques',quakes:'Séismes',volc:'Volcans',markers:'Marqueurs',hans:'Alertes'};
 function passState(st){
   var p=st.pass||{},r=G.res||{},miss=[],mode=st.type==='sheet'?'none':(p.answer||'correct'),ok=true;
   var ansOK=true;
@@ -1407,7 +1413,7 @@ function finish(){
   $('#restart').onclick=function(){if(!PV){Object.keys(store.answers).forEach(function(k){if(k.indexOf(sc.id+'/')===0)delete store.answers[k]})}else PV.answers={};setIdx(0);persist();renderStep();applyStep(curScen().steps[0],true)};
 }
 function resetState(){
-  S.layers={coast:true,grat:true,plates:false,bound:false,quakes:true,volc:false,hans:false,markers:true,gps:false,gpsv:false,pnames:false};
+  S.layers={coast:true,grat:true,plates:false,bound:false,quakes:true,volc:false,hans:false,markers:true,gps:false,gpsv:false,pnames:false,trench:false};
   S.btypes={subduction:true,collision:true,accretion:true,coulissant:true};S.qtypes={conv:true,div:true,trans:true,intra:true};S.vmodes={expl:true,eff:true};S.vcat={subduction:true,ridge:true,rift:true,hotspot:true,unknown:true};
   S.colorMode='depth';S.diffV=false;S.minmag=0;S.vmin=null;S.vmax=null;
   S.live.on=false;S.live.span=3;
@@ -1481,7 +1487,7 @@ var SNAPS={},LASTK=null;
 function stepKey(st){return (curScen().id||'')+'/'+st.id}
 function snapState(){var v=captureView();delete v.mode;delete v.rot;delete v.k;delete v.pan;return v}
 function forceHidden(m){
-  m=m||{};['coast','grat','plates','pnames','bound','quakes','volc','markers','gps','gpsv'].forEach(function(k){if(m[k]==='hide')S.layers[k]=false});if(m.gpsv==='hide'||m.gps==='hide')S.layers.gps=S.layers.gpsv=false;
+  m=m||{};['coast','grat','plates','pnames','trench','bound','quakes','volc','markers','gps','gpsv'].forEach(function(k){if(m[k]==='hide')S.layers[k]=false});if(m.gpsv==='hide'||m.gps==='hide')S.layers.gps=S.layers.gpsv=false;
   if(m.live==='hide'){S.live.on=false;$('#live-btn').classList.remove('on');$('#live-btn').setAttribute('aria-pressed','false')}
 }
 function applyFree(){S.sheetMarks=null;LASTK=null;SNAPS={};resetState();S.layers.markers=false;S.layers.quakes=false;
@@ -1557,7 +1563,7 @@ if(store.bin){$('#bin-n').textContent=('0'+store.bin).slice(-2)}else openBin();
 renderStep();
 loop();
 /*ADMIN_GLUE*/
-window.APP={CPK:{cv:cv,proj:function(){return proj},COL:function(){return COL},qColor:qColor,vcol:vcol,dirty:dirty,resize:resize,size:function(){return {z:Math.min(1.6,.75+.25*Math.sqrt(S.k)),ps:store.set.ps/100}},lists:function(){var q=S.layers.quakes?(S.vq||[]).slice():[],v=S.layers.volc?(S.vv||[]).slice():[];if(S.live.on){if(S.live.q)q=q.concat(S.lq||[]);if(S.live.v)v=v.concat(S.lvv||[])}return {q:q,v:v}}},isTeacher:function(){return !!TEACHER},S:S,adm:adm,store:store,admSave:admSave,save:save,getJSON:getJSON,esc:esc,fmtDate:fmtDate,CLS:CLS,norm:norm,gradeStep:gradeStep,kwRe:kwRe,
+window.APP={CPK:{trenchLines:function(){if(!S.bound)return [];if(S._trL&&S._trB===S.bound)return S._trL;var o=[];S.bound.features.forEach(function(f){if(f.properties.kind!=='SUB'&&f.properties.kind!=='OCB')return;f.geometry.coordinates.forEach(function(l){o.push(l)})});S._trB=S.bound;S._trL=o;return o},cv:cv,proj:function(){return proj},COL:function(){return COL},qColor:qColor,vcol:vcol,dirty:dirty,resize:resize,size:function(){return {z:Math.min(1.6,.75+.25*Math.sqrt(S.k)),ps:store.set.ps/100}},lists:function(){var q=S.layers.quakes?(S.vq||[]).slice():[],v=S.layers.volc?(S.vv||[]).slice():[];if(S.live.on){if(S.live.q)q=q.concat(S.lq||[]);if(S.live.v)v=v.concat(S.lvv||[])}return {q:q,v:v}}},isTeacher:function(){return !!TEACHER},S:S,adm:adm,store:store,admSave:admSave,save:save,getJSON:getJSON,esc:esc,fmtDate:fmtDate,CLS:CLS,norm:norm,gradeStep:gradeStep,kwRe:kwRe,
   qKey:qKey,loadArch:loadArch,rebuildVolc:rebuildVolc,rebuildMarkers:rebuildMarkers,captureView:captureView,preview:previewStep,endPreview:endPreview,
   clearSnaps:function(){SNAPS={};LASTK=null},applyFree:applyFree,captureTarget:captureTarget,S:S,showSit:function(bt){sitView(bt.view?bt:{view:bt})},resetMap:resetMap,scenChanged:scenChanged,DEFAULT_SCEN:DEFAULT_SCEN,emptyOv:emptyOv,curScen:curScen,PVget:function(){return PV},resize:resize,dirty:dirty,readYears:readYears,TYPE_LABEL:TYPE_LABEL,LAYER_LABEL:LAYER_LABEL,rowsToQuakes:rowsToQuakes,classify:classify,applyCtx:applyCtx,finish:finish};
 })();

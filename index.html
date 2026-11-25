@@ -94,6 +94,10 @@ body.cp-graph #mapcol{grid-template-rows:minmax(0,1fr) minmax(190px,40%) auto au
 #cp-menu .cp-x{border:0;background:transparent;font-size:1.1em;padding:2px 6px;color:var(--mute)}
 #cp-menu .cp-b{width:100%;justify-content:center;padding:8px 10px}
 #cp-menu .cp-b.on,#btn-cp.on{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+#cp-menu .cp-pt{font-size:.82em;color:var(--mute);margin-bottom:4px}
+#cp-prel{display:grid;gap:5px}
+#cp-prel button{width:100%;justify-content:flex-start;text-align:left;padding:6px 9px}
+#cp-prel button.on{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
 #cp-menu .cp-hint{margin:0;color:var(--mute);font-size:.88em;line-height:1.35}
 #cp-menu .cp-s{display:grid;gap:3px;font-size:.88em}
 #cp-menu .cp-s output{color:var(--mute);font-family:var(--mono)}
@@ -109,6 +113,11 @@ body.cp-graph #cp-menu .cp-hint{display:none}
 #cp-cap{position:absolute;left:10px;bottom:6px;font-size:.82em;color:var(--mute);pointer-events:none;z-index:2}
 #cp-3dbar{position:absolute;right:46px;top:8px;z-index:3;display:flex;gap:6px}
 #mapwrap.cp-draw canvas{cursor:crosshair}
+header #btn-cp{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border:2.5px solid var(--accent);color:var(--accent);font-weight:600;letter-spacing:.03em;border-radius:999px;padding:4px 18px;background:transparent;z-index:2}
+header #btn-cp:hover{transform:translate(-50%,-50%)}
+header #btn-cp:hover{background:color-mix(in srgb,var(--accent) 12%,transparent)}
+header #btn-cp.on{background:var(--accent);color:var(--accent-fg)}
+@media(max-width:1100px){header #btn-cp,header #btn-cp:hover{position:static;transform:none;order:5}}
 
 canvas{display:block;width:100%;height:100%;cursor:grab}
 canvas:active{cursor:grabbing}
@@ -524,7 +533,7 @@ body{background-image:var(--paper)}
     <span class="chip hide-s" id="chip-proto">Prototype</span>
     <button class="ibtn sq" id="btn-snd" aria-pressed="true"></button>
     <button class="ibtn sq" id="btn-th"></button>
-    <button class="ibtn" id="btn-cp" data-mi="coupe" aria-pressed="false" title="Coupe topographique : relief, séismes et volcans le long d'une ligne">Coupe</button>
+    <button class="ibtn" id="btn-cp" data-mi="coupe" aria-pressed="false" title="Coupe topographique : relief, séismes et volcans le long d'une ligne"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M3 8l9-4.5L21 8l-9 4.5z"/><path d="M3 8v8l9 4.5 9-4.5V8"/><path d="M12 12.5v8"/></svg>Coupe</button>
     <button class="ibtn" id="btn-set" aria-haspopup="dialog">Affichage</button>
     <button class="ibtn" id="btn-back" type="button" hidden title="Reprendre le scénario">← Scénario</button>
     <button class="ibtn" id="btn-adm" aria-haspopup="dialog">Admin</button>
@@ -613,6 +622,7 @@ body{background-image:var(--paper)}
       </div>
       <aside id="cp-menu" hidden aria-label="Outil Coupe">
         <div class="cp-h"><b>Coupe</b><button class="cp-x" id="cp-close" aria-label="Fermer la coupe">✕</button></div>
+        <div id="cp-pre" hidden><div class="cp-pt">Coupes proposées</div><div id="cp-prel"></div></div>
         <button class="ibtn cp-b" id="cp-sel">Sélectionner une région</button>
         <p class="cp-hint" id="cp-hint"></p>
         <label class="cp-s" id="cp-wl" hidden>Largeur de la bande <output id="cp-wo">300 km</output><input type="range" id="cp-w" min="40" max="1500" step="10" value="300"></label>
@@ -1256,7 +1266,7 @@ function renderStep(){
   if(st.type==='sheet'){var mk=st.marks||[];h+='<div class="note">Complète la fiche papier. Les repères sont numérotés sur la carte.</div>'+(mk.length?'<ol class="smarks">'+mk.map(function(m,k){return '<li value="'+(k+1)+'">'+esc(m.label||'')+'</li>'}).join('')+'</ol>':'')}
   if(st.type==='text'){h+='<textarea id="ans" aria-label="Ta réponse" placeholder="Écris ta réponse ici."></textarea><div class="note" style="margin-top:4px">N\'écris ni ton nom ni aucune information personnelle.</div>'}
   h+='<div id="fb"></div><div id="pmsg" class="note"></div><div class="actions" id="act"></div>';
-  b.innerHTML=h;b.scrollTop=0;renderSits();
+  b.innerHTML=h;b.scrollTop=0;renderSits();if(window.CP&&window.CP.setList)window.CP.setList(st.coupes||[],st.coupeAuto||null);
   var prev=ansBox()[akey(sc,st)];
   if(st.type==='text'&&prev&&prev.text)$('#ans').value=prev.text;
   var act='';
@@ -2442,7 +2452,7 @@ var isPv=/#preview/.test(location.hash);
 if(isPv){
   // Fenêtre d'aperçu ouverte depuis l'éditeur de scénarios : le scénario arrive par message, rien n'est enregistré.
   A.isPreview=true;var CAPID=null;
-  document.addEventListener('click',function(e){var c=e.target.closest&&e.target.closest('#edbar-cap');if(!c||!CAPID||!A.isTeacher())return;e.stopImmediatePropagation();e.preventDefault();if(window.opener)window.opener.postMessage({type:'tecto-capture',id:CAPID.id,view:A.captureView(),target:A.captureTarget()},location.origin);c.textContent='Enregistré ✓';setTimeout(function(){c.textContent='Enregistrer la situation'},1800)},true);
+  document.addEventListener('click',function(e){var c=e.target.closest&&e.target.closest('#edbar-cap');if(!c||!CAPID||!A.isTeacher())return;e.stopImmediatePropagation();e.preventDefault();var isC=CAPID.kind==='coupe';if(isC){var cc=window.CP&&window.CP.capture();if(!cc){window.alert('Trace d\'abord une ligne de coupe avec le bouton « Coupe » (Sélectionner une région).');return}if(window.opener)window.opener.postMessage({type:'tecto-capture',kind:'coupe',id:CAPID.id,coupe:cc},location.origin)}else if(window.opener)window.opener.postMessage({type:'tecto-capture',id:CAPID.id,view:A.captureView(),target:A.captureTarget()},location.origin);c.textContent='Enregistré ✓';setTimeout(function(){c.textContent=isC?'Enregistrer la coupe':'Enregistrer la situation'},1800)},true);
   var hideT=setInterval(function(){['#splash','#ov-bin','#ov-scen'].forEach(function(q){var e=$(q);if(e)e.hidden=true})},150);
   setTimeout(function(){clearInterval(hideT)},12000);
   window.addEventListener('message',function(e){
@@ -2453,7 +2463,7 @@ if(isPv){
       if(i>=0)A.adm.scens[i]=sc;else A.adm.scens.push(sc);
       A.preview(sc.id,Math.min(d.idx||0,sc.steps.length-1),null);
       var cap=$('#edbar-cap');CAPID=d.capture||null;
-      if(cap){cap.hidden=!CAPID;if(CAPID){cap.textContent='Enregistrer la situation';var sp=$('#edbar span');if(sp)sp.textContent='Règle la carte (position, zoom, menus) puis enregistre la situation du bouton « '+(CAPID.label||'')+' »';if(CAPID.view)setTimeout(function(){A.showSit({view:CAPID.view,target:CAPID.target})},400)}}
+      if(cap){cap.hidden=!CAPID;if(CAPID&&CAPID.kind==='coupe'){cap.textContent='Enregistrer la coupe';var sp0=$('#edbar span');if(sp0)sp0.textContent='Clique « Coupe », trace la ligne, règle largeur, profondeur, exagération et vue, puis enregistre la coupe « '+(CAPID.label||'')+' »';setTimeout(function(){if(window.CP)window.CP.begin(CAPID.coupe)},500)}else if(CAPID){cap.textContent='Enregistrer la situation';var sp=$('#edbar span');if(sp)sp.textContent='Règle la carte (position, zoom, menus) puis enregistre la situation du bouton « '+(CAPID.label||'')+' »';if(CAPID.view)setTimeout(function(){A.showSit({view:CAPID.view,target:CAPID.target})},400)}}
     };
     if(A.S.ready)go();else{var w=setInterval(function(){if(A.S.ready){clearInterval(w);go()}},150)}
   });

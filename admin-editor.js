@@ -15,7 +15,7 @@
   ];
   var LAYERS = [['coast', 'Continents'], ['grat', 'Quadrillage'], ['plates', 'Plaques (contours)'], ['pnames', 'Noms des plaques'], ['trench', 'Fosses océaniques'], ['bound', 'Frontières'], ['quakes', 'Séismes'], ['volc', 'Volcans'], ['gps', 'Mouvements des plaques (GPS)'], ['markers', 'Marqueurs']];
   var TYPE_LABEL = { qcm: 'Au choix', cloze: 'À compléter', text: 'Rédigée', sheet: 'Fiche papier' };
-  var TABS = [['content', 'Contenu'], ['answer', 'Réponse'], ['menu', 'Menu'], ['data', 'Données'], ['view', 'Affichage'], ['btns', 'Boutons'], ['pass', 'Passage']];
+  var TABS = [['content', 'Contenu'], ['answer', 'Réponse'], ['menu', 'Menu'], ['data', 'Données'], ['view', 'Affichage'], ['coupe', 'Coupe'], ['btns', 'Boutons'], ['pass', 'Passage']];
 
   var ctx = null;
 
@@ -58,6 +58,9 @@
     if (!s.bg || typeof s.bg !== 'object') s.bg = { coast: true, grat: false, plates: false };
     if (s.lines == null || isNaN(+s.lines)) s.lines = 2;
     if (!Array.isArray(s.buttons)) s.buttons = [];
+    if (!Array.isArray(s.coupes)) s.coupes = [];
+    s.coupes.forEach(function (c) { fixObj(c, ['layers', 'map']); c.id = c.id || uid('c'); if (!c.layers || typeof c.layers !== 'object') c.layers = { quakes: true, volc: true, trench: true }; });
+    if (s.coupeAuto == null) s.coupeAuto = '';
     if (!s.menu || typeof s.menu !== 'object') s.menu = {};
     if (!s.cons || typeof s.cons !== 'object') s.cons = { qy: null, vy: null, amag: null, minmag: null };
     if (s.view === undefined) s.view = null;
@@ -100,7 +103,7 @@
       h += '<div class="subtabs">' + TABS.map(function (t) {
         return '<button data-sub="' + t[0] + '"' + (ctx.sub === t[0] ? ' class="on"' : '') + '>' + t[1] + '</button>';
       }).join('') + '</div><div class="ed-block" style="margin-top:10px">' +
-        ({ content: tContent, answer: tAnswer, btns: tBtns, menu: tMenu, data: tData, view: tView, pass: tPass })[ctx.sub](st) + '</div>';
+        ({ content: tContent, answer: tAnswer, btns: tBtns, menu: tMenu, data: tData, view: tView, coupe: tCoupe, pass: tPass })[ctx.sub](st) + '</div>';
     }
     h += '</div></div><div class="msg" id="ed-msg"></div>';
     ctx.root.innerHTML = h;
@@ -294,6 +297,39 @@
     return h;
   }
 
+  function newCoupe() { return { id: uid('c'), label: 'Nouvelle coupe', a: null, b: null, w: 300, maxD: 300, exag: 5, uni: true, view: '2d', trans: true, layers: { quakes: true, volc: true, trench: true } }; }
+  function okLine(c) { return c && c.a && c.b && typeof c.a[0] === 'number' && typeof c.a[1] === 'number' && typeof c.b[0] === 'number' && typeof c.b[1] === 'number'; }
+  function coupeSummary(c) {
+    if (!okLine(c)) return 'Ligne pas encore tracée : utilise « Régler sur la carte ».';
+    return 'A (' + c.a[1] + '°, ' + c.a[0] + '°) → B (' + c.b[1] + '°, ' + c.b[0] + '°) · bande ' + c.w + ' km · profondeur ' + c.maxD + ' km · ' + (c.view === '3d' ? 'bloc 3D' : 'coupe 2D');
+  }
+  function tCoupe(st) {
+    var cs = st.coupes || [];
+    var h = '<div class="msg-n">Prépare une ou plusieurs coupes pour cette question. L\'élève les retrouve dans le menu « Coupe » (bouton en haut) et peut ensuite les modifier. Chaque coupe retient la ligne, la largeur, la profondeur, l\'exagération, la vue (2D ou bloc 3D) et les couches affichées. Pense à garder le bouton « Coupe » visible dans l\'onglet Menu.</div>';
+    h += '<label>Ouverture automatique à l\'arrivée sur la question<select data-b="st.coupeAuto"><option value="">Aucune (l\'élève clique sur Coupe)</option>' + cs.map(function (c) {
+      return '<option value="' + esc(c.id) + '"' + (st.coupeAuto === c.id ? ' selected' : '') + '>' + esc(c.label || 'Coupe') + '</option>';
+    }).join('') + '</select></label>';
+    cs.forEach(function (c, i) {
+      var p = 'st.coupes.' + i + '.';
+      h += '<div class="crit"><label>Nom de la coupe (affiché à l\'élève)<input type="text" data-b="' + p + 'label" value="' + esc(c.label || '') + '"></label>' +
+        '<div class="msg-n">' + esc(coupeSummary(c)) + '</div>' +
+        '<div class="adm-h"><button class="pri" data-act="cp-cap" data-i="' + i + '">' + (okLine(c) ? 'Refaire sur la carte' : 'Régler sur la carte') + '</button><button data-act="cp-del" data-i="' + i + '">Supprimer</button></div>' +
+        '<div class="row2"><label>A : latitude<input type="number" step="0.01" data-b="' + p + 'a.1" data-t="n" value="' + (c.a && c.a[1] != null ? c.a[1] : '') + '"></label><label>A : longitude<input type="number" step="0.01" data-b="' + p + 'a.0" data-t="n" value="' + (c.a && c.a[0] != null ? c.a[0] : '') + '"></label></div>' +
+        '<div class="row2"><label>B : latitude<input type="number" step="0.01" data-b="' + p + 'b.1" data-t="n" value="' + (c.b && c.b[1] != null ? c.b[1] : '') + '"></label><label>B : longitude<input type="number" step="0.01" data-b="' + p + 'b.0" data-t="n" value="' + (c.b && c.b[0] != null ? c.b[0] : '') + '"></label></div>' +
+        '<div class="row3"><label>Largeur de bande (km)<input type="number" min="40" max="1500" step="10" data-b="' + p + 'w" data-t="n" value="' + (c.w == null ? '' : c.w) + '"></label>' +
+        '<label>Profondeur (km)<input type="number" min="50" max="700" step="10" data-b="' + p + 'maxD" data-t="n" value="' + (c.maxD == null ? '' : c.maxD) + '"></label>' +
+        '<label>Exagération (×)<input type="number" min="1" max="40" step="1" data-b="' + p + 'exag" data-t="n" value="' + (c.exag == null ? '' : c.exag) + '"></label></div>' +
+        '<label>Vue de départ<select data-b="' + p + 'view"><option value="2d"' + (c.view !== '3d' ? ' selected' : '') + '>Coupe 2D</option><option value="3d"' + (c.view === '3d' ? ' selected' : '') + '>Bloc 3D</option></select></label>' +
+        '<label class="ck"><input type="checkbox" data-b="' + p + 'uni"' + (c.uni !== false ? ' checked' : '') + '> Exagérer aussi les profondeurs (échelle verticale unique)</label>' +
+        '<label class="ck"><input type="checkbox" data-b="' + p + 'trans"' + (c.trans !== false ? ' checked' : '') + '> Bloc 3D transparent</label>' +
+        '<div class="lbl">Couches affichées</div>' + [['quakes', 'Séismes'], ['volc', 'Volcans'], ['trench', 'Fosses océaniques']].map(function (l) {
+          return '<label class="ck"><input type="checkbox" data-b="' + p + 'layers.' + l[0] + '"' + ((c.layers || {})[l[0]] ? ' checked' : '') + '> ' + l[1] + '</label>';
+        }).join('') + '</div>';
+    });
+    h += '<div class="adm-h"><button class="pri" data-act="cp-add">＋ Ajouter une coupe</button></div>';
+    return h;
+  }
+
   function tPass(st) {
     var p = st.pass;
     var h = '<div class="msg-n">Condition pour que l\'élève puisse passer à la question suivante.</div>';
@@ -484,6 +520,9 @@
         }
         break;
       case 'sit-del': st.buttons.splice(i, 1); render(); break;
+      case 'cp-add': st.coupes.push(newCoupe()); render(); break;
+      case 'cp-del': if (confirm('Supprimer cette coupe ?')) { if (st.coupeAuto === st.coupes[i].id) st.coupeAuto = ''; st.coupes.splice(i, 1); render(); } break;
+      case 'cp-cap': { var cc = st.coupes[i]; openPreview({ id: cc.id, label: cc.label, kind: 'coupe', coupe: okLine(cc) ? cc : null }); break; }
       case 'sit-cap': openPreview({ id: st.buttons[i].id, label: st.buttons[i].label, view: st.buttons[i].view, target: st.buttons[i].target || null }); break;
       case 'crit-add': st.crit.push({ label: 'Nouveau critère', pts: 5, need: 1, kw: [], hint: '' }); render(); break;
       case 'crit-del': st.crit.splice(i, 1); render(); break;
@@ -510,6 +549,11 @@
     if (!pw) say('Fenêtre bloquée : autorise les fenêtres pop-up pour ce site.');
   }
   window.addEventListener('message', function (e) {
+    if (e.origin === location.origin && e.data && e.data.type === 'tecto-capture' && e.data.kind === 'coupe' && ctx && pw && e.source === pw) {
+      var cp0 = (cur().coupes || []).filter(function (x) { return x.id === e.data.id; })[0];
+      if (cp0 && e.data.coupe) { Object.keys(e.data.coupe).forEach(function (k) { cp0[k] = e.data.coupe[k]; }); if (pendingCap && pendingCap.id === cp0.id) pendingCap.coupe = cp0; render(); say('Coupe « ' + (cp0.label || '') + ' » enregistrée.'); }
+      return;
+    }
     if (e.origin === location.origin && e.data && e.data.type === 'tecto-capture' && ctx && pw && e.source === pw) {
       var bt = (cur().buttons || []).filter(function (x) { return x.id === e.data.id; })[0];
       if (bt) { bt.view = e.data.view; bt.target = e.data.target || null; if (pendingCap && pendingCap.id === bt.id) pendingCap.view = bt.view; render(); say('Situation enregistrée dans le bouton « ' + (bt.label || '') + ' ».'); }
@@ -527,6 +571,7 @@
     for (var i = 0; i < sc.steps.length; i++) {
       var s = sc.steps[i];
       if (s.type === 'qcm' && !String(s.opts[s.ok] || '').trim()) { say('Question ' + (i + 1) + ' : la bonne réponse est vide.'); return; }
+      for (var ci = 0; ci < s.coupes.length; ci++) { if (!okLine(s.coupes[ci])) { say('Question ' + (i + 1) + ' : la coupe « ' + (s.coupes[ci].label || '') + ' » n\'a pas de ligne tracée.'); return; } }
       for (var bi = 0; bi < s.buttons.length; bi++) { if (!s.buttons[bi].view) { say('Question ' + (i + 1) + ' : le bouton « ' + (s.buttons[bi].label || '') + ' » n\'a pas de situation enregistrée.'); return; } }
       if (s.type === 'cloze' && String(s.ctext || '').indexOf('___') < 0) { say('Question ' + (i + 1) + ' : la phrase n\'a aucun trou (___).'); return; }
     }

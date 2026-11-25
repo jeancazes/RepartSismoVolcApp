@@ -121,8 +121,7 @@ function setHint(){
   $('#cp-go').disabled=!(st.a&&st.b&&st.mode==='edit'&&frame(st.a,st.b));
   $('#cp-sel').classList.toggle('on',st.mode==='draw');
   $('#cp-wl').hidden=!(st.a&&st.b&&st.mode==='edit');
-  $('#cp-wo').textContent=Math.round(st.w)+' km';$('#cp-w').value=st.w;
-  $('#cp-e').disabled=st.uni&&st.view==='2d';$('#cp-e').parentNode.style.opacity=$('#cp-e').disabled?.45:1;
+  $('#cp-wo').textContent=Math.round(st.w)+' km';$('#cp-w').value=st.w;$('#cp-d').value=st.maxD;$('#cp-e').value=st.exag;$('#cp-u').checked=st.uni;$('#cp-tr').textContent=st.trans?'Opaque':'Transparent';
   $('#cp-do').textContent=st.maxD+' km';$('#cp-eo').textContent='×'+st.exag;
   cv.parentNode.classList.toggle('cp-draw',st.mode==='draw');
 }
@@ -158,7 +157,7 @@ $('#cp-3d').onclick=function(){
 };
 
 function showGraph(v){
-  st.view=v;document.body.classList.add('cp-graph');gr.hidden=false;$('#cp-opts').hidden=false;
+  st.view=v;st.scroll=0;document.body.classList.add('cp-graph');gr.hidden=false;$('#cp-opts').hidden=false;
   cvg.hidden=v!=='2d';wrap3.hidden=v!=='3d';$('#cp-sw').hidden=$('#cp-tr').hidden=$('#cp-zi').hidden=$('#cp-zo').hidden=v!=='3d';
   $('#cp-3d').textContent=v==='3d'?'Retour à la coupe 2D':'Bloc 3D';
   $('#cp-3d').classList.toggle('on',v==='3d');setHint();
@@ -293,23 +292,24 @@ function draw2d(){
   var ex=st.exag,xs=pw/d.L,topKm,ppk,visD,rx;
   if(st.uni){
     topKm=Math.max(2,d.mx/1000);rx=1;
-    ppk=ph/(topKm+st.maxD);visD=st.maxD;
+    ppk=Math.max(xs*ex,ph/(topKm+st.maxD));visD=st.maxD;
   }else{
     rx=ex;topKm=Math.min(Math.max(2,d.mx/1000*ex),st.maxD*.6);
     ppk=ph/(st.maxD+topKm);visD=st.maxD;
   }
-  var y0=mt+topKm*ppk;
+  var y0=mt+topKm*ppk,Hv=(topKm+visD)*ppk,smax=Math.max(0,Hv-ph);st.scroll=Math.max(0,Math.min(smax,st.scroll||0));st.smax=smax;var sy=st.scroll;
   function X(s){return ml+s*xs}
   function Yd(km){return y0+km*ppk}
   function Ye(m){return y0-Math.min(topKm,m/1000*rx)*ppk}
   G={ml:ml,mt:mt,pw:pw,ph:ph,xs:xs,ppk:ppk,y0:y0};
   c.clearRect(0,0,wpx,hpx);c.fillStyle=COL.panel;c.fillRect(0,0,wpx,hpx);
+  c.save();c.beginPath();c.rect(ml-62,mt,pw+62+mr,ph);c.clip();c.translate(0,-sy);
   // terre (sous la surface)
-  c.beginPath();c.moveTo(X(0),mt+ph);
+  c.beginPath();c.moveTo(X(0),mt+Hv);
   for(var i=0;i<=d.N;i++)c.lineTo(X(d.L*i/d.N),Ye(d.el[i]));
-  c.lineTo(X(d.L),mt+ph);c.closePath();
+  c.lineTo(X(d.L),mt+Hv);c.closePath();
   c.fillStyle=COL.land;c.fill();
-  var gd=c.createLinearGradient(0,y0,0,mt+ph);gd.addColorStop(0,'rgba(0,0,0,0)');gd.addColorStop(1,'rgba(40,20,10,.38)');c.fillStyle=gd;c.fill();
+  var gd=c.createLinearGradient(0,y0,0,mt+Hv);gd.addColorStop(0,'rgba(0,0,0,0)');gd.addColorStop(1,'rgba(40,20,10,.38)');c.fillStyle=gd;c.fill();
   // océan
   c.beginPath();c.moveTo(X(0),y0);
   for(i=0;i<=d.N;i++)c.lineTo(X(d.L*i/d.N),Math.max(y0,Ye(d.el[i])));
@@ -329,27 +329,29 @@ function draw2d(){
   // surface
   c.beginPath();for(i=0;i<=d.N;i++){var xx=X(d.L*i/d.N),yy2=Ye(d.el[i]);i?c.lineTo(xx,yy2):c.moveTo(xx,yy2)}
   c.lineWidth=1.8;c.strokeStyle=COL.fg;c.lineJoin='round';c.stroke();
-  // cadre
-  c.strokeStyle=COL.fg;c.globalAlpha=.5;c.lineWidth=1;c.strokeRect(ml,mt,pw,ph);c.globalAlpha=1;
   // séismes
   var ps=z.ps,zz=z.z;
   d.qs.forEach(function(o){
     var r=Math.max(1.5,(0.9+(o.m-3.2)*1.25))*zz*ps,x=X(o.s),y=Yd(Math.min(o.d,visD+20));
-    if(o.d>visD)return;o.px=[x,y,r];
+    if(o.d>visD)return;o.px=[x,y-sy,r];
     c.beginPath();c.arc(x,y,r,0,6.2832);c.globalAlpha=.78;c.fillStyle=o.c;c.fill();c.globalAlpha=.9;c.lineWidth=.7;c.strokeStyle=COL.fg;c.stroke();c.globalAlpha=1;
   });
   // volcans (sur la surface)
   d.vs.forEach(function(o){
-    var s=(o.v.ill?2.8:4.6)*zz*ps,x=X(o.s),yb=Ye(o.e),yc=yb-s*.75;o.px=[x,yc,s*1.2];
+    var s=(o.v.ill?2.8:4.6)*zz*ps,x=X(o.s),yb=Ye(o.e),yc=yb-s*.75;o.px=[x,yc-sy,s*1.2];
     c.beginPath();c.moveTo(x,yc-s);c.lineTo(x+s*.95,yc+s*.75);c.lineTo(x-s*.95,yc+s*.75);c.closePath();
     c.fillStyle=o.c;c.globalAlpha=.95;c.fill();c.lineWidth=.8;c.strokeStyle=COL.fg;c.stroke();c.globalAlpha=1;
   });
+  c.restore();
+  c.strokeStyle=COL.fg;c.globalAlpha=.5;c.lineWidth=1;c.strokeRect(ml,mt,pw,ph);c.globalAlpha=1;
+  if(smax>0){var th=Math.max(24,ph*ph/Hv),ty=mt+(sy/smax)*(ph-th);c.fillStyle=COL.fg;c.globalAlpha=.35;c.fillRect(ml+pw-6,ty,4,th);c.globalAlpha=1}
   // fosses océaniques
   if(d.tr&&d.tr.length){
     c.font='600 11px '+ff;c.textBaseline='middle';
     d.tr.forEach(function(t,k){
       var x=X(t.s),idx=Math.min(d.N,Math.round(t.s/d.L*d.N)),ys=Ye(d.el[idx]),ly=mt+11+(k%2)*15;
-      c.beginPath();c.moveTo(x,ly+8);c.lineTo(x,ys);c.setLineDash([4,3]);c.lineWidth=1.4;c.strokeStyle='#0f3b8c';c.stroke();c.setLineDash([]);
+      if(ys-sy<mt+2||ys-sy>mt+ph+40)return;
+      c.beginPath();c.moveTo(x,ly+8);c.lineTo(x,Math.max(ly+8,Math.min(mt+ph,ys-sy)));c.setLineDash([4,3]);c.lineWidth=1.4;c.strokeStyle='#0f3b8c';c.stroke();c.setLineDash([]);
       var tw=c.measureText(t.name).width+12,bx=Math.max(ml+2,Math.min(ml+pw-tw-2,x-tw/2));
       c.fillStyle='#0f3b8c';c.globalAlpha=.92;c.fillRect(bx,ly-8,tw,16);c.globalAlpha=1;
       c.fillStyle='#fff';c.textAlign='center';c.fillText(t.name,bx+tw/2,ly);
@@ -366,11 +368,12 @@ function draw2d(){
     c.fillStyle=COL.mute;c.fillText(Math.round(s)+' km',x2,mt+ph+21);
   }
   c.fillStyle=COL.mute;c.textAlign='left';c.textBaseline='alphabetic';
-  c.fillText((lonMode?'Longitude':'Latitude')+' (et distance le long de la coupe)',ml,hpx-5);
+  c.fillText((lonMode?'Longitude':'Latitude')+' (et distance le long de la coupe)'+(smax>0?' · molette : parcourir la profondeur':''),ml,hpx-5);
   c.textAlign='right';c.fillText('Profondeur sous le niveau de la mer · '+(st.uni?'échelle verticale unique (relief et profondeurs à la même échelle)':'relief exagéré ×'+ex),ml+pw,hpx-5);
   c.textAlign='left';c.fillStyle=COL.fg;c.font='600 12px '+ff;
   c.fillText(lblCoord(d.ll[0],lonMode)+'  ('+d.ll[0][1].toFixed(1)+'°, '+d.ll[0][0].toFixed(1)+'°)  →  '+lblCoord(d.ll[d.N],lonMode)+'  ('+d.ll[d.N][1].toFixed(1)+'°, '+d.ll[d.N][0].toFixed(1)+'°)',ml,mt-14);
 }
+cvg.addEventListener('wheel',function(e){if(st.view!=='2d'||!(st.smax>0))return;e.preventDefault();st.scroll=Math.max(0,Math.min(st.smax,(st.scroll||0)+e.deltaY*(e.deltaMode===1?30:1)));draw2d()},{passive:false});
 /* infobulle */
 cvg.addEventListener('pointermove',function(e){
   var d=st.data;if(!d||st.view!=='2d'){tip.hidden=true;return}
@@ -524,12 +527,45 @@ function exportPng(){
 
 document.addEventListener('change',function(e){var t=e.target;if(st.on&&st.view!=='none'&&t&&t.dataset&&t.dataset.layer)setTimeout(function(){if(frame(st.a,st.b)){compute();redraw()}},60)});
 
+/* ---------- coupes préparées (scénario) ---------- */
+function rnd(p){return [Math.round(p[0]*1000)/1000,Math.round(p[1]*1000)/1000]}
+function capture(){
+  if(!st.a||!st.b||!frame(st.a,st.b))return null;
+  return {a:rnd(st.a),b:rnd(st.b),w:Math.round(st.w),maxD:st.maxD,exag:st.exag,uni:!!st.uni,view:st.view==='3d'?'3d':'2d',trans:!!st.trans,layers:{quakes:!!S.layers.quakes,volc:!!S.layers.volc,trench:!!S.layers.trench},map:{rot0:Math.round(S.rot[0]*100)/100,pan:Math.round(S.pan),k:Math.round(S.k*100)/100}};
+}
+function setLayer(k,on){
+  var cb=document.querySelector('[data-layer="'+k+'"]');
+  if(cb&&cb.checked!==on){cb.checked=on;cb.dispatchEvent(new Event('change',{bubbles:true}))}else S.layers[k]=on;
+}
+function load(c){
+  if(!c||!c.a||!c.b)return;
+  if(!st.on)open();
+  st.a=c.a.slice();st.b=c.b.slice();st.w=+c.w||300;st.maxD=+c.maxD||300;st.exag=+c.exag||5;st.uni=c.uni!==false;st.trans=c.trans!==false;
+  if(c.layers)['quakes','volc','trench'].forEach(function(k){if(c.layers[k]!=null)setLayer(k,!!c.layers[k])});
+  if(c.map&&isFinite(c.map.rot0)){S.rot[0]=c.map.rot0;S.pan=c.map.pan||0;S.k=c.map.k||1}
+  st.mode='edit';setHint();K.dirty();
+  loadRelief().then(function(){showGraph(c.view==='3d'?'3d':'2d')}).catch(function(){});
+  $$pre();
+}
+function begin(c){if(c&&c.a&&c.b)load(c);else open()}
+var preList=[],preCur=null;
+function $$pre(){
+  var box=$('#cp-prel');if(!box)return;
+  box.innerHTML='';
+  preList.forEach(function(c){var b=document.createElement('button');b.className='ibtn'+(preCur===c.id?' on':'');b.textContent=c.label||'Coupe';b.onclick=function(){preCur=c.id;load(c)};box.appendChild(b)});
+  $('#cp-pre').hidden=!preList.length;
+}
+function setList(list,autoId){
+  preList=(list||[]).filter(function(c){return c&&c.a&&c.b&&typeof c.a[0]==='number'&&typeof c.a[1]==='number'&&typeof c.b[0]==='number'&&typeof c.b[1]==='number'});preCur=null;$$pre();
+  if(autoId){var c=preList.filter(function(x){return x.id===autoId})[0];if(c)setTimeout(function(){preCur=c.id;load(c)},450)}
+}
+
 /* ---------- API pour la carte ---------- */
 window.CP={
   draw:drawMap,
   menuChanged:function(){if(btn.classList.contains('mi-h')&&st.on)close()},
   refresh:function(){if(!st.on)return;compute();if(st.view!=='none')redraw()},
-  isOn:function(){return st.on},
+  isOn:function(){return st.on},capture:capture,load:load,begin:begin,setList:setList,
   _st:st
 };
 })();

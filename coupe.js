@@ -9,7 +9,7 @@ var $=function(s){return document.querySelector(s)};
 var R=6371,D2R=Math.PI/180;
 var THREE_URL='https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
 
-var st={on:false,mode:'idle',a:null,b:null,w:300,view:'none',maxD:300,exag:5,uni:true,trans:true,zoom3:1,drag:null,data:null,h:null,dirty:false};
+var st={on:false,mode:'idle',a:null,b:null,w:300,view:'none',maxD:700,exag:1,uni:true,trans:true,zoom3:1,drag:null,data:null,h:null,dirty:false};
 var btn=$('#btn-cp'),menu=$('#cp-menu'),gr=$('#cp-graph'),cvg=$('#cp-cv'),wrap3=$('#cp-3dw'),tip=$('#cp-tip'),cap=$('#cp-cap');
 if(!btn||!menu||!gr||!cvg)return;
 var cv=K.cv;
@@ -121,8 +121,8 @@ function setHint(){
   $('#cp-go').disabled=!(st.a&&st.b&&st.mode==='edit'&&frame(st.a,st.b));
   $('#cp-sel').classList.toggle('on',st.mode==='draw');
   $('#cp-wl').hidden=!(st.a&&st.b&&st.mode==='edit');
-  $('#cp-wo').textContent=Math.round(st.w)+' km';$('#cp-w').value=st.w;$('#cp-d').value=st.maxD;$('#cp-e').value=st.exag;$('#cp-u').checked=st.uni;$('#cp-tr').textContent=st.trans?'Opaque':'Transparent';
-  $('#cp-do').textContent=st.maxD+' km';$('#cp-eo').textContent='×'+st.exag;
+  $('#cp-wo').textContent=Math.round(st.w)+' km';$('#cp-w').value=st.w;$('#cp-e').value=st.exag;$('#cp-tr').textContent=st.trans?'Opaque':'Transparent';
+  $('#cp-eo').textContent='×'+(+st.exag).toFixed(1).replace('.0','');
   cv.parentNode.classList.toggle('cp-draw',st.mode==='draw');
 }
 function open(){
@@ -144,9 +144,7 @@ btn.onclick=function(){st.on?close():open()};
 $('#cp-close').onclick=close;
 $('#cp-sel').onclick=function(){st.mode='draw';st.a=st.b=null;st.data=null;$('#cp-sum').textContent='';setHint();K.dirty()};
 $('#cp-w').oninput=function(){st.w=+this.value;setHint();refresh(true);K.dirty()};
-$('#cp-d').oninput=function(){st.maxD=+this.value;setHint();redraw()};
 $('#cp-e').oninput=function(){st.exag=+this.value;setHint();redraw()};
-$('#cp-u').onchange=function(){st.uni=this.checked;setHint();redraw()};
 $('#cp-png').onclick=exportPng;
 $('#cp-go').onclick=function(){
   loadRelief().then(function(){showGraph('2d')}).catch(function(){$('#cp-hint').textContent='Relief indisponible (data/relief.bin).'});
@@ -291,8 +289,8 @@ function draw2d(){
   var ml=62,mr=16,mt=34,mb=50,pw=wpx-ml-mr,ph=hpx-mt-mb;if(pw<40||ph<40)return;
   var ex=st.exag,xs=pw/d.L,topKm,ppk,visD,rx;
   if(st.uni){
-    topKm=Math.max(2,d.mx/1000);rx=1;
-    ppk=Math.max(xs*ex,ph/(topKm+st.maxD));visD=st.maxD;
+    topKm=Math.max(12,d.mx/1000+4);rx=1;
+    ppk=ph/(topKm+st.maxD)*ex;visD=st.maxD;
   }else{
     rx=ex;topKm=Math.min(Math.max(2,d.mx/1000*ex),st.maxD*.6);
     ppk=ph/(st.maxD+topKm);visD=st.maxD;
@@ -369,7 +367,7 @@ function draw2d(){
   }
   c.fillStyle=COL.mute;c.textAlign='left';c.textBaseline='alphabetic';
   c.fillText((lonMode?'Longitude':'Latitude')+' (et distance le long de la coupe)'+(smax>0?' · molette : parcourir la profondeur':''),ml,hpx-5);
-  c.textAlign='right';c.fillText('Profondeur sous le niveau de la mer · '+(st.uni?'échelle verticale unique (relief et profondeurs à la même échelle)':'relief exagéré ×'+ex),ml+pw,hpx-5);
+  c.textAlign='right';c.fillText('Profondeur sous le niveau de la mer · '+'étirement vertical ×'+(+ex).toFixed(1).replace('.0',''),ml+pw,hpx-5);
   c.textAlign='left';c.fillStyle=COL.fg;c.font='600 12px '+ff;
   c.fillText(lblCoord(d.ll[0],lonMode)+'  ('+d.ll[0][1].toFixed(1)+'°, '+d.ll[0][0].toFixed(1)+'°)  →  '+lblCoord(d.ll[d.N],lonMode)+'  ('+d.ll[d.N][1].toFixed(1)+'°, '+d.ll[d.N][0].toFixed(1)+'°)',ml,mt-14);
 }
@@ -531,7 +529,7 @@ document.addEventListener('change',function(e){var t=e.target;if(st.on&&st.view!
 function rnd(p){return [Math.round(p[0]*1000)/1000,Math.round(p[1]*1000)/1000]}
 function capture(){
   if(!st.a||!st.b||!frame(st.a,st.b))return null;
-  return {a:rnd(st.a),b:rnd(st.b),w:Math.round(st.w),maxD:st.maxD,exag:st.exag,uni:!!st.uni,view:st.view==='3d'?'3d':'2d',trans:!!st.trans,layers:{quakes:!!S.layers.quakes,volc:!!S.layers.volc,trench:!!S.layers.trench},map:{rot0:Math.round(S.rot[0]*100)/100,pan:Math.round(S.pan),k:Math.round(S.k*100)/100}};
+  return {a:rnd(st.a),b:rnd(st.b),w:Math.round(st.w),maxD:700,exag:st.exag,uni:true,view:st.view==='3d'?'3d':'2d',trans:!!st.trans,layers:{quakes:!!S.layers.quakes,volc:!!S.layers.volc,trench:!!S.layers.trench},map:{rot0:Math.round(S.rot[0]*100)/100,pan:Math.round(S.pan),k:Math.round(S.k*100)/100}};
 }
 function setLayer(k,on){
   var cb=document.querySelector('[data-layer="'+k+'"]');
@@ -540,7 +538,7 @@ function setLayer(k,on){
 function load(c){
   if(!c||!c.a||!c.b)return;
   if(!st.on)open();
-  st.a=c.a.slice();st.b=c.b.slice();st.w=+c.w||300;st.maxD=+c.maxD||300;st.exag=+c.exag||5;st.uni=c.uni!==false;st.trans=c.trans!==false;
+  st.a=c.a.slice();st.b=c.b.slice();st.w=+c.w||300;st.maxD=700;st.exag=Math.max(.3,Math.min(10,+c.exag||1));st.uni=true;st.trans=c.trans!==false;
   if(c.layers)['quakes','volc','trench'].forEach(function(k){if(c.layers[k]!=null)setLayer(k,!!c.layers[k])});
   if(c.map&&isFinite(c.map.rot0)){S.rot[0]=c.map.rot0;S.pan=c.map.pan||0;S.k=c.map.k||1}
   st.mode='edit';setHint();K.dirty();

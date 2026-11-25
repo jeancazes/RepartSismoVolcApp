@@ -628,9 +628,7 @@ body{background-image:var(--paper)}
         <label class="cp-s" id="cp-wl" hidden>Largeur de la bande <output id="cp-wo">300 km</output><input type="range" id="cp-w" min="40" max="1500" step="10" value="300"></label>
         <button class="ibtn cp-b" id="cp-go" disabled>Visualiser la coupe</button>
         <div id="cp-opts" hidden>
-          <label class="cp-s">Profondeur <output id="cp-do">300 km</output><input type="range" id="cp-d" min="50" max="700" step="10" value="300"></label>
-          <label class="cp-s">Exagération du relief <output id="cp-eo">×5</output><input type="range" id="cp-e" min="1" max="40" step="1" value="5"></label>
-          <label class="cp-c"><input type="checkbox" id="cp-u" checked> Exagérer aussi les profondeurs</label>
+          <label class="cp-s">Étirement vertical <output id="cp-eo">×1</output><input type="range" id="cp-e" min="0.3" max="10" step="0.1" value="1"></label>
           <button class="ibtn cp-b" id="cp-3d">Bloc 3D</button>
           <button class="ibtn cp-b" id="cp-png">Enregistrer l'image (PNG)</button>
         </div>

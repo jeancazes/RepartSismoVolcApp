@@ -374,6 +374,7 @@
     h += '<div class="lbl">Menu Coupe vu par l\'élève (décoche pour masquer)</div><div class="cpm">' + CPMI.map(function (it) {
       return '<label class="ck"><input type="checkbox" data-act="cpm" data-k="' + it[0] + '"' + ((st.menu || {})[it[0]] === 'hide' ? '' : ' checked') + '> ' + esc(it[1]) + '</label>';
     }).join('') + '</div>';
+    h += '<label>Quand l\'élève arrive sur cette question<select data-b="st.coupeKeep"><option value=""' + (st.coupeKeep !== 'close' ? ' selected' : '') + '>Il garde sa coupe (par défaut)</option><option value="close"' + (st.coupeKeep === 'close' ? ' selected' : '') + '>Sa coupe est fermée</option></select></label>';
     h += '<label>Ouverture automatique à l\'arrivée sur la question<select data-b="st.coupeAuto"><option value="">Aucune (l\'élève clique sur Coupe)</option>' + cs.map(function (c) {
       return '<option value="' + esc(c.id) + '"' + (st.coupeAuto === c.id ? ' selected' : '') + '>' + esc(c.label || 'Coupe') + '</option>';
     }).join('') + '</select></label>';

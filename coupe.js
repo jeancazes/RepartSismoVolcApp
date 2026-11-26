@@ -662,7 +662,8 @@ function $$pre(){
   preList.forEach(function(c){var b=document.createElement('button');b.className='ibtn'+(preCur===c.id?' on':'');b.textContent=c.label||'Coupe';b.onclick=function(){preCur=c.id;load(c)};box.appendChild(b)});
   $('#cp-pre').hidden=!preList.length;
 }
-function setList(list,autoId){
+function setList(list,autoId,mode){
+  if(mode==='close'&&st.on)close();
   preList=(list||[]).filter(function(c){return c&&c.a&&c.b&&typeof c.a[0]==='number'&&typeof c.a[1]==='number'&&typeof c.b[0]==='number'&&typeof c.b[1]==='number'});preCur=null;$$pre();
   if(autoId){var c=preList.filter(function(x){return x.id===autoId})[0];if(c)setTimeout(function(){preCur=c.id;load(c)},450)}
 }
@@ -672,7 +673,7 @@ window.CP={
   draw:drawMap,
   menuChanged:function(){if(btn.classList.contains('mi-h')&&st.on)close()},
   refresh:function(){if(!st.on)return;compute();if(st.view!=='none')redraw()},
-  isOn:function(){return st.on},capture:capture,load:load,begin:begin,setList:setList,
+  isOn:function(){return st.on},hasData:function(){return !!(st.on&&st.data&&st.view!=='none')},capture:capture,load:load,begin:begin,setList:setList,
   _st:st
 };
 })();

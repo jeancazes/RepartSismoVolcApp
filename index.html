@@ -1329,7 +1329,7 @@ function renderStep(){
   if(st.type==='sheet'){var mk=st.marks||[];h+='<div class="note">Complète la fiche papier. Les repères sont numérotés sur la carte.</div>'+(mk.length?'<ol class="smarks">'+mk.map(function(m,k){return '<li value="'+(k+1)+'">'+esc(m.label||'')+'</li>'}).join('')+'</ol>':'')}
   if(st.type==='text'){h+='<textarea id="ans" aria-label="Ta réponse" placeholder="Écris ta réponse ici."></textarea><div class="note" style="margin-top:4px">N\'écris ni ton nom ni aucune information personnelle.</div>'}
   h+='<div id="fb"></div><div id="pmsg" class="note"></div><div class="actions" id="act"></div>';
-  b.innerHTML=h;b.scrollTop=0;renderSits();if(window.CP&&window.CP.setList)window.CP.setList(st.coupes||[],st.coupeAuto||null);
+  b.innerHTML=h;b.scrollTop=0;renderSits();if(window.CP&&window.CP.setList)window.CP.setList(st.coupes||[],st.coupeAuto||null,st.coupeKeep||'');
   var prev=ansBox()[akey(sc,st)];
   if(st.type==='text'&&prev&&prev.text)$('#ans').value=prev.text;
   var act='';
@@ -1586,9 +1586,11 @@ function applyStep(st,fresh){
   if(LASTK&&S.ready)SNAPS[LASTK]=snapState();
   if(fresh)SNAPS={};
   var k=stepKey(st);LASTK=k;
+  var cpHold=!!(window.CP&&CP.isOn()&&CP.hasData&&CP.hasData()&&st.coupeKeep!=='close'),cpL=cpHold?{quakes:S.layers.quakes,volc:S.layers.volc,trench:S.layers.trench}:null;
   resetState();
   applyCons(st.cons);applyView(st.view);
   if(SNAPS[k])applyView(SNAPS[k]);
+  if(cpHold){Object.assign(S.layers,cpL);S.mode='flat';$$('#proj-seg button').forEach(function(x){x.classList.toggle('on',x.dataset.p==='flat')})}
   forceHidden(st.menu);
   syncUI();applyMenu(st.menu);loadArch();dirty();
 }

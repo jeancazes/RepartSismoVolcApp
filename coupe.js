@@ -598,17 +598,32 @@ function loop3(){
 }
 
 /* ---------- export PNG ---------- */
-function exportPng(){
-  var d=st.data,src=null;if(!d)return;
+function pngCanvas(){
+  var d=st.data,src=null;if(!d)return null;
   if(st.view==='3d'&&r3&&sc3&&cam3){r3.render(sc3,cam3);src=r3.domElement}else if(st.view==='2d')src=cvg;
-  if(!src)return;
+  if(!src)return null;
   var dpr=src.width/Math.max(1,src.clientWidth||src.width),strip=Math.round(24*dpr),o=document.createElement('canvas');
   o.width=src.width;o.height=src.height+strip;var c=o.getContext('2d'),COL=K.COL();
   c.fillStyle=COL.panel;c.fillRect(0,0,o.width,o.height);c.drawImage(src,0,0);
   c.fillStyle=COL.mute;c.font='500 '+Math.round(11*dpr)+'px Barlow,sans-serif';c.textBaseline='middle';
   c.fillText('Carte Tectonique 4e · coupe de '+Math.round(d.L)+' km, bande de '+Math.round(st.w)+' km · relief ETOPO (NOAA) · séismes USGS · volcans Smithsonian GVP'+(st.struct?' · croûte CRUST1.0':'')+(legItems().length?' · '+legItems().map(function(x){return x[1]}).join(' / '):''),Math.round(10*dpr),src.height+strip/2);
-  o.toBlob(function(b){if(!b)return;var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='coupe'+(st.view==='3d'?'-3d':'')+'.png';document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove()},500)},'image/png');
+  return o;
 }
+function pngMsg(t){var m=$('#cp-msg');if(m){m.textContent=t;clearTimeout(pngMsg.t);if(t)pngMsg.t=setTimeout(function(){m.textContent=''},6000)}}
+function pngSave(b){var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=st.view==='3d'?'coupe-3d.png':'coupe-2d.png';document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove()},500)}
+function exportPng(){var o=pngCanvas();if(!o)return;o.toBlob(function(b){if(b){pngSave(b);pngMsg('Image enregistrée.')}},'image/png')}
+function copyPng(){
+  var o=pngCanvas();if(!o)return;
+  o.toBlob(function(b){
+    if(!b)return;
+    var fail=function(){pngSave(b);pngMsg('Copie impossible avec ce navigateur : l\'image a été enregistrée à la place.')};
+    try{
+      if(!navigator.clipboard||!window.ClipboardItem||!window.isSecureContext){fail();return}
+      navigator.clipboard.write([new ClipboardItem({'image/png':b})]).then(function(){pngMsg('Image copiée : colle-la (Ctrl+V) dans ton document.')},fail);
+    }catch(e){fail()}
+  },'image/png');
+}
+$('#cp-copy').onclick=copyPng;
 
 document.addEventListener('change',function(e){var t=e.target;if(st.on&&st.view!=='none'&&t&&t.dataset&&t.dataset.layer)setTimeout(function(){if(frame(st.a,st.b)){compute();redraw()}},60)});
 

@@ -3,6 +3,7 @@
 (function () {
   'use strict';
 
+  var CPMI = [['cpw', 'Curseur : largeur de la bande'], ['cpe', 'Curseur : étirement vertical'], ['cpr', 'Curseur : exagération du relief'], ['cpcrust', 'Bouton : croûte et manteau'], ['cplith', 'Bouton : lithosphère / asthénosphère'], ['cp3d', 'Bouton : bloc 3D'], ['cp3dbar', 'Vue 3D : pause, transparence, zoom'], ['cpexp', 'Export : copier / enregistrer en PNG']];
   var MI = [
     ['Fond', [['coast', 'Continents'], ['grat', 'Quadrillage'], ['plates', 'Plaques (contours)'], ['pnames', 'Noms des plaques'], ['trench', 'Fosses océaniques']]],
     ['Live', [['live', 'Section Live']]],
@@ -11,7 +12,8 @@
     ['Frontières de plaques', [['bound', 'Afficher les frontières'], ['btypes', 'Types : subduction / collision / accrétion / coulissant']]],
     ['GPS', [['gps', 'Mouvements des plaques (GPS)']]],
     ['Marqueurs', [['markers', "Marqueurs de l'enseignant"]]],
-    ['Carte', [['proj', 'Plane / Globe'], ['zoom', 'Zoom + / −'], ['timeline', 'Frise temporelle'], ['legend', 'Légende'], ['coupe', 'Coupe (bouton du haut)'], ['cpcrust', 'Coupe : croûte et manteau'], ['cplith', 'Coupe : lithosphère / asthénosphère']]]
+    ['Carte', [['proj', 'Plane / Globe'], ['zoom', 'Zoom + / −'], ['timeline', 'Frise temporelle'], ['legend', 'Légende'], ['coupe', 'Coupe (bouton du haut)']]],
+    ['Menu Coupe', CPMI]
   ];
   var LAYERS = [['coast', 'Continents'], ['grat', 'Quadrillage'], ['plates', 'Plaques (contours)'], ['pnames', 'Noms des plaques'], ['trench', 'Fosses océaniques'], ['bound', 'Frontières'], ['quakes', 'Séismes'], ['volc', 'Volcans'], ['gps', 'Mouvements des plaques (GPS)'], ['markers', 'Marqueurs']];
   var TYPE_LABEL = { qcm: 'Au choix', cloze: 'À compléter', text: 'Rédigée', sheet: 'Fiche papier' };
@@ -368,6 +370,9 @@
   function tCoupe(st) {
     var cs = st.coupes || [];
     var h = '<div class="msg-n">Prépare une ou plusieurs coupes pour cette question. L\'élève les retrouve dans le menu « Coupe » (bouton en haut) et peut ensuite les modifier. Chaque coupe retient la ligne, la largeur, la profondeur, l\'exagération, la vue (2D ou bloc 3D) et les couches affichées. Pense à garder le bouton « Coupe » visible dans l\'onglet Menu.</div>';
+    h += '<div class="lbl">Menu Coupe vu par l\'élève (décoche pour masquer)</div><div class="cpm">' + CPMI.map(function (it) {
+      return '<label class="ck"><input type="checkbox" data-act="cpm" data-k="' + it[0] + '"' + ((st.menu || {})[it[0]] === 'hide' ? '' : ' checked') + '> ' + esc(it[1]) + '</label>';
+    }).join('') + '</div>';
     h += '<label>Ouverture automatique à l\'arrivée sur la question<select data-b="st.coupeAuto"><option value="">Aucune (l\'élève clique sur Coupe)</option>' + cs.map(function (c) {
       return '<option value="' + esc(c.id) + '"' + (st.coupeAuto === c.id ? ' selected' : '') + '>' + esc(c.label || 'Coupe') + '</option>';
     }).join('') + '</select></label>';
@@ -475,6 +480,7 @@
       grp[1].forEach(function (it) { if (t.dataset.v === 'show') delete stg.menu[it[0]]; else stg.menu[it[0]] = t.dataset.v; });
       render(); return;
     }
+    if (t.dataset.act === 'cpm') { var st0 = cur(); if (t.checked) delete st0.menu[t.dataset.k]; else st0.menu[t.dataset.k] = 'hide'; return; }
     if (t.dataset.act === 'mi') { var st = cur(); if (t.dataset.v === 'show') delete st.menu[t.dataset.k]; else st.menu[t.dataset.k] = t.dataset.v; }
   }
   function cons(t) {

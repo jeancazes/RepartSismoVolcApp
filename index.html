@@ -1433,7 +1433,7 @@ function sendText(sc,st){
     .then(function(x){return x.json().catch(function(){return {}}).then(function(j){return {ok:x.ok,st:x.status,j:j}})})
     .then(function(o){if(sb)sb.disabled=false;
       if(o.ok&&o.j&&typeof o.j.score==='number')done(o.j.score,o.j.commentaire||'','ai');
-      else done(r.s20,'',o.st===429?'trop de demandes, réessaie plus tard':o.st===503?'IA désactivée':'erreur '+o.st)})
+      else done(r.s20,'',o.st===429?'trop de demandes, réessaie plus tard':o.st===503?((o.j&&o.j.error)||'IA indisponible'):'erreur '+o.st)})
     .catch(function(){if(sb)sb.disabled=false;done(r.s20,'','réseau')});
 }
 function printSheet(sc,st){

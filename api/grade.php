@@ -2,13 +2,23 @@
 // Correction IA d'une réponse ouverte. Les clés API restent dans config.php, jamais dans le navigateur.
 require __DIR__ . '/../lib/http.php';
 
+$ai = config()['ai'] ?? [];
+$prov = (string)($ai['provider'] ?? 'none');
+$state = !empty($ai['paused']) ? 'paused'
+    : (!in_array($prov, ['mistral', 'gemini'], true) ? 'none'
+    : (trim((string)($ai[$prov . '_key'] ?? '')) === '' ? 'nokey' : 'ok'));
+
+// Diagnostic pour l'enseignant connecté (aucun secret renvoyé).
+if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+    require_teacher();
+    json_out(['ai' => $state, 'provider' => $prov]);
+}
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     json_out(['error' => 'Méthode non autorisée'], 405);
 }
-
-$ai = config()['ai'] ?? [];
-if (!empty($ai['paused']) || ($ai['provider'] ?? 'none') === 'none') {
-    json_out(['error' => 'Correction IA désactivée'], 503);
+if ($state !== 'ok') {
+    $msg = ['paused' => 'Correction IA en pause', 'none' => 'IA non configurée sur le serveur (config.php : ai.provider)', 'nokey' => 'Clé IA manquante dans config.php'][$state];
+    json_out(['error' => $msg, 'reason' => $state], 503);
 }
 
 $d = body();

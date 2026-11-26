@@ -109,6 +109,7 @@ body.cp-graph #cp-menu .cp-hint:not(#cp-msg){display:none}
 .f-mono{font-family:ui-monospace,Menlo,Consolas,monospace}
 .tc0{color:#b3261e}.tc1{color:#c2570c}.tc2{color:#9a7b00}.tc3{color:#2e7d32}.tc4{color:#00796b}.tc5{color:#1565c0}.tc6{color:#6a3fb5}.tc7{color:#ad1457}
 :root[data-theme="dark"] .tc0{color:#ff8a80}:root[data-theme="dark"] .tc1{color:#ffab66}:root[data-theme="dark"] .tc2{color:#f0d060}:root[data-theme="dark"] .tc3{color:#81c784}:root[data-theme="dark"] .tc4{color:#4db6ac}:root[data-theme="dark"] .tc5{color:#7fb5ff}:root[data-theme="dark"] .tc6{color:#b79cff}:root[data-theme="dark"] .tc7{color:#f48fb1}
+.advice{margin-top:10px;padding:8px 10px;border-left:3px solid var(--accent);background:rgba(0,0,0,.04);border-radius:4px;font-size:.92em}
 .stimg{margin:8px 0;text-align:center}
 .stimg img{max-width:100%;max-height:220px;border-radius:6px;border:1px solid var(--line);cursor:zoom-in;background:var(--panel)}
 .stimg figcaption{font-size:.82em;color:var(--mute);margin-top:3px}
@@ -1269,7 +1270,7 @@ function gradeStep(text,st){
   var det=(st.crit||[]).map(function(c){
     var n=(c.kw||[]).filter(function(k){var r=kwRe(k);return r&&r.test(t)}).length;
     var need=Math.max(1,c.need||1),f=n>=need?1:(n>=1?.5:0),pts=Math.round((c.pts||0)*f*2)/2;
-    tot+=pts;max+=(c.pts||0);return {label:c.label,pts:pts,max:c.pts||0,f:f,hint:c.hint}});
+    if(!c.advice){tot+=pts;max+=(c.pts||0)}return {label:c.label,pts:pts,max:c.pts||0,f:f,hint:c.hint,adv:!!c.advice}});
   return {tot:tot,max:max,s20:max?Math.round(tot/max*20*2)/2:0,det:det};
 }
 var G={hint:0,tries:0,done:false,res:null,st:null};
@@ -1403,6 +1404,14 @@ function checkCloze(sc,st){
   else showFb('bad','Un ou plusieurs trous sont à revoir.'+((st.hints||[]).some(Boolean)?' Utilise l\'indice si besoin.':''));
   refreshNext();
 }
+function adviceAsk(t,st,r){
+  var need=r.det.filter(function(d){return d.adv&&d.f<1});if(!need.length)return;
+  var f=$('#fb'),box=document.createElement('div');box.className='advice';box.textContent='💡 Conseil en cours…';if(f)f.appendChild(box);
+  fetch('api/grade.php',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:'advice',text:t,question:plain(st.question)||st.title||'',items:need.map(function(d){return {label:d.label,hint:d.hint||''}}),bin:store.bin||0})})
+    .then(function(x){return x.json().catch(function(){return {}}).then(function(j){return {ok:x.ok,j:j}})})
+    .then(function(o){if(o.ok&&o.j&&o.j.conseil){box.innerHTML='<b>💡 Conseil</b> : '+esc(o.j.conseil)}else box.remove()})
+    .catch(function(){box.remove()});
+}
 function sendText(sc,st){
   var t=$('#ans').value.trim();G.tries++;
   if(t.length<(st.minlen||15)){showFb('hint','Écris au moins une phrase complète.');return}
@@ -1410,14 +1419,14 @@ function sendText(sc,st){
   function done(score,comment,src){
     ansBox()[key]={text:t,score:score,kw:r.s20,ai:!!st.ai,pending:!!st.ai,aiOk:src==='ai',comment:comment||''};persist();
     G.res={sent:true,correct:true,s20:score};
-    var miss=r.det.filter(function(d){return d.f<1});
-    var tbl=src==='ai'?'<table><tr><td><b>Note</b></td><td><b>'+score+' / 20</b></td></tr></table>'+(comment?'<div style="margin-top:6px">'+esc(comment)+'</div>':''):'<table>'+r.det.map(function(d){return '<tr><td>'+esc(d.label)+'</td><td>'+d.pts+' / '+d.max+'</td></tr>'}).join('')+'<tr><td><b>Total</b></td><td><b>'+score+' / 20</b></td></tr></table>';
+    var miss=r.det.filter(function(d){return d.f<1&&!d.adv});
+    var tbl=src==='ai'?'<table><tr><td><b>Note</b></td><td><b>'+score+' / 20</b></td></tr></table>'+(comment?'<div style="margin-top:6px">'+esc(comment)+'</div>':''):'<table>'+r.det.filter(function(d){return !d.adv}).map(function(d){return '<tr><td>'+esc(d.label)+'</td><td>'+d.pts+' / '+d.max+'</td></tr>'}).join('')+'<tr><td><b>Total</b></td><td><b>'+score+' / 20</b></td></tr></table>';
     var tip=miss.length?'<div style="margin-top:8px"><b>À améliorer :</b><br>'+miss.map(function(m){return '• '+esc(m.hint||m.label)}).join('<br>')+'</div>':'<div style="margin-top:8px">Toutes les idées-clés sont présentes.</div>';
     var note=src==='ai'?'Note provisoire donnée par l\'IA, avant vérification par l\'enseignant.':(st.ai?'L\'IA n\'a pas pu corriger ('+esc(src)+') : correction automatique par mots-clés, à vérifier par l\'enseignant.':'Correction automatique par mots-clés.');
     showFb(score>=12?'good':'hint','Réponse enregistrée.'+tbl+(src==='ai'&&!miss.length?'':tip)+'<div class="note" style="margin-top:8px">'+note+'</div>');
     refreshNext();
   }
-  if(!st.ai){done(r.s20,'','kw');return}
+  if(!st.ai){done(r.s20,'','kw');adviceAsk(t,st,r);return}
   var sb=$('#chk');if(sb)sb.disabled=true;
   showFb('hint','Correction en cours…');
   fetch('api/grade.php',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:t,question:plain(st.question)||st.title||'',rubric:st.rubric||'',crit:(st.crit||[]).map(function(c){return {label:c.label,pts:c.pts}}),bin:store.bin||0})})

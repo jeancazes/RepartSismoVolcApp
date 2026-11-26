@@ -297,6 +297,7 @@
           '<div class="row2"><label>Points<input type="number" min="0" step="0.5" data-b="st.crit.' + i + '.pts" data-t="n" value="' + (c.pts == null ? '' : c.pts) + '"></label>' +
           '<label>Groupes requis<input type="number" min="1" data-b="st.crit.' + i + '.need" data-t="n" value="' + (c.need == null ? 1 : c.need) + '"></label></div>' +
           '<label>Conseil si le critère manque<input type="text" data-b="st.crit.' + i + '.hint" value="' + esc(c.hint || '') + '"></label>' +
+          (st.type === 'text' ? '<label class="ck"><input type="checkbox" data-b="st.crit.' + i + '.advice"' + (c.advice ? ' checked' : '') + '> Conseil IA si besoin (sans points : si les mots-clés ne sont pas tous trouvés, l\'IA donne une piste à l\'élève)</label>' : '') +
           '<button class="danger" data-act="crit-del" data-i="' + i + '">Retirer ce critère</button></div>';
       });
       h += '<button class="ghost" data-act="crit-add">+ Ajouter un critère</button>';

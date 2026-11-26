@@ -33,7 +33,7 @@ function elev(lon,lat){
 }
 
 /* ---------- structure interne : croûte, lithosphère ---------- */
-var SC={crust:'#8a4b1f',um:'#5f9e3e',lm:'#2f4f3a',lith:'#2a62c4',ast:'#ff9a1f',lm2:'#8d3b5c'};
+var SC={crust:'#a8612a',um:'#6fc04a',lm:'#3f7a5a',lith:'#3d7be0',ast:'#ffa733',lm2:'#c0568a'};
 var crust=null,crustP=null;
 function loadCrust(){
   if(crust)return Promise.resolve();if(crustP)return crustP;
@@ -357,7 +357,7 @@ function draw2d(){
     var y=Yd(Math.min(o.d,visD+20))+gap*k;
     return Math.max(y,Ye(e)+1.5);
   }
-  G={ml:ml,mt:mt,pw:pw,ph:ph,xs:xs,ppk:ppk,y0:y0};
+  G={ml:ml,mt:mt,pw:pw,ph:ph,xs:xs,ppk:ppk,y0:y0,Ye:Ye,y660:Math.min(mt+Hv,y0+660*ppk),sy:sy};
   c.clearRect(0,0,wpx,hpx);c.fillStyle=COL.panel;c.fillRect(0,0,wpx,hpx);
   c.save();c.beginPath();c.rect(ml-62,mt,pw+62+mr,ph);c.clip();c.translate(0,-sy);
   // terre (sous la surface)
@@ -451,7 +451,14 @@ cvg.addEventListener('pointermove',function(e){
   var r=cvg.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,best=null,bd=9;
   d.qs.forEach(function(o){if(!o.px)return;var k=Math.hypot(o.px[0]-x,o.px[1]-y)-o.px[2]*.5;if(k<bd){bd=k;best={t:'Séisme M'+o.m.toFixed(1)+' · '+Math.round(o.d)+' km de profondeur'}}});
   d.vs.forEach(function(o){if(!o.px)return;var k=Math.hypot(o.px[0]-x,o.px[1]-y)-o.px[2]*.5;if(k<bd){bd=k;best={t:'Volcan '+(o.v.name||'')}}});
-  if(!best&&st.struct&&G&&x>=G.ml&&x<=G.ml+G.pw){var qi=Math.max(0,Math.min(d.N,Math.round((x-G.ml)/G.xs/d.L*d.N)));best={t:st.struct==='crust'?'Croûte : '+Math.round(d.th[qi])+' km d\'épaisseur':'Lithosphère : ≈ '+Math.round(d.lt[qi])+' km (schématique)'}}
+  if(!best&&st.struct&&G&&G.Ye&&x>=G.ml&&x<=G.ml+G.pw){
+    var qi=Math.max(0,Math.min(d.N,Math.round((x-G.ml)/G.xs/d.L*d.N))),ya=y+G.sy,sf=G.Ye(d.el[qi]),mo=sf+d.th[qi]*G.ppk,lb=sf+d.lt[qi]*G.ppk,nm=null;
+    if(ya>=sf-1){
+      if(st.struct==='crust')nm=ya<mo?'Croûte · '+Math.round(d.th[qi])+' km d\'épaisseur':ya<G.y660?'Manteau supérieur':'Manteau inférieur';
+      else nm=ya<lb?'Lithosphère · ≈ '+Math.round(d.lt[qi])+' km d\'épaisseur':ya<G.y660?'Asthénosphère':'Manteau inférieur';
+    }
+    if(nm)best={t:nm}
+  }
   if(!best){tip.hidden=true;return}
   tip.textContent=best.t;tip.hidden=false;tip.style.left=Math.min(x+12,r.width-180)+'px';tip.style.top=(y+14)+'px';
 });
@@ -545,7 +552,7 @@ function build3d(){
       }
     }
     var gg=new T.BufferGeometry();gg.setAttribute('position',new T.BufferAttribute(new Float32Array(sp),3));gg.setAttribute('color',new T.BufferAttribute(new Float32Array(sc),3));gg.setIndex(si);gg.computeVertexNormals();
-    var m=new T.Mesh(gg,new T.MeshLambertMaterial({vertexColors:true,side:T.DoubleSide,transparent:st.trans,opacity:st.trans?.22:1,depthWrite:!st.trans}));grp3.add(m);
+    var m=new T.Mesh(gg,st.struct?new T.MeshBasicMaterial({vertexColors:true,side:T.DoubleSide,transparent:st.trans,opacity:st.trans?.78:1,depthWrite:!st.trans}):new T.MeshLambertMaterial({vertexColors:true,side:T.DoubleSide,transparent:st.trans,opacity:st.trans?.22:1,depthWrite:!st.trans}));grp3.add(m);
   }
   function p3th(v){return th3[v]}
   function topPos(i,j){var k=(j*(nx+1)+i)*3;return [pos[k],pos[k+1],pos[k+2],k/3]}
@@ -554,7 +561,7 @@ function build3d(){
   var fe=function(i){var h=function(q){return topPos(i,q)};h.n=nz;return h};
   side(fe(0));side(fe(nx));
   // fond + arêtes
-  var bm=new T.Mesh(new T.PlaneGeometry(L,st.w).rotateX(Math.PI/2),new T.MeshBasicMaterial({color:0x2a1a12,transparent:st.trans,opacity:st.trans?.35:1,depthWrite:!st.trans}));bm.position.y=-DD;grp3.add(bm);
+  var bm=new T.Mesh(new T.PlaneGeometry(L,st.w).rotateX(Math.PI/2),new T.MeshBasicMaterial({color:st.struct?(st.struct==='crust'?0x4f7a5e:0xb0527a):0x2a1a12,transparent:st.trans,opacity:st.struct?(st.trans?.7:1):(st.trans?.35:1),depthWrite:!st.trans}));bm.position.y=-DD;grp3.add(bm);
   var ev=new T.LineSegments(new T.BufferGeometry().setFromPoints([[-L/2,-DD,-hw],[L/2,-DD,-hw],[L/2,-DD,-hw],[L/2,-DD,hw],[L/2,-DD,hw],[-L/2,-DD,hw],[-L/2,-DD,hw],[-L/2,-DD,-hw]].map(function(p){return new T.Vector3(p[0],p[1],p[2])})),new T.LineBasicMaterial({color:0x000000,transparent:true,opacity:.5}));
   grp3.add(ev);
   // séismes / volcans (même couleur et même taille relative que sur la carte)

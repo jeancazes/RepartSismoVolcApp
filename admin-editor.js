@@ -11,7 +11,7 @@
     ['Frontières de plaques', [['bound', 'Afficher les frontières'], ['btypes', 'Types : subduction / collision / accrétion / coulissant']]],
     ['GPS', [['gps', 'Mouvements des plaques (GPS)']]],
     ['Marqueurs', [['markers', "Marqueurs de l'enseignant"]]],
-    ['Carte', [['proj', 'Plane / Globe'], ['zoom', 'Zoom + / −'], ['timeline', 'Frise temporelle'], ['legend', 'Légende'], ['coupe', 'Coupe (bouton du haut)']]]
+    ['Carte', [['proj', 'Plane / Globe'], ['zoom', 'Zoom + / −'], ['timeline', 'Frise temporelle'], ['legend', 'Légende'], ['coupe', 'Coupe (bouton du haut)'], ['cpcrust', 'Coupe : croûte et manteau'], ['cplith', 'Coupe : lithosphère / asthénosphère'], ['cpslab', 'Coupe : plaque plongeante']]]
   ];
   var LAYERS = [['coast', 'Continents'], ['grat', 'Quadrillage'], ['plates', 'Plaques (contours)'], ['pnames', 'Noms des plaques'], ['trench', 'Fosses océaniques'], ['bound', 'Frontières'], ['quakes', 'Séismes'], ['volc', 'Volcans'], ['gps', 'Mouvements des plaques (GPS)'], ['markers', 'Marqueurs']];
   var TYPE_LABEL = { qcm: 'Au choix', cloze: 'À compléter', text: 'Rédigée', sheet: 'Fiche papier' };
@@ -297,11 +297,11 @@
     return h;
   }
 
-  function newCoupe() { return { id: uid('c'), label: 'Nouvelle coupe', a: null, b: null, w: 300, maxD: 700, exag: 1, rel: 5, uni: true, view: '2d', trans: true, layers: { quakes: true, volc: true, trench: true } }; }
+  function newCoupe() { return { id: uid('c'), label: 'Nouvelle coupe', a: null, b: null, w: 300, maxD: 700, exag: 1, rel: 5, uni: true, view: '2d', trans: true, struct: '', slab: false, layers: { quakes: true, volc: true, trench: true } }; }
   function okLine(c) { return c && c.a && c.b && typeof c.a[0] === 'number' && typeof c.a[1] === 'number' && typeof c.b[0] === 'number' && typeof c.b[1] === 'number'; }
   function coupeSummary(c) {
     if (!okLine(c)) return 'Ligne pas encore tracée : utilise « Régler sur la carte ».';
-    return 'A (' + c.a[1] + '°, ' + c.a[0] + '°) → B (' + c.b[1] + '°, ' + c.b[0] + '°) · bande ' + c.w + ' km · étirement ×' + c.exag + ' · relief ×' + (c.rel || 5) + ' · ' + (c.view === '3d' ? 'bloc 3D' : 'coupe 2D');
+    return 'A (' + c.a[1] + '°, ' + c.a[0] + '°) → B (' + c.b[1] + '°, ' + c.b[0] + '°) · bande ' + c.w + ' km · étirement ×' + c.exag + ' · relief ×' + (c.rel || 5) + ' · ' + (c.view === '3d' ? 'bloc 3D' : 'coupe 2D') + (c.struct === 'crust' ? ' · croûte/manteau' : c.struct === 'lith' ? ' · lithosphère/asthénosphère' : '') + (c.slab ? ' · plaque plongeante' : '');
   }
   function tCoupe(st) {
     var cs = st.coupes || [];
@@ -321,6 +321,8 @@
         '<label>Exagération du relief, terre et mer (×)<input type="number" min="1" max="40" step="1" data-b="' + p + 'rel" data-t="n" value="' + (c.rel == null ? 5 : c.rel) + '"></label>' +
         '<label>Vue de départ<select data-b="' + p + 'view"><option value="2d"' + (c.view !== '3d' ? ' selected' : '') + '>Coupe 2D</option><option value="3d"' + (c.view === '3d' ? ' selected' : '') + '>Bloc 3D</option></select></label>' +
         '<label class="ck"><input type="checkbox" data-b="' + p + 'trans"' + (c.trans !== false ? ' checked' : '') + '> Bloc 3D transparent</label>' +
+        '<label>Structure interne colorée<select data-b="' + p + 'struct"><option value=""' + (!c.struct ? ' selected' : '') + '>Aucune</option><option value="crust"' + (c.struct === 'crust' ? ' selected' : '') + '>Croûte et manteau supérieur</option><option value="lith"' + (c.struct === 'lith' ? ' selected' : '') + '>Lithosphère / asthénosphère</option></select></label>' +
+        '<label class="ck"><input type="checkbox" data-b="' + p + 'slab"' + (c.slab ? ' checked' : '') + '> Plaque plongeante</label>' +
         '<div class="lbl">Couches affichées</div>' + [['quakes', 'Séismes'], ['volc', 'Volcans'], ['trench', 'Fosses océaniques']].map(function (l) {
           return '<label class="ck"><input type="checkbox" data-b="' + p + 'layers.' + l[0] + '"' + ((c.layers || {})[l[0]] ? ' checked' : '') + '> ' + l[1] + '</label>';
         }).join('') + '</div>';

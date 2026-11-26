@@ -105,6 +105,13 @@ body.cp-graph #mapcol{grid-template-rows:minmax(0,1fr) minmax(190px,40%) auto au
 #cp-menu .cp-c{display:flex;gap:6px;align-items:flex-start;font-size:.86em;line-height:1.3}
 #cp-menu #cp-opts{display:grid;gap:9px;padding-top:8px;border-top:1px solid var(--line)}
 body.cp-graph #cp-menu .cp-hint{display:none}
+#cp-menu .cp-st{display:grid;gap:5px}
+#cp-menu .cp-stt{font-size:.8em;color:var(--mute);text-transform:uppercase;letter-spacing:.04em}
+#cp-menu .cp-st .ibtn.on{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+#cp-leg{position:absolute;top:6px;right:40px;z-index:2;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:5px 8px;font-size:.78em;line-height:1.45;pointer-events:none;opacity:.94;max-width:46%}
+#cp-leg i{display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+#cp-leg small{display:block;color:var(--mute)}
+body.cp-3d-on #cp-leg{right:auto;left:8px}
 #cp-menu .cp-sum{margin:0;font-size:.86em;line-height:1.5}
 #cp-graph{position:relative;min-height:0;background:var(--panel);border-top:1px solid var(--line);overflow:hidden}
 #cp-graph canvas#cp-cv{width:100%;height:100%;cursor:default}
@@ -630,6 +637,11 @@ body{background-image:var(--paper)}
         <div id="cp-opts" hidden>
           <label class="cp-s">Étirement vertical <output id="cp-eo">×1</output><input type="range" id="cp-e" min="0.3" max="10" step="0.1" value="1"></label>
           <label class="cp-s">Exagération du relief (terre et mer) <output id="cp-ro">×5</output><input type="range" id="cp-r" min="1" max="40" step="1" value="5"></label>
+          <div class="cp-st"><span class="cp-stt">Structure interne</span>
+            <button class="ibtn cp-b" id="cp-cm" data-mi="cpcrust" aria-pressed="false">Croûte et manteau</button>
+            <button class="ibtn cp-b" id="cp-la" data-mi="cplith" aria-pressed="false">Lithosphère / asthénosphère</button>
+            <button class="ibtn cp-b" id="cp-sl" data-mi="cpslab" aria-pressed="false">Plaque plongeante</button>
+          </div>
           <button class="ibtn cp-b" id="cp-3d">Bloc 3D</button>
           <button class="ibtn cp-b" id="cp-png">Enregistrer l'image (PNG)</button>
         </div>
@@ -639,7 +651,7 @@ body{background-image:var(--paper)}
         <canvas id="cp-cv" role="img" aria-label="Coupe : relief, séismes et volcans"></canvas>
         <div id="cp-3dw" hidden></div>
         <div id="cp-3dbar"><button class="ibtn" id="cp-sw" hidden>⏸ Pause</button><button class="ibtn" id="cp-tr" hidden>Opaque</button><button class="ibtn" id="cp-zi" hidden aria-label="Zoom avant">+</button><button class="ibtn" id="cp-zo" hidden aria-label="Zoom arrière">−</button></div>
-        <div id="cp-tip" hidden></div><div id="cp-cap"></div>
+        <div id="cp-leg" hidden></div><div id="cp-tip" hidden></div><div id="cp-cap"></div>
       </section>
       <div id="timeline" data-ctx="quakes" data-mi="timeline">
         <button class="ibtn" id="play" aria-label="Lecture de la frise">▶</button>
@@ -653,7 +665,7 @@ body{background-image:var(--paper)}
           <span class="sp"></span>
         </div>
       </div>
-      <div id="srcline" class="srcline" title="Sources : USGS (séismes, alertes volcans) · Smithsonian GVP (volcans) · PB2002, Bird 2003 via fraxen/Nordpil (ODC-By) · Natural Earth · relief ETOPO (NOAA) · volcans de dorsale : positions illustratives · contexte des séismes estimé par la profondeur et la distance aux frontières">Sources : USGS (séismes, alertes volcans) · Smithsonian GVP (volcans) · PB2002, Bird 2003 via fraxen/Nordpil (ODC-By) · Natural Earth · relief ETOPO (NOAA) · volcans de dorsale : positions illustratives · contexte des séismes estimé par la profondeur et la distance aux frontières</div>
+      <div id="srcline" class="srcline" title="Sources : USGS (séismes, alertes volcans) · Smithsonian GVP (volcans) · PB2002, Bird 2003 via fraxen/Nordpil (ODC-By) · Natural Earth · relief ETOPO (NOAA) · croûte CRUST1.0 (Laske et al.) · volcans de dorsale : positions illustratives · contexte des séismes estimé par la profondeur et la distance aux frontières">Sources : USGS (séismes, alertes volcans) · Smithsonian GVP (volcans) · PB2002, Bird 2003 via fraxen/Nordpil (ODC-By) · Natural Earth · relief ETOPO (NOAA) · volcans de dorsale : positions illustratives · contexte des séismes estimé par la profondeur et la distance aux frontières</div>
     </section>
 
     <aside id="guide" aria-label="Parcours de questions">

@@ -9,7 +9,7 @@ var $=function(s){return document.querySelector(s)};
 var R=6371,D2R=Math.PI/180;
 var THREE_URL='https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
 
-var st={on:false,mode:'idle',a:null,b:null,w:300,view:'none',maxD:700,exag:1,rel:5,uni:true,trans:true,zoom3:1,drag:null,data:null,h:null,dirty:false};
+var st={on:false,mode:'idle',a:null,b:null,w:300,view:'none',maxD:700,exag:1,rel:5,uni:true,struct:'',slab:false,trans:true,zoom3:1,drag:null,data:null,h:null,dirty:false};
 var btn=$('#btn-cp'),menu=$('#cp-menu'),gr=$('#cp-graph'),cvg=$('#cp-cv'),wrap3=$('#cp-3dw'),tip=$('#cp-tip'),cap=$('#cp-cap');
 if(!btn||!menu||!gr||!cvg)return;
 var cv=K.cv;
@@ -30,6 +30,48 @@ function elev(lon,lat){
   var x0=Math.floor(x),y0=Math.min(RN-2,Math.floor(y)),fx=x-x0,fy=y-y0,x1=(x0+1)%RM;x0=x0%RM;
   var a=relief[y0*RM+x0],b=relief[y0*RM+x1],c=relief[(y0+1)*RM+x0],d=relief[(y0+1)*RM+x1];
   return (a*(1-fx)+b*fx)*(1-fy)+(c*(1-fx)+d*fx)*fy;
+}
+
+/* ---------- structure interne : croûte, lithosphère ---------- */
+var SC={crust:'#c9783a',um:'#7fa65a',lm:'#8c8179',lith:'#7a67b8',ast:'#f1a252',slab:'#7a67b8',slabM:'#5c7f3d'};
+var crust=null,crustP=null;
+function loadCrust(){
+  if(crust)return Promise.resolve();if(crustP)return crustP;
+  crustP=fetch('data/crust.bin').then(function(r){if(!r.ok)throw 0;return r.arrayBuffer()}).then(function(b){var a=new Uint8Array(b);if(a.length!==64800)throw 0;crust=a}).catch(function(){crustP=null});
+  return crustP;
+}
+function ensureCrust(){return (st.struct&&S.level==='adv')?loadCrust():Promise.resolve()}
+function mohoAdv(lon,lat){
+  var x=((lon+180)%360+360)%360-.5,y=Math.max(0,Math.min(178.999,90-Math.max(-89.5,Math.min(89.5,lat))-.5));
+  var x0=Math.floor(x),fx=x-x0,y0=Math.floor(y),fy=y-y0,xa=((x0%360)+360)%360,xb=(xa+1)%360;
+  var a=crust[y0*360+xa],b=crust[y0*360+xb],c=crust[(y0+1)*360+xa],d=crust[(y0+1)*360+xb];
+  return ((a*(1-fx)+b*fx)*(1-fy)+(c*(1-fx)+d*fx)*fy)/2;
+}
+function sm(x){x=Math.max(0,Math.min(1,x));return x*x*(3-2*x)}
+/* e : altitude en m ; renvoie l'épaisseur de la croûte (th) et de la lithosphère (lt), en km, comptées depuis la surface */
+function layersAt(lon,lat,e){
+  var hs=-e/1000,moho,w,th;
+  if(S.level==='adv'&&crust){moho=mohoAdv(lon,lat);th=moho-hs;w=sm((th-12)/18)}
+  else{w=sm((e+2000)/1800);th=7+28*w+5.7*Math.max(0,e/1000)*w}
+  th=Math.max(3,th);
+  var dd=Math.max(hs,2.6),age=Math.pow((dd-2.6)/.35,2),tO=Math.max(8,Math.min(100,10*Math.sqrt(age)));
+  var lt=(1-w)*tO+w*(150-Math.min(0,hs));
+  return {th:th,lt:Math.max(lt,th+6)};
+}
+/* plaque plongeante schématique sous chaque fosse traversée (sens et pendage déduits des séismes profonds) */
+function buildSlabs(d){
+  var out=[],T=d.trAll;if(!T||!T.length)return out;
+  T.forEach(function(t,ti){
+    var Q=d.qs.filter(function(o){if(o.d<50)return false;var best=1e9,bi=-1;T.forEach(function(u,k){var dd=Math.abs(o.s-u.s);if(dd<best){best=dd;bi=k}});return bi===ti&&best<900});
+    if(Q.length<3)return;
+    var sd=0,sxy=0,sxx=0,maxd=0;Q.forEach(function(o){var x=o.s-t.s;sd+=x;sxy+=o.d*Math.abs(x);sxx+=x*x;if(o.d>maxd)maxd=o.d});
+    var dir=sd>=0?1:-1,tn=Math.max(.5,Math.min(2.2,sxy/Math.max(1,sxx))),th=Math.atan(tn),sn=Math.sin(th),cs=Math.cos(th);
+    var idx=Math.min(d.N,Math.round(t.s/d.L*d.N)),thick=Math.max(60,Math.min(110,d.lt[idx]));
+    var endD=Math.min(660,Math.max(150,maxd+60)),xEnd=endD/tn,top=[],bot=[],cr=[],nrm=[-dir*sn,cs];
+    for(var u=0;u<=20;u++){var x=xEnd*u/20,p=[dir*x,x*tn];top.push(p);bot.push([p[0]+nrm[0]*thick,p[1]+nrm[1]*thick]);cr.push([p[0]+nrm[0]*7,p[1]+nrm[1]*7])}
+    out.push({s:t.s,idx:idx,top:top,bot:bot,cr:cr});
+  });
+  return out;
 }
 
 /* ---------- géométrie sphérique ---------- */
@@ -86,7 +128,8 @@ function compute(){
   var o=ordered();if(!o){st.data=null;return}
   var f=frame(o[0],o[1]);if(!f){st.data=null;return}
   var N=Math.max(80,Math.min(720,Math.round(f.L/3))),el=new Float32Array(N+1),ll=[];
-  for(var i=0;i<=N;i++){var p=pt(f,f.L*i/N,0);ll.push(p);el[i]=elev(p[0],p[1])}
+  var thA=new Float32Array(N+1),ltA=new Float32Array(N+1);
+  for(var i=0;i<=N;i++){var p=pt(f,f.L*i/N,0);ll.push(p);el[i]=elev(p[0],p[1]);var Ls=layersAt(p[0],p[1],el[i]);thA[i]=Ls.th;ltA[i]=Ls.lt}
   var hw=st.w/2,sinHw=Math.sin(hw/R)+1e-9,L=K.lists(),qs=[],vs=[];
   L.q.forEach(function(q){
     var P=vec(q.lon,q.lat),x=dt(P,f.n);if(Math.abs(x)>sinHw)return;
@@ -99,9 +142,10 @@ function compute(){
     vs.push({s:s,x:Math.asin(Math.max(-1,Math.min(1,x)))*R,e:elev(v.lon,v.lat),c:K.vcol(v),v:v});
   });
   qs.sort(function(a,b){return a.m-b.m});
-  var trs=S.layers.trench?trenchCross(f):[];
+  var trs=trenchCross(f);
   var mx=-1e9,mn=1e9;for(i=0;i<=N;i++){if(el[i]>mx)mx=el[i];if(el[i]<mn)mn=el[i]}
-  st.data={f:f,o:o,N:N,el:el,ll:ll,qs:qs,vs:vs,tr:trs,L:f.L,mx:mx,mn:mn};
+  st.data={f:f,o:o,N:N,el:el,th:thA,lt:ltA,ll:ll,qs:qs,vs:vs,tr:S.layers.trench?trs:[],trAll:trs,L:f.L,mx:mx,mn:mn};
+  st.data.slabs=st.slab?buildSlabs(st.data):[];
   updSum();
 }
 
@@ -120,6 +164,7 @@ function setHint(){
   menu.classList.toggle('has-sel',!!(st.a&&st.b&&st.mode==='edit'));
   $('#cp-go').disabled=!(st.a&&st.b&&st.mode==='edit'&&frame(st.a,st.b));
   $('#cp-sel').classList.toggle('on',st.mode==='draw');
+  [['#cp-cm',st.struct==='crust'],['#cp-la',st.struct==='lith'],['#cp-sl',st.slab]].forEach(function(p){var b=$(p[0]);b.classList.toggle('on',p[1]);b.setAttribute('aria-pressed',p[1]?'true':'false')});
   $('#cp-wl').hidden=!(st.a&&st.b&&st.mode==='edit');
   $('#cp-wo').textContent=Math.round(st.w)+' km';$('#cp-w').value=st.w;$('#cp-e').value=st.exag;$('#cp-r').value=st.rel;$('#cp-ro').textContent='×'+st.rel;$('#cp-tr').textContent=st.trans?'Opaque':'Transparent';
   $('#cp-eo').textContent='×'+(+st.exag).toFixed(1).replace('.0','');
@@ -147,8 +192,28 @@ $('#cp-w').oninput=function(){st.w=+this.value;setHint();refresh(true);K.dirty()
 $('#cp-e').oninput=function(){st.exag=+this.value;setHint();redraw()};
 $('#cp-r').oninput=function(){st.rel=+this.value;setHint();redraw()};
 $('#cp-png').onclick=exportPng;
+function setStruct(v){st.struct=(st.struct===v)?'':v;applyStruct()}
+function applyStruct(){ensureCrust().then(function(){if(st.a&&st.b&&frame(st.a,st.b)){compute()}setHint();legend();if(st.view!=='none')redraw()})}
+$('#cp-cm').onclick=function(){setStruct('crust')};
+$('#cp-la').onclick=function(){setStruct('lith')};
+$('#cp-sl').onclick=function(){st.slab=!st.slab;applyStruct()};
+function legItems(){
+  var a=[];
+  if(st.struct==='crust')a=[[SC.crust,'Croûte (épaisseur en km)'],[SC.um,'Manteau supérieur (jusqu\'à 660 km)'],[SC.lm,'Manteau inférieur']];
+  else if(st.struct==='lith')a=[[SC.lith,'Lithosphère (rigide)'],[SC.ast,'Asthénosphère (jusqu\'à 660 km)'],[SC.lm,'Manteau inférieur']];
+  if(st.slab)a.push([st.struct==='crust'?SC.slabM:SC.slab,'Plaque plongeante (schéma)']);
+  return a;
+}
+function legNote(){return st.struct==='lith'?'épaisseurs schématiques':(st.struct==='crust'?(S.level==='adv'&&crust?'données CRUST1.0':'modèle simplifié'):'')}
+function legend(){
+  var el=$('#cp-leg'),a=legItems();
+  document.body.classList.toggle('cp-3d-on',st.view==='3d');
+  if(!a.length||st.view==='none'){el.hidden=true;return}
+  el.innerHTML=a.map(function(x){return '<div><i style="background:'+x[0]+'"></i>'+x[1]+'</div>'}).join('')+(legNote()?'<small>'+legNote()+'</small>':'');el.hidden=false;
+}
+$('#lv-seg').addEventListener('click',function(){setTimeout(function(){if(st.on&&st.struct)applyStruct()},30)});
 $('#cp-go').onclick=function(){
-  loadRelief().then(function(){showGraph('2d')}).catch(function(){$('#cp-hint').textContent='Relief indisponible (data/relief.bin).'});
+  Promise.all([loadRelief(),ensureCrust()]).then(function(){showGraph('2d')}).catch(function(){$('#cp-hint').textContent='Relief indisponible (data/relief.bin).'});
 };
 $('#cp-3d').onclick=function(){
   if(st.view==='3d'){showGraph('2d');return}
@@ -159,7 +224,7 @@ function showGraph(v){
   st.view=v;st.scroll=0;document.body.classList.add('cp-graph');gr.hidden=false;$('#cp-opts').hidden=false;
   cvg.hidden=v!=='2d';wrap3.hidden=v!=='3d';$('#cp-sw').hidden=$('#cp-tr').hidden=$('#cp-zi').hidden=$('#cp-zo').hidden=v!=='3d';
   $('#cp-3d').textContent=v==='3d'?'Retour à la coupe 2D':'Bloc 3D';
-  $('#cp-3d').classList.toggle('on',v==='3d');setHint();
+  $('#cp-3d').classList.toggle('on',v==='3d');setHint();legend();
   compute();
   if(v==='2d'){stop3d();requestAnimationFrame(draw2d)}else start3d();
   setTimeout(K.resize,60);
@@ -309,6 +374,31 @@ function draw2d(){
   c.lineTo(X(d.L),mt+Hv);c.closePath();
   c.fillStyle=COL.land;c.fill();
   var gd=c.createLinearGradient(0,y0,0,mt+Hv);gd.addColorStop(0,'rgba(0,0,0,0)');gd.addColorStop(1,'rgba(40,20,10,.38)');c.fillStyle=gd;c.fill();
+  // structure interne
+  if(st.struct){
+    var bot=mt+Hv,y660=Math.min(bot,Yd(660));
+    var surfF=function(i){return Ye(d.el[i])},moF=function(i){return Math.min(y660,surfF(i)+d.th[i]*ppk)},lbF=function(i){return Math.min(y660,surfF(i)+d.lt[i]*ppk)};
+    var band=function(tf,bf,col){c.beginPath();for(var q=0;q<=d.N;q++){var qx=X(d.L*q/d.N),qy=tf(q);q?c.lineTo(qx,qy):c.moveTo(qx,qy)}for(q=d.N;q>=0;q--)c.lineTo(X(d.L*q/d.N),bf(q));c.closePath();c.fillStyle=col;c.fill()};
+    var f660=function(){return y660},fbot=function(){return bot};
+    if(st.struct==='crust'){band(surfF,moF,SC.crust);band(moF,f660,SC.um)}else{band(surfF,lbF,SC.lith);band(lbF,f660,SC.ast)}
+    band(f660,fbot,SC.lm);
+    c.beginPath();c.moveTo(ml,y660);c.lineTo(ml+pw,y660);c.setLineDash([6,4]);c.lineWidth=1.2;c.strokeStyle='#fff';c.stroke();c.setLineDash([]);
+    c.font='600 10.5px '+ff;c.textAlign='left';c.textBaseline='bottom';c.fillStyle='#fff';c.fillText('660 km · limite manteau supérieur / inférieur',ml+6,y660-3);
+    if(st.struct==='crust'){
+      c.textAlign='center';c.textBaseline='top';c.font='700 11px '+ff;c.lineJoin='round';
+      for(var kk=1;kk<=5;kk++){var qi=Math.round(d.N*kk/6),tx=X(d.L*qi/d.N),ty=moF(qi)+3,tt=Math.round(d.th[qi])+' km';c.lineWidth=3;c.strokeStyle='rgba(0,0,0,.55)';c.strokeText(tt,tx,ty);c.fillStyle='#fff';c.fillText(tt,tx,ty)}
+    }
+  }
+  // plaque plongeante
+  if(st.slab&&d.slabs&&d.slabs.length){
+    d.slabs.forEach(function(sl){
+      var p0x=X(sl.s),p0y=Ye(d.el[sl.idx]),px=function(p){return [p0x+p[0]*xs,p0y+p[1]*ppk]};
+      var poly=function(A,B,col,al){c.beginPath();A.forEach(function(p,k){var q=px(p);k?c.lineTo(q[0],q[1]):c.moveTo(q[0],q[1])});for(var k=B.length-1;k>=0;k--){var q=px(B[k]);c.lineTo(q[0],q[1])}c.closePath();c.fillStyle=col;c.globalAlpha=al;c.fill();c.globalAlpha=1};
+      poly(sl.top,sl.bot,st.struct==='crust'?SC.slabM:SC.slab,.88);
+      if(st.struct==='crust')poly(sl.top,sl.cr,SC.crust,1);
+      c.beginPath();sl.top.forEach(function(p,k){var q=px(p);k?c.lineTo(q[0],q[1]):c.moveTo(q[0],q[1])});c.lineWidth=1.2;c.strokeStyle=COL.fg;c.globalAlpha=.7;c.stroke();c.globalAlpha=1;
+    });
+  }
   // océan
   c.beginPath();c.moveTo(X(0),y0);
   for(i=0;i<=d.N;i++)c.lineTo(X(d.L*i/d.N),Math.max(y0,Ye(d.el[i])));
@@ -379,6 +469,7 @@ cvg.addEventListener('pointermove',function(e){
   var r=cvg.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top,best=null,bd=9;
   d.qs.forEach(function(o){if(!o.px)return;var k=Math.hypot(o.px[0]-x,o.px[1]-y)-o.px[2]*.5;if(k<bd){bd=k;best={t:'Séisme M'+o.m.toFixed(1)+' · '+Math.round(o.d)+' km de profondeur'}}});
   d.vs.forEach(function(o){if(!o.px)return;var k=Math.hypot(o.px[0]-x,o.px[1]-y)-o.px[2]*.5;if(k<bd){bd=k;best={t:'Volcan '+(o.v.name||'')}}});
+  if(!best&&st.struct&&G&&x>=G.ml&&x<=G.ml+G.pw){var qi=Math.max(0,Math.min(d.N,Math.round((x-G.ml)/G.xs/d.L*d.N)));best={t:st.struct==='crust'?'Croûte : '+Math.round(d.th[qi])+' km d\'épaisseur':'Lithosphère : ≈ '+Math.round(d.lt[qi])+' km (schématique)'}}
   if(!best){tip.hidden=true;return}
   tip.textContent=best.t;tip.hidden=false;tip.style.left=Math.min(x+12,r.width-180)+'px';tip.style.top=(y+14)+'px';
 });
@@ -439,10 +530,12 @@ function build3d(){
   var L=d.L,hw=st.w/2,D=st.maxD,ex=st.exag,f=d.f,dvf=st.uni?ex:1,DD=D*dvf;
   var nx=Math.max(24,Math.min(240,Math.round(L/6))),nz=Math.max(8,Math.min(60,Math.round(st.w/8)));
   // dessus : relief
+  var th3=new Float32Array((nx+1)*(nz+1)),lt3=new Float32Array((nx+1)*(nz+1));
   var pos=new Float32Array((nx+1)*(nz+1)*3),col=new Float32Array((nx+1)*(nz+1)*3),hts=[];
   for(var j=0;j<=nz;j++){for(var i=0;i<=nx;i++){
     var s=L*i/nx,x=-hw+st.w*j/nz,ll=pt(f,s,x),e=elev(ll[0],ll[1]),k=(j*(nx+1)+i)*3;
     pos[k]=s-L/2;pos[k+1]=e/1000*st.rel*dvf;pos[k+2]=-x;
+    var Lq=layersAt(ll[0],ll[1],e);th3[k/3]=Lq.th;lt3[k/3]=Lq.lt;
     var rgb=elevRGB(e);col[k]=rgb[0]/255;col[k+1]=rgb[1]/255;col[k+2]=rgb[2]/255;
   }}
   var idx=[];for(j=0;j<nz;j++)for(i=0;i<nx;i++){var a=j*(nx+1)+i,b=a+1,c2=a+nx+1,d2=c2+1;idx.push(a,c2,b,b,c2,d2)}
@@ -453,18 +546,26 @@ function build3d(){
   grp3.add(new T.Mesh(wg,new T.MeshBasicMaterial({color:0x3f8fd0,transparent:true,opacity:.32,depthWrite:false})));
   // faces latérales : suivent le relief, dégradé de profondeur
   function side(getPt){
-    var n=getPt.n,sp=[],sc=[],si=[];
+    var n=getPt.n,sp=[],sc=[],si=[],md=Math.min(660*dvf,DD),NL=st.struct?4:2;
     for(var q=0;q<=n;q++){
-      var p=getPt(q);
-      sp.push(p[0],p[1],p[2],p[0],-DD,p[2]);
-      var tcol=[196,172,132],bcol=[84,56,40];
-      sc.push(tcol[0]/255,tcol[1]/255,tcol[2]/255,bcol[0]/255,bcol[1]/255,bcol[2]/255);
-      if(q<n){var o=q*2;si.push(o,o+1,o+2,o+2,o+1,o+3)}
+      var p=getPt(q),lv,cl;
+      if(st.struct==='crust'){lv=[p[1],p[1]-Math.min(md,p3th(p[3])*dvf),-md,-DD];cl=[SC.crust,SC.um,SC.lm]}
+      else if(st.struct==='lith'){lv=[p[1],p[1]-Math.min(md,lt3[p[3]]*dvf),-md,-DD];cl=[SC.lith,SC.ast,SC.lm]}
+      if(st.struct){
+        for(var u=0;u<4;u++)sp.push(p[0],Math.min(lv[u],u?lv[u-1]:1e9),p[2]);
+        for(u=0;u<4;u++){var cc=new T.Color(cl[Math.min(2,u>2?2:u)]);sc.push(cc.r,cc.g,cc.b)}
+        if(q<n){var o=q*4;for(var w2=0;w2<3;w2++)si.push(o+w2,o+w2+1,o+w2+4,o+w2+4,o+w2+1,o+w2+5)}
+      }else{
+        sp.push(p[0],p[1],p[2],p[0],-DD,p[2]);
+        sc.push(196/255,172/255,132/255,84/255,56/255,40/255);
+        if(q<n){var o2=q*2;si.push(o2,o2+1,o2+2,o2+2,o2+1,o2+3)}
+      }
     }
     var gg=new T.BufferGeometry();gg.setAttribute('position',new T.BufferAttribute(new Float32Array(sp),3));gg.setAttribute('color',new T.BufferAttribute(new Float32Array(sc),3));gg.setIndex(si);gg.computeVertexNormals();
     var m=new T.Mesh(gg,new T.MeshLambertMaterial({vertexColors:true,side:T.DoubleSide,transparent:st.trans,opacity:st.trans?.22:1,depthWrite:!st.trans}));grp3.add(m);
   }
-  function topPos(i,j){var k=(j*(nx+1)+i)*3;return [pos[k],pos[k+1],pos[k+2]]}
+  function p3th(v){return th3[v]}
+  function topPos(i,j){var k=(j*(nx+1)+i)*3;return [pos[k],pos[k+1],pos[k+2],k/3]}
   var fn=function(j){var h=function(q){return topPos(q,j)};h.n=nx;return h};
   side(fn(nz));side(fn(0));
   var fe=function(i){var h=function(q){return topPos(i,q)};h.n=nz;return h};
@@ -473,6 +574,19 @@ function build3d(){
   var bm=new T.Mesh(new T.PlaneGeometry(L,st.w).rotateX(Math.PI/2),new T.MeshBasicMaterial({color:0x2a1a12,transparent:st.trans,opacity:st.trans?.35:1,depthWrite:!st.trans}));bm.position.y=-DD;grp3.add(bm);
   var ev=new T.LineSegments(new T.BufferGeometry().setFromPoints([[-L/2,-DD,-hw],[L/2,-DD,-hw],[L/2,-DD,-hw],[L/2,-DD,hw],[L/2,-DD,hw],[-L/2,-DD,hw],[-L/2,-DD,hw],[-L/2,-DD,-hw]].map(function(p){return new T.Vector3(p[0],p[1],p[2])})),new T.LineBasicMaterial({color:0x000000,transparent:true,opacity:.5}));
   grp3.add(ev);
+  // plaque plongeante (extrudée sur toute la largeur de la bande)
+  if(st.slab&&d.slabs)d.slabs.forEach(function(sl){
+    var y0s=d.el[sl.idx]/1000*st.rel*dvf;
+    var mk=function(A,B,col,op){
+      var sh=new T.Shape();A.forEach(function(p,k){k?sh.lineTo(p[0],-p[1]*dvf):sh.moveTo(p[0],-p[1]*dvf)});
+      for(var k=B.length-1;k>=0;k--)sh.lineTo(B[k][0],-B[k][1]*dvf);sh.closePath();
+      var g2=new T.ExtrudeGeometry(sh,{depth:st.w,bevelEnabled:false});g2.translate(0,0,-hw);
+      var m2=new T.Mesh(g2,new T.MeshLambertMaterial({color:col,transparent:true,opacity:op,side:T.DoubleSide,depthWrite:false}));
+      m2.position.set(sl.s-L/2,y0s,0);grp3.add(m2);
+    };
+    mk(sl.top,sl.bot,st.struct==='crust'?SC.slabM:SC.slab,.78);
+    if(st.struct==='crust')mk(sl.top,sl.cr,SC.crust,.95);
+  });
   // séismes / volcans (même couleur et même taille relative que sur la carte)
   var z=K.size(),kpx=L/Math.max(520,wrap3.clientWidth*.7);
   var sg=new T.SphereGeometry(1,10,8);
@@ -521,7 +635,7 @@ function exportPng(){
   o.width=src.width;o.height=src.height+strip;var c=o.getContext('2d'),COL=K.COL();
   c.fillStyle=COL.panel;c.fillRect(0,0,o.width,o.height);c.drawImage(src,0,0);
   c.fillStyle=COL.mute;c.font='500 '+Math.round(11*dpr)+'px Barlow,sans-serif';c.textBaseline='middle';
-  c.fillText('Carte Tectonique 4e · coupe de '+Math.round(d.L)+' km, bande de '+Math.round(st.w)+' km · relief ETOPO (NOAA) · séismes USGS · volcans Smithsonian GVP',Math.round(10*dpr),src.height+strip/2);
+  c.fillText('Carte Tectonique 4e · coupe de '+Math.round(d.L)+' km, bande de '+Math.round(st.w)+' km · relief ETOPO (NOAA) · séismes USGS · volcans Smithsonian GVP'+(st.struct?' · croûte CRUST1.0':'')+(legItems().length?' · '+legItems().map(function(x){return x[1]}).join(' / '):''),Math.round(10*dpr),src.height+strip/2);
   o.toBlob(function(b){if(!b)return;var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='coupe'+(st.view==='3d'?'-3d':'')+'.png';document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove()},500)},'image/png');
 }
 
@@ -531,7 +645,7 @@ document.addEventListener('change',function(e){var t=e.target;if(st.on&&st.view!
 function rnd(p){return [Math.round(p[0]*1000)/1000,Math.round(p[1]*1000)/1000]}
 function capture(){
   if(!st.a||!st.b||!frame(st.a,st.b))return null;
-  return {a:rnd(st.a),b:rnd(st.b),w:Math.round(st.w),maxD:700,exag:st.exag,rel:st.rel,uni:true,view:st.view==='3d'?'3d':'2d',trans:!!st.trans,layers:{quakes:!!S.layers.quakes,volc:!!S.layers.volc,trench:!!S.layers.trench},map:{rot0:Math.round(S.rot[0]*100)/100,pan:Math.round(S.pan),k:Math.round(S.k*100)/100}};
+  return {a:rnd(st.a),b:rnd(st.b),w:Math.round(st.w),maxD:700,exag:st.exag,rel:st.rel,uni:true,view:st.view==='3d'?'3d':'2d',trans:!!st.trans,struct:st.struct,slab:!!st.slab,layers:{quakes:!!S.layers.quakes,volc:!!S.layers.volc,trench:!!S.layers.trench},map:{rot0:Math.round(S.rot[0]*100)/100,pan:Math.round(S.pan),k:Math.round(S.k*100)/100}};
 }
 function setLayer(k,on){
   var cb=document.querySelector('[data-layer="'+k+'"]');
@@ -540,11 +654,11 @@ function setLayer(k,on){
 function load(c){
   if(!c||!c.a||!c.b)return;
   if(!st.on)open();
-  st.a=c.a.slice();st.b=c.b.slice();st.w=+c.w||300;st.maxD=700;st.exag=Math.max(.3,Math.min(10,+c.exag||1));st.rel=Math.max(1,Math.min(40,+c.rel||5));st.uni=true;st.trans=c.trans!==false;
+  st.a=c.a.slice();st.b=c.b.slice();st.w=+c.w||300;st.maxD=700;st.exag=Math.max(.3,Math.min(10,+c.exag||1));st.rel=Math.max(1,Math.min(40,+c.rel||5));st.uni=true;st.trans=c.trans!==false;st.struct=(c.struct==='crust'||c.struct==='lith')?c.struct:'';st.slab=!!c.slab;
   if(c.layers)['quakes','volc','trench'].forEach(function(k){if(c.layers[k]!=null)setLayer(k,!!c.layers[k])});
   if(c.map&&isFinite(c.map.rot0)){S.rot[0]=c.map.rot0;S.pan=c.map.pan||0;S.k=c.map.k||1}
   st.mode='edit';setHint();K.dirty();
-  loadRelief().then(function(){showGraph(c.view==='3d'?'3d':'2d')}).catch(function(){});
+  Promise.all([loadRelief(),ensureCrust()]).then(function(){showGraph(c.view==='3d'?'3d':'2d')}).catch(function(){});
   $$pre();
 }
 function begin(c){if(c&&c.a&&c.b)load(c);else open()}

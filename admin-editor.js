@@ -43,6 +43,7 @@
     s.id = s.id || uid('q');
     s.title = s.title == null ? '' : s.title;
     ['intro', 'proposal', 'question', 'ctext', 'rubric', 'why'].forEach(function (k) { if (s[k] == null) s[k] = ''; });
+    if (!s.imgs || typeof s.imgs !== 'object' || Array.isArray(s.imgs)) s.imgs = {};
     s.type = s.type || 'qcm';
     ['opts', 'fb', 'hints'].forEach(function (k) {
       if (!Array.isArray(s[k])) s[k] = ['', '', ''];
@@ -109,11 +110,44 @@
     ctx.root.innerHTML = h;
   }
 
+  var IMG_SLOTS = { s0: 'sous le titre', s1: 'après l\'introduction', s2: 'après la proposition', s3: 'après la question' };
+  function imgSlot(st, k) {
+    if (!ctx.api) return '';
+    var L = (st.imgs && st.imgs[k]) || [];
+    return '<div class="imgslot" data-k="' + k + '"><div class="imgs">' + L.map(function (im, i) {
+      return '<div class="imgit"><img src="' + esc(im.src) + '" alt=""><input type="text" data-b="st.imgs.' + k + '.' + i + '.cap" value="' + esc(im.cap || '') + '" placeholder="Légende (facultatif)"><button data-act="img-del" data-k="' + k + '" data-i="' + i + '" title="Retirer l\'image">✕</button></div>';
+    }).join('') + '</div><button class="imgadd" data-act="img-pick" data-k="' + k + '">＋ Image ' + IMG_SLOTS[k] + '</button><span class="msg-n"> ou glisse un fichier ici</span></div>';
+  }
+  function imgUpload(file, k) {
+    if (!file || !/^image\/(jpeg|png|webp)$/.test(file.type)) { say('Format accepté : JPG, PNG ou WebP.'); return; }
+    var url = URL.createObjectURL(file), im = new Image(), st = cur();
+    say('Envoi de l\'image…');
+    im.onload = function () {
+      var r = Math.min(1, 1600 / Math.max(im.width, im.height)), c = document.createElement('canvas');
+      c.width = Math.round(im.width * r); c.height = Math.round(im.height * r);
+      c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+      c.toBlob(function (b) {
+        function send(blob) {
+          var fr = new FileReader();
+          fr.onload = function () {
+            ctx.api('api/upload_image.php', { method: 'POST', body: JSON.stringify({ data: fr.result }) }).then(function (j) {
+              if (!st.imgs[k]) st.imgs[k] = [];
+              st.imgs[k].push({ src: j.url, cap: '' }); render(); say('Image ajoutée ✓');
+            }).catch(function (e) { say('Erreur : ' + e.message); });
+          };
+          fr.readAsDataURL(blob);
+        }
+        if (b && b.type === 'image/webp') send(b); else c.toBlob(function (b2) { b2 ? send(b2) : say('Conversion impossible.'); }, 'image/jpeg', .85);
+      }, 'image/webp', .85);
+    };
+    im.onerror = function () { URL.revokeObjectURL(url); say('Image illisible.'); };
+    im.src = url;
+  }
   function tContent(st) {
-    var h = '<label>Titre de la question<input type="text" data-b="st.title" value="' + esc(st.title) + '"></label>';
-    h += '<label>Texte d\'introduction<textarea data-b="st.intro" placeholder="Contexte donné à l\'élève">' + esc(st.intro) + '</textarea></label>';
-    h += '<label>Proposition (ce que l\'élève doit faire)<textarea data-b="st.proposal" placeholder="Ex. Active la couche Séismes et observe.">' + esc(st.proposal) + '</textarea></label>';
-    h += '<label>Question<textarea data-b="st.question">' + esc(st.question) + '</textarea></label>';
+    var h = '<label>Titre de la question<input type="text" data-b="st.title" value="' + esc(st.title) + '"></label>' + imgSlot(st, 's0');
+    h += '<label>Texte d\'introduction<textarea data-b="st.intro" placeholder="Contexte donné à l\'élève">' + esc(st.intro) + '</textarea></label>' + imgSlot(st, 's1');
+    h += '<label>Proposition (ce que l\'élève doit faire)<textarea data-b="st.proposal" placeholder="Ex. Active la couche Séismes et observe.">' + esc(st.proposal) + '</textarea></label>' + imgSlot(st, 's2');
+    h += '<label>Question<textarea data-b="st.question">' + esc(st.question) + '</textarea></label>' + imgSlot(st, 's3');
     h += '<label>Type de réponse<select data-b="st.type" data-re="1">' + [['qcm', 'Au choix parmi 3'], ['cloze', 'Compléter des phrases'], ['text', 'Rédiger des phrases'], ['sheet', 'Fiche papier (carte à compléter, sans réponse)']].map(function (o) {
       return '<option value="' + o[0] + '"' + (st.type === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
     }).join('') + '</select></label>';
@@ -521,6 +555,8 @@
         }
         break;
       case 'sit-del': st.buttons.splice(i, 1); render(); break;
+      case 'img-pick': { var inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/jpeg,image/png,image/webp'; var kk = b.dataset.k; inp.onchange = function () { imgUpload(inp.files[0], kk); }; inp.click(); break; }
+      case 'img-del': if (st.imgs[b.dataset.k]) { st.imgs[b.dataset.k].splice(i, 1); render(); } break;
       case 'cp-add': st.coupes.push(newCoupe()); render(); break;
       case 'cp-del': if (confirm('Supprimer cette coupe ?')) { if (st.coupeAuto === st.coupes[i].id) st.coupeAuto = ''; st.coupes.splice(i, 1); render(); } break;
       case 'cp-cap': { var cc = st.coupes[i]; openPreview({ id: cc.id, label: cc.label, kind: 'coupe', coupe: okLine(cc) ? cc : null }); break; }
@@ -608,6 +644,9 @@
       if (!sc.steps.length) sc.steps.push(newStep());
       if (ctx && ctx.root) { ctx.root.removeEventListener('click', onClick); ctx.root.removeEventListener('input', onInput); ctx.root.removeEventListener('change', onChange); }
       ctx = { root: root, rec: rec, sc: sc, si: 0, sub: 'content', code: rec.session_code || '', active: !!rec.is_active, onSave: onSave, onCancel: onCancel, api: apiFn || null, lib: null };
+      root.addEventListener('dragover', function (e) { var z = e.target.closest && e.target.closest('.imgslot'); if (z) { e.preventDefault(); z.classList.add('drag'); } });
+      root.addEventListener('dragleave', function (e) { var z = e.target.closest && e.target.closest('.imgslot'); if (z) z.classList.remove('drag'); });
+      root.addEventListener('drop', function (e) { var z = e.target.closest && e.target.closest('.imgslot'); if (!z) return; e.preventDefault(); z.classList.remove('drag'); if (e.dataTransfer.files[0]) imgUpload(e.dataTransfer.files[0], z.dataset.k); });
       root.addEventListener('click', onClick); root.addEventListener('input', onInput); root.addEventListener('change', onChange);
       root.hidden = false;
       render();

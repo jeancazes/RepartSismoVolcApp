@@ -105,6 +105,14 @@ body.cp-graph #mapcol{grid-template-rows:minmax(0,1fr) minmax(190px,40%) auto au
 #cp-menu .cp-c{display:flex;gap:6px;align-items:flex-start;font-size:.86em;line-height:1.3}
 #cp-menu #cp-opts{display:grid;gap:9px;padding-top:8px;border-top:1px solid var(--line)}
 body.cp-graph #cp-menu .cp-hint{display:none}
+.stimg{margin:8px 0;text-align:center}
+.stimg img{max-width:100%;max-height:220px;border-radius:6px;border:1px solid var(--line);cursor:zoom-in;background:var(--panel)}
+.stimg figcaption{font-size:.82em;color:var(--mute);margin-top:3px}
+.imgbox{position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;padding:3vmin;cursor:zoom-out}
+.imgbox figure{margin:0;max-width:96vw;max-height:94vh;text-align:center}
+.imgbox img{max-width:96vw;max-height:86vh;border-radius:6px;background:#fff}
+.imgbox figcaption{color:#fff;margin-top:8px;font-size:1em}
+.imgbox-x{position:absolute;top:12px;right:16px;font-size:1.4em;background:#fff;border:0;border-radius:50%;width:40px;height:40px;cursor:pointer}
 #cp-menu .cp-st{display:grid;gap:5px}
 #cp-menu .cp-stt{font-size:.8em;color:var(--mute);text-transform:uppercase;letter-spacing:.04em}
 #cp-menu .cp-st .ibtn.on{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
@@ -1262,16 +1270,34 @@ function gradeStep(text,st){
 var G={hint:0,tries:0,done:false,res:null,st:null};
 var TYPE_LABEL={qcm:'Au choix (3)',cloze:'Phrase à compléter',text:'Rédaction',sheet:'Fiche papier'};
 function renderProg(sc,i){$('#g-prog').innerHTML=sc.steps.map(function(s,k){return '<i class="'+(k<i?'done':k===i?'cur':'')+'"></i>'}).join('');$('#g-step').textContent=sc.steps.length?((i+1)+' / '+sc.steps.length):'—'}
+function stImgs(st,k){
+  var L=st.imgs&&st.imgs[k];if(!Array.isArray(L))return'';
+  return L.filter(function(m){return m&&/^uploads\/img\/[a-f0-9]+\.(jpg|png|webp)$/.test(m.src)}).map(function(m){
+    return '<figure class="stimg"><img src="'+m.src+'" alt="'+esc(m.cap||'Illustration')+'" loading="lazy" data-zoom="1" tabindex="0" title="Cliquer pour agrandir">'+(m.cap?'<figcaption>'+esc(m.cap)+'</figcaption>':'')+'</figure>';
+  }).join('');
+}
+function zoomImg(img){
+  var o=document.createElement('div');o.className='imgbox';o.setAttribute('role','dialog');o.setAttribute('aria-modal','true');
+  o.innerHTML='<button class="imgbox-x" aria-label="Fermer">✕</button><figure><img alt="'+esc(img.alt)+'" src="'+img.src+'">'+(img.alt&&img.alt!=='Illustration'?'<figcaption>'+esc(img.alt)+'</figcaption>':'')+'</figure>';
+  function close(){o.remove();document.removeEventListener('keydown',kd,true)}
+  function kd(e){if(e.key==='Escape'){e.stopPropagation();close()}}
+  o.addEventListener('click',close);document.addEventListener('keydown',kd,true);document.body.appendChild(o);o.querySelector('button').focus();
+}
+document.addEventListener('click',function(e){var t=e.target;if(t&&t.dataset&&t.dataset.zoom)zoomImg(t)});
+document.addEventListener('keydown',function(e){var t=e.target;if((e.key==='Enter'||e.key===' ')&&t&&t.dataset&&t.dataset.zoom){e.preventDefault();zoomImg(t)}});
 function renderStep(){
   var sc=curScen(),b=$('#g-body');
   if(!sc.steps.length){b.innerHTML='<div class="note">Ce scénario ne contient encore aucune question.</div>';renderProg(sc,0);G.st=null;return}
   var i=curIdx(),st=sc.steps[i];G={hint:0,tries:0,done:false,res:null,st:st};renderProg(sc,i);
   var h='<div class="note" style="margin-bottom:6px">'+esc(sc.title)+'</div>';
   h+='<div class="stt">'+esc(st.title||'Question '+(i+1))+'</div>';
+  h+=stImgs(st,'s0');
   if(st.intro)h+='<p class="sti">'+esc(st.intro)+'</p>';
+  h+=stImgs(st,'s1');
   if(st.proposal)h+='<div class="prop"><b>À faire</b><br>'+esc(st.proposal)+'</div>';
+  h+=stImgs(st,'s2');
   h+='<div><span class="tag">'+TYPE_LABEL[st.type]+'</span></div>';
-  h+='<div id="g-q">'+esc(st.question)+'</div><div id="sits" hidden></div>';
+  h+='<div id="g-q">'+esc(st.question)+'</div>'+stImgs(st,'s3')+'<div id="sits" hidden></div>';
   if(st.type==='qcm'){h+=(st.opts||[]).map(function(o,k){return o?'<button class="opt" data-i="'+k+'">'+esc(o)+'</button>':''}).join('')}
   if(st.type==='cloze')h+=clozeHtml(st);
   if(st.type==='sheet'){var mk=st.marks||[];h+='<div class="note">Complète la fiche papier. Les repères sont numérotés sur la carte.</div>'+(mk.length?'<ol class="smarks">'+mk.map(function(m,k){return '<li value="'+(k+1)+'">'+esc(m.label||'')+'</li>'}).join('')+'</ol>':'')}

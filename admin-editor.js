@@ -11,7 +11,7 @@
     ['Frontières de plaques', [['bound', 'Afficher les frontières'], ['btypes', 'Types : subduction / collision / accrétion / coulissant']]],
     ['GPS', [['gps', 'Mouvements des plaques (GPS)']]],
     ['Marqueurs', [['markers', "Marqueurs de l'enseignant"]]],
-    ['Carte', [['proj', 'Plane / Globe'], ['zoom', 'Zoom + / −'], ['timeline', 'Frise temporelle'], ['legend', 'Légende'], ['coupe', 'Coupe (bouton du haut)'], ['cpcrust', 'Coupe : croûte et manteau'], ['cplith', 'Coupe : lithosphère / asthénosphère'], ['cpslab', 'Coupe : plaque plongeante']]]
+    ['Carte', [['proj', 'Plane / Globe'], ['zoom', 'Zoom + / −'], ['timeline', 'Frise temporelle'], ['legend', 'Légende'], ['coupe', 'Coupe (bouton du haut)'], ['cpcrust', 'Coupe : croûte et manteau'], ['cplith', 'Coupe : lithosphère / asthénosphère']]]
   ];
   var LAYERS = [['coast', 'Continents'], ['grat', 'Quadrillage'], ['plates', 'Plaques (contours)'], ['pnames', 'Noms des plaques'], ['trench', 'Fosses océaniques'], ['bound', 'Frontières'], ['quakes', 'Séismes'], ['volc', 'Volcans'], ['gps', 'Mouvements des plaques (GPS)'], ['markers', 'Marqueurs']];
   var TYPE_LABEL = { qcm: 'Au choix', cloze: 'À compléter', text: 'Rédigée', sheet: 'Fiche papier' };
@@ -104,12 +104,40 @@
       h += '<div class="subtabs">' + TABS.map(function (t) {
         return '<button data-sub="' + t[0] + '"' + (ctx.sub === t[0] ? ' class="on"' : '') + '>' + t[1] + '</button>';
       }).join('') + '</div><div class="ed-block" style="margin-top:10px">' +
-        ({ content: tContent, answer: tAnswer, btns: tBtns, menu: tMenu, data: tData, view: tView, coupe: tCoupe, pass: tPass })[ctx.sub](st) + '</div>';
+        (ctx.sub === 'content' || ctx.sub === 'answer' ? rtBar() : '') + ({ content: tContent, answer: tAnswer, btns: tBtns, menu: tMenu, data: tData, view: tView, coupe: tCoupe, pass: tPass })[ctx.sub](st) + '</div>';
     }
     h += '</div></div><div class="msg" id="ed-msg"></div>';
     ctx.root.innerHTML = h;
   }
 
+  var RT_COL = ['#b3261e', '#c2570c', '#9a7b00', '#2e7d32', '#00796b', '#1565c0', '#6a3fb5', '#ad1457'];
+  function rtBar() {
+    return '<div class="rtb" title="Sélectionne du texte dans un champ, puis clique">' +
+      '<button data-act="fmt" data-t="b" title="Gras"><b>G</b></button><button data-act="fmt" data-t="i" title="Italique"><i>I</i></button><button data-act="fmt" data-t="u" title="Souligné"><u>S</u></button><button data-act="fmt" data-t="s" title="Barré"><s>B</s></button>' +
+      '<select data-act-sel="font" title="Police"><option value="">Police…</option><option value="n">Normale</option><option value="h">Manuscrite</option><option value="m">Machine à écrire</option></select>' +
+      RT_COL.map(function (c, k) { return '<button data-act="fmt" data-t="c" data-v="' + k + '" class="sw" style="background:' + c + '" title="Couleur"></button>'; }).join('') +
+      '<button data-act="fmt" data-t="x" title="Effacer la mise en forme de la sélection">✕ mise en forme</button></div>';
+  }
+  var rtLast = null;
+  function rtField() {
+    if (rtLast && rtLast.isConnected) return rtLast;
+    if (rtLast && rtLast.dataset && rtLast.dataset.b) { var f = ctx.root.querySelector('[data-b="' + rtLast.dataset.b + '"]'); if (f) return f; }
+    return null;
+  }
+  function rtApply(t, v) {
+    var f = rtField();
+    if (!f) { say('Clique d\'abord dans un champ de texte, puis sélectionne les mots à mettre en forme.'); return; }
+    var a = f.selectionStart, z = f.selectionEnd, val = f.value;
+    if (t === 'x') {
+      var seg = val.slice(a, z).replace(/\[\/?(b|i|u|s|f|c)(=[a-z0-9]+)?\]/g, '');
+      f.value = val.slice(0, a) + seg + val.slice(z); f.focus(); f.setSelectionRange(a, a + seg.length);
+    } else {
+      if (a === z) { say('Sélectionne d\'abord les mots à mettre en forme.'); f.focus(); return; }
+      var open = '[' + t + (v != null && v !== '' ? '=' + v : '') + ']', close = '[/' + t + ']';
+      f.value = val.slice(0, a) + open + val.slice(a, z) + close + val.slice(z); f.focus(); f.setSelectionRange(a + open.length, z + open.length);
+    }
+    f.dispatchEvent(new Event('input', { bubbles: true }));
+  }
   var IMG_SLOTS = { s0: 'sous le titre', s1: 'après l\'introduction', s2: 'après la proposition', s3: 'après la question' };
   function imgSlot(st, k) {
     if (!ctx.api) return '';
@@ -145,16 +173,16 @@
   }
   function tContent(st) {
     var h = '<label>Titre de la question<input type="text" data-b="st.title" value="' + esc(st.title) + '"></label>' + imgSlot(st, 's0');
-    h += '<label>Texte d\'introduction<textarea data-b="st.intro" placeholder="Contexte donné à l\'élève">' + esc(st.intro) + '</textarea></label>' + imgSlot(st, 's1');
-    h += '<label>Proposition (ce que l\'élève doit faire)<textarea data-b="st.proposal" placeholder="Ex. Active la couche Séismes et observe.">' + esc(st.proposal) + '</textarea></label>' + imgSlot(st, 's2');
-    h += '<label>Question<textarea data-b="st.question">' + esc(st.question) + '</textarea></label>' + imgSlot(st, 's3');
+    h += '<label>Texte d\'introduction<textarea data-rich="1" data-b="st.intro" placeholder="Contexte donné à l\'élève">' + esc(st.intro) + '</textarea></label>' + imgSlot(st, 's1');
+    h += '<label>Proposition (ce que l\'élève doit faire)<textarea data-rich="1" data-b="st.proposal" placeholder="Ex. Active la couche Séismes et observe.">' + esc(st.proposal) + '</textarea></label>' + imgSlot(st, 's2');
+    h += '<label>Question<textarea data-rich="1" data-b="st.question">' + esc(st.question) + '</textarea></label>' + imgSlot(st, 's3');
     h += '<label>Type de réponse<select data-b="st.type" data-re="1">' + [['qcm', 'Au choix parmi 3'], ['cloze', 'Compléter des phrases'], ['text', 'Rédiger des phrases'], ['sheet', 'Fiche papier (carte à compléter, sans réponse)']].map(function (o) {
       return '<option value="' + o[0] + '"' + (st.type === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
     }).join('') + '</select></label>';
     h += '<div class="lbl">Indices (jusqu\'à 3, du plus discret au plus direct)</div>' + [0, 1, 2].map(function (i) {
       return '<input type="text" data-b="st.hints.' + i + '" value="' + esc(st.hints[i] || '') + '" placeholder="Indice ' + (i + 1) + '">';
     }).join('');
-    h += '<label>Message affiché quand c\'est réussi<input type="text" data-b="st.why" value="' + esc(st.why || '') + '"></label>';
+    h += '<label>Message affiché quand c\'est réussi<input type="text" data-rich="1" data-b="st.why" value="' + esc(st.why || '') + '"></label>';
     return h;
   }
 
@@ -242,8 +270,8 @@
     if (st.type === 'qcm') {
       h += [0, 1, 2].map(function (i) {
         return '<div class="opt3"><input type="radio" name="okopt" data-c="ok" data-i="' + i + '"' + (st.ok === i ? ' checked' : '') + ' aria-label="Bonne réponse ' + (i + 1) + '">' +
-          '<div style="flex:1"><label>Proposition ' + (i + 1) + (st.ok === i ? ' · bonne réponse' : '') + '<input type="text" data-b="st.opts.' + i + '" value="' + esc(st.opts[i] || '') + '"></label>' +
-          (st.ok === i ? '' : '<input type="text" data-b="st.fb.' + i + '" value="' + esc(st.fb[i] || '') + '" placeholder="Message si l\'élève choisit celle-ci (facultatif)">') + '</div></div>';
+          '<div style="flex:1"><label>Proposition ' + (i + 1) + (st.ok === i ? ' · bonne réponse' : '') + '<input type="text" data-rich="1" data-b="st.opts.' + i + '" value="' + esc(st.opts[i] || '') + '"></label>' +
+          (st.ok === i ? '' : '<input type="text" data-rich="1" data-b="st.fb.' + i + '" value="' + esc(st.fb[i] || '') + '" placeholder="Message si l\'élève choisit celle-ci (facultatif)">') + '</div></div>';
       }).join('');
       h += '<label class="ck"><input type="checkbox" data-b="st.diag"' + (st.diag ? ' checked' : '') + '> Question de diagnostic (réponse intuitive, pas de blocage)</label>';
     } else if (st.type === 'cloze') {
@@ -331,11 +359,11 @@
     return h;
   }
 
-  function newCoupe() { return { id: uid('c'), label: 'Nouvelle coupe', a: null, b: null, w: 300, maxD: 700, exag: 1, rel: 5, uni: true, view: '2d', trans: true, struct: '', slab: false, layers: { quakes: true, volc: true, trench: true } }; }
+  function newCoupe() { return { id: uid('c'), label: 'Nouvelle coupe', a: null, b: null, w: 300, maxD: 700, exag: 1, rel: 5, uni: true, view: '2d', trans: true, struct: '', layers: { quakes: true, volc: true, trench: true } }; }
   function okLine(c) { return c && c.a && c.b && typeof c.a[0] === 'number' && typeof c.a[1] === 'number' && typeof c.b[0] === 'number' && typeof c.b[1] === 'number'; }
   function coupeSummary(c) {
     if (!okLine(c)) return 'Ligne pas encore tracée : utilise « Régler sur la carte ».';
-    return 'A (' + c.a[1] + '°, ' + c.a[0] + '°) → B (' + c.b[1] + '°, ' + c.b[0] + '°) · bande ' + c.w + ' km · étirement ×' + c.exag + ' · relief ×' + (c.rel || 5) + ' · ' + (c.view === '3d' ? 'bloc 3D' : 'coupe 2D') + (c.struct === 'crust' ? ' · croûte/manteau' : c.struct === 'lith' ? ' · lithosphère/asthénosphère' : '') + (c.slab ? ' · plaque plongeante' : '');
+    return 'A (' + c.a[1] + '°, ' + c.a[0] + '°) → B (' + c.b[1] + '°, ' + c.b[0] + '°) · bande ' + c.w + ' km · étirement ×' + c.exag + ' · relief ×' + (c.rel || 5) + ' · ' + (c.view === '3d' ? 'bloc 3D' : 'coupe 2D') + (c.struct === 'crust' ? ' · croûte/manteau' : c.struct === 'lith' ? ' · lithosphère/asthénosphère' : '');
   }
   function tCoupe(st) {
     var cs = st.coupes || [];
@@ -356,7 +384,6 @@
         '<label>Vue de départ<select data-b="' + p + 'view"><option value="2d"' + (c.view !== '3d' ? ' selected' : '') + '>Coupe 2D</option><option value="3d"' + (c.view === '3d' ? ' selected' : '') + '>Bloc 3D</option></select></label>' +
         '<label class="ck"><input type="checkbox" data-b="' + p + 'trans"' + (c.trans !== false ? ' checked' : '') + '> Bloc 3D transparent</label>' +
         '<label>Structure interne colorée<select data-b="' + p + 'struct"><option value=""' + (!c.struct ? ' selected' : '') + '>Aucune</option><option value="crust"' + (c.struct === 'crust' ? ' selected' : '') + '>Croûte et manteau supérieur</option><option value="lith"' + (c.struct === 'lith' ? ' selected' : '') + '>Lithosphère / asthénosphère</option></select></label>' +
-        '<label class="ck"><input type="checkbox" data-b="' + p + 'slab"' + (c.slab ? ' checked' : '') + '> Plaque plongeante</label>' +
         '<div class="lbl">Couches affichées</div>' + [['quakes', 'Séismes'], ['volc', 'Volcans'], ['trench', 'Fosses océaniques']].map(function (l) {
           return '<label class="ck"><input type="checkbox" data-b="' + p + 'layers.' + l[0] + '"' + ((c.layers || {})[l[0]] ? ' checked' : '') + '> ' + l[1] + '</label>';
         }).join('') + '</div>';
@@ -555,6 +582,7 @@
         }
         break;
       case 'sit-del': st.buttons.splice(i, 1); render(); break;
+      case 'fmt': rtApply(b.dataset.t, b.dataset.v); break;
       case 'img-pick': { var inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/jpeg,image/png,image/webp'; var kk = b.dataset.k; inp.onchange = function () { imgUpload(inp.files[0], kk); }; inp.click(); break; }
       case 'img-del': if (st.imgs[b.dataset.k]) { st.imgs[b.dataset.k].splice(i, 1); render(); } break;
       case 'cp-add': st.coupes.push(newCoupe()); render(); break;
@@ -644,6 +672,9 @@
       if (!sc.steps.length) sc.steps.push(newStep());
       if (ctx && ctx.root) { ctx.root.removeEventListener('click', onClick); ctx.root.removeEventListener('input', onInput); ctx.root.removeEventListener('change', onChange); }
       ctx = { root: root, rec: rec, sc: sc, si: 0, sub: 'content', code: rec.session_code || '', active: !!rec.is_active, onSave: onSave, onCancel: onCancel, api: apiFn || null, lib: null };
+      root.addEventListener('focusin', function (e) { if (e.target.dataset && e.target.dataset.rich) rtLast = e.target; });
+      root.addEventListener('mousedown', function (e) { if (e.target.closest && e.target.closest('.rtb button')) e.preventDefault(); });
+      root.addEventListener('change', function (e) { var t = e.target; if (t.dataset && t.dataset.actSel === 'font') { if (t.value) rtApply('f', t.value); t.value = ''; } });
       root.addEventListener('dragover', function (e) { var z = e.target.closest && e.target.closest('.imgslot'); if (z) { e.preventDefault(); z.classList.add('drag'); } });
       root.addEventListener('dragleave', function (e) { var z = e.target.closest && e.target.closest('.imgslot'); if (z) z.classList.remove('drag'); });
       root.addEventListener('drop', function (e) { var z = e.target.closest && e.target.closest('.imgslot'); if (!z) return; e.preventDefault(); z.classList.remove('drag'); if (e.dataTransfer.files[0]) imgUpload(e.dataTransfer.files[0], z.dataset.k); });

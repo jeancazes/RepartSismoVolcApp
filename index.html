@@ -105,6 +105,10 @@ body.cp-graph #mapcol{grid-template-rows:minmax(0,1fr) minmax(190px,40%) auto au
 #cp-menu .cp-c{display:flex;gap:6px;align-items:flex-start;font-size:.86em;line-height:1.3}
 #cp-menu #cp-opts{display:grid;gap:9px;padding-top:8px;border-top:1px solid var(--line)}
 body.cp-graph #cp-menu .cp-hint{display:none}
+.f-hand{font-family:"Segoe Print","Comic Sans MS","Bradley Hand",cursive}
+.f-mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+.tc0{color:#b3261e}.tc1{color:#c2570c}.tc2{color:#9a7b00}.tc3{color:#2e7d32}.tc4{color:#00796b}.tc5{color:#1565c0}.tc6{color:#6a3fb5}.tc7{color:#ad1457}
+:root[data-theme="dark"] .tc0{color:#ff8a80}:root[data-theme="dark"] .tc1{color:#ffab66}:root[data-theme="dark"] .tc2{color:#f0d060}:root[data-theme="dark"] .tc3{color:#81c784}:root[data-theme="dark"] .tc4{color:#4db6ac}:root[data-theme="dark"] .tc5{color:#7fb5ff}:root[data-theme="dark"] .tc6{color:#b79cff}:root[data-theme="dark"] .tc7{color:#f48fb1}
 .stimg{margin:8px 0;text-align:center}
 .stimg img{max-width:100%;max-height:220px;border-radius:6px;border:1px solid var(--line);cursor:zoom-in;background:var(--panel)}
 .stimg figcaption{font-size:.82em;color:var(--mute);margin-top:3px}
@@ -648,7 +652,6 @@ body{background-image:var(--paper)}
           <div class="cp-st"><span class="cp-stt">Structure interne</span>
             <button class="ibtn cp-b" id="cp-cm" data-mi="cpcrust" aria-pressed="false">Croûte et manteau</button>
             <button class="ibtn cp-b" id="cp-la" data-mi="cplith" aria-pressed="false">Lithosphère / asthénosphère</button>
-            <button class="ibtn cp-b" id="cp-sl" data-mi="cpslab" aria-pressed="false">Plaque plongeante</button>
           </div>
           <button class="ibtn cp-b" id="cp-3d">Bloc 3D</button>
           <button class="ibtn cp-b" id="cp-png">Enregistrer l'image (PNG)</button>
@@ -1270,6 +1273,26 @@ function gradeStep(text,st){
 var G={hint:0,tries:0,done:false,res:null,st:null};
 var TYPE_LABEL={qcm:'Au choix (3)',cloze:'Phrase à compléter',text:'Rédaction',sheet:'Fiche papier'};
 function renderProg(sc,i){$('#g-prog').innerHTML=sc.steps.map(function(s,k){return '<i class="'+(k<i?'done':k===i?'cur':'')+'"></i>'}).join('');$('#g-step').textContent=sc.steps.length?((i+1)+' / '+sc.steps.length):'—'}
+var RT_FONTS={n:'',h:'f-hand',m:'f-mono'};
+function rich(t){
+  t=String(t==null?'':t);var out='',st=[],re=/\[(\/?)(b|i|u|s|f|c)(?:=([a-z0-9]+))?\]/g,last=0,m;
+  var TAG={b:'b',i:'i',u:'u',s:'s'};
+  while((m=re.exec(t))){
+    out+=esc(t.slice(last,m.index));last=re.lastIndex;
+    var cl=m[1]==='/',k=m[2],v=m[3];
+    if(!cl){
+      if(TAG[k]){st.push(TAG[k]);out+='<'+TAG[k]+'>'}
+      else if(k==='f'&&RT_FONTS[v]){st.push('span');out+='<span class="'+RT_FONTS[v]+'">'}
+      else if(k==='c'&&/^[0-7]$/.test(v||'')){st.push('span');out+='<span class="tc'+v+'">'}
+      else out+=esc(m[0]);
+    }else{
+      var want=TAG[k]||'span',ix=st.lastIndexOf(want);
+      if(ix>=0){while(st.length>ix+1)out+='</'+st.pop()+'>';out+='</'+st.pop()+'>'}
+    }
+  }
+  out+=esc(t.slice(last));while(st.length)out+='</'+st.pop()+'>';return out;
+}
+function plain(t){return String(t==null?'':t).replace(/\[\/?(b|i|u|s|f|c)(=[a-z0-9]+)?\]/g,'')}
 function stImgs(st,k){
   var L=st.imgs&&st.imgs[k];if(!Array.isArray(L))return'';
   return L.filter(function(m){return m&&/^uploads\/img\/[a-f0-9]+\.(jpg|png|webp)$/.test(m.src)}).map(function(m){
@@ -1292,13 +1315,13 @@ function renderStep(){
   var h='<div class="note" style="margin-bottom:6px">'+esc(sc.title)+'</div>';
   h+='<div class="stt">'+esc(st.title||'Question '+(i+1))+'</div>';
   h+=stImgs(st,'s0');
-  if(st.intro)h+='<p class="sti">'+esc(st.intro)+'</p>';
+  if(st.intro)h+='<p class="sti">'+rich(st.intro)+'</p>';
   h+=stImgs(st,'s1');
-  if(st.proposal)h+='<div class="prop"><b>À faire</b><br>'+esc(st.proposal)+'</div>';
+  if(st.proposal)h+='<div class="prop"><b>À faire</b><br>'+rich(st.proposal)+'</div>';
   h+=stImgs(st,'s2');
   h+='<div><span class="tag">'+TYPE_LABEL[st.type]+'</span></div>';
-  h+='<div id="g-q">'+esc(st.question)+'</div>'+stImgs(st,'s3')+'<div id="sits" hidden></div>';
-  if(st.type==='qcm'){h+=(st.opts||[]).map(function(o,k){return o?'<button class="opt" data-i="'+k+'">'+esc(o)+'</button>':''}).join('')}
+  h+='<div id="g-q">'+rich(st.question)+'</div>'+stImgs(st,'s3')+'<div id="sits" hidden></div>';
+  if(st.type==='qcm'){h+=(st.opts||[]).map(function(o,k){return o?'<button class="opt" data-i="'+k+'">'+rich(o)+'</button>':''}).join('')}
   if(st.type==='cloze')h+=clozeHtml(st);
   if(st.type==='sheet'){var mk=st.marks||[];h+='<div class="note">Complète la fiche papier. Les repères sont numérotés sur la carte.</div>'+(mk.length?'<ol class="smarks">'+mk.map(function(m,k){return '<li value="'+(k+1)+'">'+esc(m.label||'')+'</li>'}).join('')+'</ol>':'')}
   if(st.type==='text'){h+='<textarea id="ans" aria-label="Ta réponse" placeholder="Écris ta réponse ici."></textarea><div class="note" style="margin-top:4px">N\'écris ni ton nom ni aucune information personnelle.</div>'}
@@ -1362,9 +1385,9 @@ function answerQcm(sc,st,btn){
   $$('.opt').forEach(function(o){o.classList.remove('sel','bad')});
   ansBox()[akey(sc,st)]={choice:i,tries:G.tries};persist();
   if(st.diag){btn.classList.add('sel');$$('.opt').forEach(function(o){o.disabled=true});var okb=$$('.opt').filter(function(o){return +o.dataset.i===st.ok})[0];if(okb)okb.classList.add('good');
-    G.res={sent:true,correct:true};showFb(right?'good':'hint',(right?'Bonne intuition. ':'Ce n\'est pas ce que montrent les données. ')+esc(st.why||''));refreshNext();return}
-  if(right){btn.classList.add('good');$$('.opt').forEach(function(o){o.disabled=true});G.res={sent:true,correct:true};showFb('good','Correct. '+esc(st.why||''))}
-  else{btn.classList.add('bad');G.res={sent:true,correct:false};showFb('bad',esc((st.fb&&st.fb[i])||'Regarde la carte et réessaie.'))}
+    G.res={sent:true,correct:true};showFb(right?'good':'hint',(right?'Bonne intuition. ':'Ce n\'est pas ce que montrent les données. ')+rich(st.why||''));refreshNext();return}
+  if(right){btn.classList.add('good');$$('.opt').forEach(function(o){o.disabled=true});G.res={sent:true,correct:true};showFb('good','Correct. '+rich(st.why||''))}
+  else{btn.classList.add('bad');G.res={sent:true,correct:false};showFb('bad',(st.fb&&st.fb[i])?rich(st.fb[i]):'Regarde la carte et réessaie.')}
   refreshNext();
 }
 function checkCloze(sc,st){
@@ -1374,7 +1397,7 @@ function checkCloze(sc,st){
     s.classList.add(good?'good':'bad');if(!good)okAll=false});
   ansBox()[akey(sc,st)]={vals:els.map(function(s){return s.value}),tries:G.tries};persist();
   G.res={sent:true,correct:okAll};
-  if(okAll){showFb('good','Correct. '+esc(st.why||''));$('#chk').disabled=true}
+  if(okAll){showFb('good','Correct. '+rich(st.why||''));$('#chk').disabled=true}
   else showFb('bad','Un ou plusieurs trous sont à revoir.'+((st.hints||[]).some(Boolean)?' Utilise l\'indice si besoin.':''));
   refreshNext();
 }
@@ -1395,7 +1418,7 @@ function sendText(sc,st){
   if(!st.ai){done(r.s20,'','kw');return}
   var sb=$('#chk');if(sb)sb.disabled=true;
   showFb('hint','Correction en cours…');
-  fetch('api/grade.php',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:t,question:st.question||st.title||'',rubric:st.rubric||'',crit:(st.crit||[]).map(function(c){return {label:c.label,pts:c.pts}}),bin:store.bin||0})})
+  fetch('api/grade.php',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:t,question:plain(st.question)||st.title||'',rubric:st.rubric||'',crit:(st.crit||[]).map(function(c){return {label:c.label,pts:c.pts}}),bin:store.bin||0})})
     .then(function(x){return x.json().catch(function(){return {}}).then(function(j){return {ok:x.ok,st:x.status,j:j}})})
     .then(function(o){if(sb)sb.disabled=false;
       if(o.ok&&o.j&&typeof o.j.score==='number')done(o.j.score,o.j.commentaire||'','ai');
@@ -1416,7 +1439,7 @@ function printSheet(sc,st){
   var n=Math.max(1,Math.min(6,+st.lines||2)),items=!mk.length?(function(){var l='';for(var i=0;i<n*3;i++)l+='<div class="ln"></div>';return '<div class="it" style="grid-column:1/-1">'+l+'</div>'})():mk.map(function(m,k){var l='';for(var i=0;i<n;i++)l+='<div class="ln"></div>';return '<div class="it"><b>'+(k+1)+'.</b> '+esc(m.label||'')+l+'</div>'}).join('');
   var html='<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>Fiche — '+esc(st.title||sc.title)+'</title><style>@page{size:A4 landscape;margin:10mm}*{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;color:#000;margin:0}h1{font-size:15pt;margin:0 0 2mm}.top{display:flex;justify-content:space-between;gap:10mm;font-size:10pt;margin-bottom:3mm}.top span{flex:1;border-bottom:1px solid #000;padding-bottom:1mm}svg{width:100%;height:auto;display:block}.q{font-size:10.5pt;margin:3mm 0}.list{columns:2;column-gap:10mm;font-size:10pt}.it{break-inside:avoid;margin-bottom:3mm}.ln{border-bottom:1px solid #555;height:6.5mm}</style></head><body>'
     +'<h1>'+esc(sc.title)+' — '+esc(st.title||'Fiche')+'</h1><div class="top"><span>Nom :</span><span>Classe :</span><span>Date :</span></div>'+svg
-    +(st.question?'<div class="q"><b>'+esc(st.question)+'</b></div>':'')+'<div class="list">'+items+'</div></body></html>';
+    +(st.question?'<div class="q"><b>'+esc(plain(st.question))+'</b></div>':'')+'<div class="list">'+items+'</div></body></html>';
   var w=window.open('','_blank');if(!w){alert('Autorise les fenêtres pop-up pour imprimer la fiche.');return}
   w.document.open();w.document.write(html);w.document.close();w.focus();setTimeout(function(){try{w.print()}catch(e){}},400);
 }
@@ -2339,7 +2362,7 @@ function exportAnswers(){
   adm.scens.forEach(function(sc){sc.steps.forEach(function(st,i){
     var r=A.store.answers[sc.id+'/'+st.id];if(!r)return;
     var rep='',ok='',note='',stat='';
-    if(st.type==='qcm'){rep=st.opts[r.choice]||'';ok=r.choice===st.ok?'oui':'non'}
+    if(st.type==='qcm'){rep=plain(st.opts[r.choice]||'');ok=r.choice===st.ok?'oui':'non'}
     else if(st.type==='cloze'){rep=(r.vals||[]).join(' / ');var all=(r.vals||[]).length>0;(r.vals||[]).forEach(function(v,k){var g=String((st.ans||[])[k]||'').split('|').map(A.norm);if(g.indexOf(A.norm(v))<0)all=false});ok=all?'oui':'non'}
     else{rep=r.text||'';note=r.score==null?'':r.score;stat=r.ai?'note IA provisoire, à vérifier':'mots-clés'}
     L.push([bin,sc.title,i+1,st.title,st.type,rep,ok,note,r.tries==null?'':r.tries,stat].map(c).join(','));

@@ -167,6 +167,7 @@ function setHint(){
   [['#cp-cm',st.struct==='crust'],['#cp-la',st.struct==='lith'],['#cp-sl',st.slab]].forEach(function(p){var b=$(p[0]);b.classList.toggle('on',p[1]);b.setAttribute('aria-pressed',p[1]?'true':'false')});
   $('#cp-wl').hidden=!(st.a&&st.b&&st.mode==='edit');
   $('#cp-wo').textContent=Math.round(st.w)+' km';$('#cp-w').value=st.w;$('#cp-e').value=st.exag;$('#cp-r').value=st.rel;$('#cp-ro').textContent='×'+st.rel;$('#cp-tr').textContent=st.trans?'Opaque':'Transparent';
+  $('#cp-eo').parentNode.hidden=(st.view==='3d');
   $('#cp-eo').textContent='×'+(+st.exag).toFixed(1).replace('.0','');
   cv.parentNode.classList.toggle('cp-draw',st.mode==='draw');
 }
@@ -224,7 +225,7 @@ function showGraph(v){
   st.view=v;st.scroll=0;document.body.classList.add('cp-graph');gr.hidden=false;$('#cp-opts').hidden=false;
   cvg.hidden=v!=='2d';wrap3.hidden=v!=='3d';$('#cp-sw').hidden=$('#cp-tr').hidden=$('#cp-zi').hidden=$('#cp-zo').hidden=v!=='3d';
   $('#cp-3d').textContent=v==='3d'?'Retour à la coupe 2D':'Bloc 3D';
-  $('#cp-3d').classList.toggle('on',v==='3d');setHint();legend();
+  $('#cp-3d').classList.toggle('on',v==='3d');setHint();legend();if(v!=='3d')cap.textContent='';
   compute();
   if(v==='2d'){stop3d();requestAnimationFrame(draw2d)}else start3d();
   setTimeout(K.resize,60);
@@ -365,6 +366,12 @@ function draw2d(){
   function X(s){return ml+s*xs}
   function Yd(km){return y0+km*ppk}
   function Ye(m){return y0-Math.min(topKm,m/1000*rx)*ppk}
+  /* séisme : la profondeur est comptée depuis la surface exagérée (valeurs fausses acceptées), l'écart se résorbe vers 120 km */
+  function Yq(o){
+    var qi=Math.max(0,Math.min(d.N,Math.round(o.s/d.L*d.N))),e=d.el[qi],gap=Ye(e)-(y0-e/1000*ppk),k=Math.max(0,1-Math.max(0,o.d)/120);
+    var y=Yd(Math.min(o.d,visD+20))+gap*k;
+    return Math.max(y,Ye(e)+1.5);
+  }
   G={ml:ml,mt:mt,pw:pw,ph:ph,xs:xs,ppk:ppk,y0:y0};
   c.clearRect(0,0,wpx,hpx);c.fillStyle=COL.panel;c.fillRect(0,0,wpx,hpx);
   c.save();c.beginPath();c.rect(ml-62,mt,pw+62+mr,ph);c.clip();c.translate(0,-sy);
@@ -421,7 +428,7 @@ function draw2d(){
   // séismes
   var ps=z.ps,zz=z.z;
   d.qs.forEach(function(o){
-    var r=Math.max(1.5,(0.9+(o.m-3.2)*1.25))*zz*ps,x=X(o.s),y=Yd(Math.min(o.d,visD+20));
+    var r=Math.max(1.5,(0.9+(o.m-3.2)*1.25))*zz*ps,x=X(o.s),y=Yq(o);
     if(o.d>visD)return;o.px=[x,y-sy,r];
     c.beginPath();c.arc(x,y,r,0,6.2832);c.globalAlpha=.78;c.fillStyle=o.c;c.fill();c.globalAlpha=.9;c.lineWidth=.7;c.strokeStyle=COL.fg;c.stroke();c.globalAlpha=1;
   });
@@ -527,7 +534,7 @@ function build3d(){
     sc3.add(new T.AmbientLight(0xffffff,.62));var dl=new T.DirectionalLight(0xffffff,.75);dl.position.set(-.6,1,.8);sc3.add(dl);
   }
   grp3=new T.Group();sc3.add(grp3);
-  var L=d.L,hw=st.w/2,D=st.maxD,ex=st.exag,f=d.f,dvf=st.uni?ex:1,DD=D*dvf;
+  var L=d.L,hw=st.w/2,D=st.maxD,ex=st.exag,f=d.f,dvf=1,DD=D*dvf;
   var nx=Math.max(24,Math.min(240,Math.round(L/6))),nz=Math.max(8,Math.min(60,Math.round(st.w/8)));
   // dessus : relief
   var th3=new Float32Array((nx+1)*(nz+1)),lt3=new Float32Array((nx+1)*(nz+1));
@@ -594,7 +601,8 @@ function build3d(){
     var im=new T.InstancedMesh(sg,new T.MeshLambertMaterial(),d.qs.length),M=new T.Matrix4(),C=new T.Color();
     d.qs.forEach(function(o,q){
       var r=Math.max(1.5,(0.9+(o.m-3.2)*1.25))*z.z*z.ps*kpx*.75;
-      M.makeScale(r,r,r);M.setPosition(o.s-L/2,-Math.min(o.d,D)*dvf,-o.x);im.setMatrixAt(q,M);C.set(o.c);im.setColorAt(q,C);
+      M.makeScale(r,r,r);var qi3=Math.max(0,Math.min(d.N,Math.round(o.s/d.L*d.N))),e3=d.el[qi3]/1000,ts=e3*st.rel*dvf,gap3=(e3*st.rel-e3)*dvf*Math.max(0,1-Math.max(0,o.d)/120),yq=-Math.min(o.d,D)*dvf+gap3;
+      M.setPosition(o.s-L/2,Math.min(yq,ts-.0015*L),-o.x);im.setMatrixAt(q,M);C.set(o.c);im.setColorAt(q,C);
     });
     im.instanceMatrix.needsUpdate=true;if(im.instanceColor)im.instanceColor.needsUpdate=true;grp3.add(im);
   }
@@ -607,7 +615,7 @@ function build3d(){
     vm.instanceMatrix.needsUpdate=true;if(vm.instanceColor)vm.instanceColor.needsUpdate=true;grp3.add(vm);
   }
   var lonMode=Math.abs(norm180(d.ll[d.N][0]-d.ll[0][0]))>=Math.abs(d.ll[d.N][1]-d.ll[0][1]);
-  $('#cp-cap').textContent=lblCoord(d.ll[0],lonMode)+' ← → '+lblCoord(d.ll[d.N],lonMode)+' · bande de '+Math.round(st.w)+' km · profondeur '+D+' km · '+(st.uni?'verticale ×'+ex+' · glisser vers le haut/bas pour parcourir':'relief ×'+ex);
+  $('#cp-cap').textContent=lblCoord(d.ll[0],lonMode)+' ← → '+lblCoord(d.ll[d.N],lonMode)+' · bande de '+Math.round(st.w)+' km · profondeur '+D+' km · '+'relief ×'+st.rel+' · glisser vers le haut/bas pour parcourir';
   grp3.userData={L:L,w:st.w,D:DD,D0:D,top:Math.max(10,d.mx/1000*st.rel*dvf),top0:Math.max(10,d.mx/1000*st.rel)};
   fit3d();
 }
